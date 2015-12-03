@@ -105,7 +105,7 @@ int main() {
   // *** Need to specify location of Pythia xmldoc directory (xmldocDir)! ***
 
   // Main program settings.
-  double eCM            = 13000.0;
+  double eCM            = 14000.0;
   int nEvent            = 1;
   int nAbort            = 3;
   const char* xmldocDir = "/Users/barney800/Tools/Pythia8/share/Pythia8/xmldoc";
@@ -169,14 +169,9 @@ int main() {
     
     // Check W pT.
     int checkWpT = 0;
-    double WpT   = 0.0;
-    double Weta  = 0.0;
-    double Wphi  = 0.0;
     for ( int i = 0; i < event.size(); ++i ) {
       if ( event[i].id() == 24 || event[i].id() == -24 ) {
-        WpT = abs(event[i].pT());
-        Weta = event[i].eta();
-        Wphi = event[i].phi();
+        double WpT = event[i].pT();
         if ( WpT < WpTMin || WpT > WpTMax ) {
           break;
         }
