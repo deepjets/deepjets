@@ -75,7 +75,7 @@ void JetAnalysis( Event& event, const char* fname,
   
   // Get details and constituents from subjets.
   for ( int j = 0; j < int( TsortedJets.size() ); ++j ) {
-    Jconstits = sortedJets[j].constituents();
+    Jconstits = TsortedJets[j].constituents();
     JpT       = TsortedJets[j].perp();
     Jeta      = TsortedJets[j].eta();
     Jphi      = TsortedJets[j].phi_std();
