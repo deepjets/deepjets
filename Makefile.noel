@@ -1,0 +1,25 @@
+LDFLAGS += -L/usr/lib/x86_64-linux-gnu -ldl -lboost_iostreams -lboost_thread -lCGAL -lgmp
+
+# deal with pythia
+PYTHIADIR   = /usr/local
+PYTHIAFLAGS = -I$(PYTHIADIR)/include
+PYTHIALIBS  = -L$(PYTHIADIR)/lib/archive -lpythia8
+
+# Include Pythia and Pythia examples config files
+-include $(PYTHIADIR)/config.mk
+-include $(PYTHIADIR)/examples/config.mk
+
+# deal with fastjet
+FASTJETDIR  = /usr/local
+FASTJETINC  =`$(FASTJETDIR)/bin/fastjet-config --cxxflags --plugins`
+FASTJETLIB  =`$(FASTJETDIR)/bin/fastjet-config --libs --plugins`
+
+# LHAPDF if you want to replace Pythia's dummy default
+LHAPDFARGS =
+#LHAPDFARGS = -L$(HOME)/local/lib -lLHAPDF -I$(HOME)/local/include
+
+all:
+	g++ -o WprimeJetGen WprimeJetGen.cc \
+		$(PYTHIAFLAGS) $(PYTHIALIBS) \
+		$(FASTJETINC) $(FASTJETLIB) \
+		$(LHAPDFARGS) $(LDFLAGS)
