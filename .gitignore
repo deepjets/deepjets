@@ -1,3 +1,7 @@
 *.csv
 *.txt
 WprimeJetGen
+deepjets/src/_libdeepjets.cpp
+*.pyc
+build
+*.so
