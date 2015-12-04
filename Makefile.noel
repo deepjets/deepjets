@@ -6,8 +6,8 @@ PYTHIAFLAGS = -I$(PYTHIADIR)/include
 PYTHIALIBS  = -L$(PYTHIADIR)/lib/archive -lpythia8
 
 # deal with fastjet
-FASTJETINC  =`fastjet-config --cxxflags --plugins`
-FASTJETLIB  =`fastjet-config --libs --plugins`
+FASTJETINC  =$(shell fastjet-config --cxxflags --plugins)
+FASTJETLIB  =$(shell fastjet-config --libs --plugins)
 
 all:
 	g++ -o WprimeJetGen WprimeJetGen.cc \
