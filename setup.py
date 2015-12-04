@@ -41,16 +41,6 @@ os.chdir(local_path)
 sys.path.insert(0, local_path)
 
 PYTHIADIR = os.environ['PYTHIADIR']
-FASTJETINC = subprocess.Popen(
-    'fastjet-config --cxxflags --plugins'.split(),
-    stdout=subprocess.PIPE).communicate()[0].strip()
-if sys.version > '3':
-    FASTJETINC = FASTJETINC.decode('utf-8')
-FASTJETLIB = subprocess.Popen(
-    'fastjet-config --libs --plugins'.split(),
-    stdout=subprocess.PIPE).communicate()[0].strip()
-if sys.version > '3':
-    FASTJETLIB = FASTJETLIB.decode('utf-8')
 
 libdeepjets = Extension(
     'deepjets._libdeepjets',

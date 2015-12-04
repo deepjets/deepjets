@@ -53,6 +53,11 @@ def generate(string xmldoc, int n_events,
 
     pythia.init()
 
+    cdef int num_subjets, num_constituents
+    cdef double jet[3]
+    cdef double* subjets
+    cdef double* constituents
+
     try:
         ievent = 0
         while ievent < n_events:
@@ -61,8 +66,12 @@ def generate(string xmldoc, int n_events,
                 raise RuntimeError("event generation aborted prematurely")
             if not keep_event(pythia.event, w_pt_min, w_pt_max):
                 continue
-            get_jets(pythia.event, eta_max, jet_size, subjet_size, jet_pt_min, subjet_pt_min)
-            yield 1
+            get_jets(pythia.event,
+                     jet, subjets, constituents,
+                     num_subjets, num_constituents,
+                     eta_max, jet_size, subjet_size,
+                     jet_pt_min, subjet_pt_min)
+            yield (num_subjets, num_constituents)
             ievent += 1
     finally:
         del pythia
