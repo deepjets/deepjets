@@ -16,8 +16,8 @@ def generate(string xmldoc, int n_events,
              float beam_ecm=13000.,
              float eta_max=5.,
              float jet_size=0.6, float subjet_size=0.3,
-             float jet_min_pt=12.5, float subjet_min_pt=0.05,
-             float w_min_pt=-1, float w_max_pt=-1):
+             float jet_pt_min=12.5, float subjet_pt_min=0.05,
+             float w_pt_min=-1, float w_pt_max=-1):
     """
     Generate and yield Pythia events
     """
@@ -59,9 +59,9 @@ def generate(string xmldoc, int n_events,
             # Generate event. Quit if failure.
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
-            if not keep_event(pythia.event, w_min_pt, w_max_pt):
+            if not keep_event(pythia.event, w_pt_min, w_pt_max):
                 continue
-            get_jets(pythia.event, eta_max, jet_size, subjet_size, jet_min_pt, subjet_min_pt)
+            get_jets(pythia.event, eta_max, jet_size, subjet_size, jet_pt_min, subjet_pt_min)
             yield 1
             ievent += 1
     finally:
