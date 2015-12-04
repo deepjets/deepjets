@@ -55,7 +55,7 @@ if sys.version > '3':
 libdeepjets = Extension(
     'deepjets._libdeepjets',
     sources=['deepjets/src/_libdeepjets.pyx'],
-    depends=[],
+    depends=['deepjets/src/deepjets.h'],
     language='c++',
     include_dirs=[
         np.get_include(),
@@ -67,7 +67,8 @@ libdeepjets = Extension(
     extra_compile_args=[
         '-Wno-unused-function',
         '-Wno-write-strings',
-    ])
+    ] + FASTJETINC.split(),
+    extra_link_args=FASTJETLIB.split())
 
 setup(
     name='deepjets',

@@ -6,6 +6,7 @@ np.import_array()
 cimport cython
 
 include "Pythia.pxi"
+include "deepjets.pxi"
 
 
 #@cython.boundscheck(False)
@@ -13,6 +14,7 @@ include "Pythia.pxi"
 def generate(string xmldoc, int n_events,
              int random_seed=0,
              float beam_ecm=13000.,
+             float eta_max=5.,
              float jet_size=0.6, float subjet_size=0.3,
              float jet_min_pt=12.5, float subjet_min_pt=0.05,
              float w_min_pt=-1, float w_max_pt=-1):
@@ -52,10 +54,14 @@ def generate(string xmldoc, int n_events,
     pythia.init()
 
     try:
-        for ievent in range(n_events):
+        ievent = 0
+        while ievent < n_events:
             # Generate event. Quit if failure.
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
-            yield 1
+            if not keep_event(pythia.event, w_min_pt, w_max_pt):
+                continue
+            get_jets(pythia.event, eta_max, jet_size, subjet_size, jet_min_pt, subjet_min_pt)
+            ievent += 1
     finally:
         del pythia
