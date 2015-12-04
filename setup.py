@@ -61,9 +61,8 @@ libdeepjets = Extension(
         np.get_include(),
         'deepjets/src',
         os.path.join(PYTHIADIR, 'include'),
-        FASTJETINC[2:],
     ],
-    library_dirs=['/usr/local/lib'],
+    library_dirs=[os.path.join(PYTHIADIR, 'lib')],
     libraries='pythia8 fastjet fastjetplugins boost_iostreams boost_thread CGAL gmp'.split(),
     extra_compile_args=[
         '-Wno-unused-function',
