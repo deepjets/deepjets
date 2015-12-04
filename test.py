@@ -1,2 +1,2 @@
 from deepjets import generate
-print list(generate(10))
+print list(generate(100))

@@ -64,7 +64,7 @@ libdeepjets = Extension(
         FASTJETINC[2:],
     ],
     library_dirs=['/usr/local/lib'],
-    libraries='pythia8 fastjet fastjetplugins dl boost_iostreams boost_thread CGAL gmp'.split(),
+    libraries='pythia8 fastjet fastjetplugins boost_iostreams boost_thread CGAL gmp'.split(),
     extra_compile_args=[
         '-Wno-unused-function',
         '-Wno-write-strings',

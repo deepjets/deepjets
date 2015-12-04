@@ -62,6 +62,7 @@ def generate(string xmldoc, int n_events,
             if not keep_event(pythia.event, w_min_pt, w_max_pt):
                 continue
             get_jets(pythia.event, eta_max, jet_size, subjet_size, jet_min_pt, subjet_min_pt)
+            yield 1
             ievent += 1
     finally:
         del pythia
