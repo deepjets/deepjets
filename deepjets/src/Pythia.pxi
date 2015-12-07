@@ -7,5 +7,6 @@ cdef extern from "Pythia8/Pythia.h" namespace "Pythia8":
         Event event
         Pythia(string, bool)
         bool readString(string)
+        bool readFile(string)
         bool init()
         bool next()

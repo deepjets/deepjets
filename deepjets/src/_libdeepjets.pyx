@@ -10,7 +10,8 @@ cdef extern from "numpy/arrayobject.h":
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def generate(string xmldoc, int n_events,
+def generate(string config, string xmldoc,
+             int n_events,
              int random_seed=0,
              float beam_ecm=13000.,
              float eta_max=5.,
@@ -26,23 +27,6 @@ def generate(string xmldoc, int n_events,
     pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
     pythia.readString('Random:setSeed = on')
     pythia.readString('Random:seed = {0}'.format(random_seed))
-
-    # W' pair production.
-    pythia.readString("NewGaugeBoson:ffbar2Wprime = on")
-    pythia.readString("34:m0 = 700.0")
-
-    # W' decays.
-    pythia.readString("Wprime:coup2WZ = 1.0")
-    pythia.readString("34:onMode = off")
-    pythia.readString("34:onIfAny = 24")
-
-    # W and Z decays.
-    pythia.readString("24:onMode = off")
-    pythia.readString("24:onIfAny = 1 2 3 4 5 6")
-    pythia.readString("23:onMode = off")
-    pythia.readString("23:onIfAny = 12 14 16")
-
-    # Switch on/off particle data and event listings.
     pythia.readString("Init:showProcesses = off")
     pythia.readString("Init:showMultipartonInteractions = off")
     pythia.readString("Init:showChangedSettings = off")
@@ -50,6 +34,8 @@ def generate(string xmldoc, int n_events,
     pythia.readString("Next:numberShowInfo = 0")
     pythia.readString("Next:numberShowProcess = 0")
     pythia.readString("Next:numberShowEvent = 0")
+
+    pythia.readFile(config)
 
     pythia.init()
 
