@@ -1,16 +1,15 @@
 # cython: experimental_cpp_class_def=True, c_string_type=str, c_string_encoding=ascii
-import numpy as np
-cimport numpy as np
-np.import_array()
 
-cimport cython
-
+include "setup.pxi"
 include "Pythia.pxi"
+include "fastjet.pxi"
 include "deepjets.pxi"
 
+cdef extern from "numpy/arrayobject.h":
+    void PyArray_ENABLEFLAGS(np.ndarray arr, int flags)
 
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def generate(string xmldoc, int n_events,
              int random_seed=0,
              float beam_ecm=13000.,
@@ -23,6 +22,7 @@ def generate(string xmldoc, int n_events,
     """
     cdef int ievent;
     cdef Pythia* pythia = new Pythia(xmldoc, False)
+
     pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
     pythia.readString('Random:setSeed = on')
     pythia.readString('Random:seed = {0}'.format(random_seed))
@@ -53,10 +53,14 @@ def generate(string xmldoc, int n_events,
 
     pythia.init()
 
-    cdef int num_subjets, num_constituents
-    cdef double jet[3]
-    cdef double* subjets
-    cdef double* constituents
+    cdef int num_subjets = 0
+    cdef int num_constit = 0
+
+    cdef np.ndarray jet_arr = np.empty(3, dtype=np.double)
+    cdef np.ndarray subjets_arr
+    cdef np.ndarray constit_arr
+
+    cdef Result* result
 
     try:
         ievent = 0
@@ -66,12 +70,24 @@ def generate(string xmldoc, int n_events,
                 raise RuntimeError("event generation aborted prematurely")
             if not keep_event(pythia.event, w_pt_min, w_pt_max):
                 continue
-            get_jets(pythia.event,
-                     jet, subjets, constituents,
-                     num_subjets, num_constituents,
+
+            result = new Result()
+            get_jets(pythia.event, result[0],
                      eta_max, jet_size, subjet_size,
                      jet_pt_min, subjet_pt_min)
-            yield (num_subjets, num_constituents)
+
+            num_subjets = result.subjets.size()
+            num_constit = 0
+            for isubjet in range(result.subjets.size()):
+                num_constit += result.subjets[isubjet].constituents().size()
+
+            subjets_arr = np.empty((num_subjets, 3), dtype=np.double)
+            constit_arr = np.empty((num_constit, 4), dtype=np.double)
+
+            jets_to_arrays(result[0], <double*> jet_arr.data, <double*> subjets_arr.data,  <double*> constit_arr.data)
+            del result
+
+            yield jet_arr, subjets_arr, constit_arr
             ievent += 1
     finally:
         del pythia

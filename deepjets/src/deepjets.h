@@ -5,6 +5,19 @@
 
 using namespace Pythia8;
 
+struct Result {
+
+  ~Result() {
+    delete jet_clusterseq;
+    delete subjet_clusterseq;
+  }
+
+  fastjet::PseudoJet jet;
+  std::vector<fastjet::PseudoJet> subjets;
+  fastjet::ClusterSequence* jet_clusterseq;
+  fastjet::ClusterSequence* subjet_clusterseq;
+};
+
 
 bool keep_event(Event& event, double WpTMin, double WpTMax) {
   // Check W pT.
@@ -29,9 +42,36 @@ bool keep_event(Event& event, double WpTMin, double WpTMax) {
   return checkWpT != 0;
 }
 
+void jets_to_arrays(Result& result, double* jet_arr, double* subjets_arr, double* constit_arr) {
+  jet_arr[0] = result.jet.perp();
+  jet_arr[1] = result.jet.eta();
+  jet_arr[2] = result.jet.phi_std();
 
-void get_jets(Event& event, double* jet, double* subjets, double* constituents,
-              int& num_subjets, int& num_constituents,
+  // Get details and constituents from subjets.
+  int iconstit = 0;
+  unsigned int Jsize;
+  std::vector<fastjet::PseudoJet> Jconstits;
+
+  for (unsigned int j = 0; j < result.subjets.size(); ++j) {
+    Jconstits = result.subjets[j].constituents();
+    Jsize     = Jconstits.size();
+    subjets_arr[j * 3 + 0] = result.subjets[j].perp();
+    subjets_arr[j * 3 + 1] = result.subjets[j].eta();
+    subjets_arr[j * 3 + 2] = result.subjets[j].phi_std();
+    // Output subjet details.
+    //fprintf( f_jets, "%g, %g, %g, %i\n", JpT, Jeta, Jphi, Jsize );
+    for (unsigned int i = 0; i < Jsize; ++i) {
+      constit_arr[iconstit * 4 + 0] = Jconstits[i].E();
+      constit_arr[iconstit * 4 + 1] = Jconstits[i].Et();
+      constit_arr[iconstit * 4 + 2] = Jconstits[i].eta();
+      constit_arr[iconstit * 4 + 3] = Jconstits[i].phi_std();
+      ++iconstit;
+    }
+  }
+}
+
+void get_jets(Event& event,
+              Result& result,
               double etaMax,
               double R, double TR,
               double JpTMin, double TJpTMin) {
@@ -40,15 +80,14 @@ void get_jets(Event& event, double* jet, double* subjets, double* constituents,
   // Write jet properties, constituents to fname_jets.csv, fname_csts.csv.
 
   // Set up FastJet jet finder.
-  fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, R, -1);
+  fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, R, -1); // anti-kt
   std::vector<fastjet::PseudoJet> fjInputs;
-  fjInputs.resize(0);
 
   // Begin FastJet analysis: extract particles from event record.
   for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
     // Require visible particles inside detector.
     if ( !event[i].isVisible() ) continue;
-    if ( etaMax < 20. && abs(event[i].eta()) > etaMax ) continue;
+    if ( abs(event[i].eta()) > etaMax ) continue;
 
     // Create a PseudoJet from the complete Pythia particle.
     fastjet::PseudoJet particleTemp = event[i];
@@ -60,22 +99,17 @@ void get_jets(Event& event, double* jet, double* subjets, double* constituents,
   }
 
   // Run Fastjet algorithm and sort jets in pT order.
-  vector<fastjet::PseudoJet> inclusiveJets, sortedJets;
-  fastjet::ClusterSequence clustSeq(fjInputs, jetDef);
-  inclusiveJets = clustSeq.inclusive_jets(JpTMin);
-  sortedJets    = sorted_by_pt(inclusiveJets);
+  vector<fastjet::PseudoJet> sortedjets;
+  fastjet::ClusterSequence* clustSeq = new fastjet::ClusterSequence(fjInputs, jetDef);
+  sortedjets = sorted_by_pt(clustSeq->inclusive_jets(JpTMin));
 
   // Get details and constituents from leading jet.
-  fastjet::PseudoJet& leading_jet = sortedJets[0];
-  std::vector<fastjet::PseudoJet> Jconstits = leading_jet.constituents();
-  double JpT = leading_jet.perp();
-  jet[0] = JpT;
-  jet[1] = leading_jet.eta();
-  jet[2] = leading_jet.phi_std();
+  fastjet::PseudoJet& jet = sortedjets[0];
+  std::vector<fastjet::PseudoJet> Jconstits = jet.constituents();
   int Jsize = Jconstits.size();
 
   // Set up FastJet jet trimmer.
-  fastjet::JetDefinition TjetDef(fastjet::genkt_algorithm, TR, 1);
+  fastjet::JetDefinition TjetDef(fastjet::genkt_algorithm, TR, 1); // kt
   std::vector<fastjet::PseudoJet> TfjInputs;
   for (int i = 0; i < Jsize; ++i) {
     // Store constituents from leading jet.
@@ -83,34 +117,10 @@ void get_jets(Event& event, double* jet, double* subjets, double* constituents,
   }
 
   // Run Fastjet trimmer on leading jet.
-  std::vector<fastjet::PseudoJet> TinclusiveJets, TsortedJets;
-  fastjet::ClusterSequence TclustSeq(TfjInputs, TjetDef);
-  TinclusiveJets = TclustSeq.inclusive_jets(JpT * TJpTMin);
-  TsortedJets = sorted_by_pt(TinclusiveJets);
+  fastjet::ClusterSequence* TclustSeq = new fastjet::ClusterSequence(TfjInputs, TjetDef);
 
-  num_subjets = TsortedJets.size();
-  subjets = new double[TsortedJets.size() * 3];
-  constituents = new double[Jsize * 4];
-
-  double cE, cEt, ceta, cphi;
-  int iconstit = 0;
-
-  // Get details and constituents from subjets.
-  for (int j = 0; j < int(TsortedJets.size()); ++j) {
-    Jconstits = TsortedJets[j].constituents();
-    Jsize     = Jconstits.size();
-    subjets[j * 3 + 0] = TsortedJets[j].perp();
-    subjets[j * 3 + 1] = TsortedJets[j].eta();
-    subjets[j * 3 + 2] = TsortedJets[j].phi_std();
-    // Output subjet details.
-    //fprintf( f_jets, "%g, %g, %g, %i\n", JpT, Jeta, Jphi, Jsize );
-    for (int i = 0; i < Jsize; ++i) {
-      constituents[iconstit * 4 + 0] = Jconstits[i].E();
-      constituents[iconstit * 4 + 1] = Jconstits[i].Et();
-      constituents[iconstit * 4 + 2] = Jconstits[i].eta();
-      constituents[iconstit * 4 + 3] = Jconstits[i].phi_std();
-      ++iconstit;
-    }
-  }
-  num_constituents = iconstit;
+  result.jet = jet;
+  result.subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * TJpTMin));
+  result.jet_clusterseq = clustSeq;
+  result.subjet_clusterseq = TclustSeq;
 }
