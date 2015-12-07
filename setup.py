@@ -40,8 +40,8 @@ local_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(local_path)
 sys.path.insert(0, local_path)
 
-PYTHIADIR = os.environ['PYTHIADIR']
-FASTJETDIR = os.environ['FASTJETDIR']
+PYTHIADIR = os.environ.get('PYTHIADIR', '/usr/local')
+FASTJETDIR = os.environ.get('FASTJETDIR', '/usr/local')
 
 libdeepjets = Extension(
     'deepjets._libdeepjets',
@@ -51,10 +51,12 @@ libdeepjets = Extension(
     include_dirs=[
         np.get_include(),
         'deepjets/src',
+        '/usr/local/include',
         os.path.join(PYTHIADIR, 'include'),
         os.path.join(FASTJETDIR, 'include'),
     ],
     library_dirs=[
+        '/usr/local/lib',
         os.path.join(PYTHIADIR, 'lib'),
         os.path.join(FASTJETDIR, 'lib'),
     ],
