@@ -1,5 +1,5 @@
 
-from .deepjets import generate
+from .generate import generate
 
 __all__ = [
     'generate',

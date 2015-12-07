@@ -5,3 +5,7 @@ deepjets/src/_libdeepjets.cpp
 *.pyc
 build
 *.so
+*.png
+*.jpg
+*.jpeg
+*.pdf
