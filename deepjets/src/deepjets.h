@@ -24,13 +24,9 @@ bool keep_event(Event& event, double WpTMin, double WpTMax) {
   if (WpTMin < 0 && WpTMax < 0) return true;
   int checkWpT = 0;
   double WpT   = 0.;
-  double Weta  = 0.;
-  double Wphi  = 0.;
   for (int i = 0; i < event.size(); ++i) {
     if (event[i].id() == 24 || event[i].id() == -24) {
       WpT = abs(event[i].pT());
-      Weta = event[i].eta();
-      Wphi = event[i].phi();
       if (WpT < WpTMin || WpT > WpTMax) {
         break;
       } else {
