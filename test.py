@@ -7,7 +7,7 @@ etaphi_range = (-1.2, 1.2, -1.2, 1.2)
 etaphi_delta = (0.1, 0.1)
 eta_edges    = np.arange(etaphi_range[0], 1.01*etaphi_range[1], etaphi_delta[0])
 phi_edges    = np.arange(etaphi_range[2], 1.01*etaphi_range[3], etaphi_delta[1])
-nevents = 100
+nevents = 5000
 
 
 def preprocess(leading_jet, subjets, constit):
