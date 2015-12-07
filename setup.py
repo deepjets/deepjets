@@ -60,7 +60,7 @@ libdeepjets = Extension(
         os.path.join(PYTHIADIR, 'lib'),
         os.path.join(FASTJETDIR, 'lib'),
     ],
-    libraries='pythia8 fastjet fastjetplugins CGAL gmp'.split(),
+    libraries='pythia8 fastjet CGAL gmp'.split(),
     extra_compile_args=[
         '-Wno-unused-function',
         '-Wno-write-strings',
