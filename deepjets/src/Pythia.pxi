@@ -10,3 +10,4 @@ cdef extern from "Pythia8/Pythia.h" namespace "Pythia8":
         bool readFile(string)
         bool init()
         bool next()
+        void stat()

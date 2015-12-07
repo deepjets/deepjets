@@ -75,5 +75,6 @@ def generate(string config, string xmldoc,
 
             yield jet_arr, subjets_arr, constit_arr
             ievent += 1
+        pythia.stat()
     finally:
         del pythia
