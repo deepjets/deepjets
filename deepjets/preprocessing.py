@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import LogNorm
 from skimage.transform import rotate
 
 
@@ -22,7 +20,7 @@ def RotateJet(pixels, slsubjet_centre=None):
 
        Rotation puts subleading subjet or first principle component at -pi/2
        Repixelisation interpolates with cubic spline"""
-    if slsubjet_centre == None:
+    if slsubjet_centre is None:
         theta = 0.0
     elif slsubjet_centre[0] == 0.0:
         theta = np.arctan2(slsubjet_centre[1], slsubjet_centre[0])
@@ -30,13 +28,3 @@ def RotateJet(pixels, slsubjet_centre=None):
         theta = np.arctan2(slsubjet_centre[1], slsubjet_centre[0])
 
     return rotate(pixels, -theta*180.0/np.pi, order=3)
-
-def ShowJetImage(pixels, etaphi_range=(-1.25, 1.25, -1.25, 1.25)):
-    fig  = plt.figure(figsize=(5, 5))
-    ax   = fig.add_subplot(111)
-    p    = ax.imshow(pixels, extent=etaphi_range, interpolation='none', norm=LogNorm(vmin=1e-9, vmax=1e3))
-    fig.colorbar(p, ax=ax)
-    fig.tight_layout()
-    plt.show()
-    fig.savefig('AvJetImage.pdf', format='pdf')
-    plt.close()
