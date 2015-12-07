@@ -1,4 +1,9 @@
 
+deepjets
+========
+
+Reimplementing http://arxiv.org/abs/1511.05190
+
 Build and run the test script with::
 
    export PYTHIADIR=/usr/local
