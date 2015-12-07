@@ -4,7 +4,7 @@ deepjets: Deep Learning Jet Images
 
 Reimplementing http://arxiv.org/abs/1511.05190
 
-Install the following:
+Install the following (more detailed instructions on the way):
 
 * PYTHIA: http://home.thep.lu.se/Pythia/
 * FastJet: http://fastjet.fr/
