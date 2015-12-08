@@ -13,7 +13,7 @@ Install the following (more detailed instructions on the way):
 
 Install required Python packages::
 
-   pip install --user numpy scipy matplotlib scikit-image cython
+   pip install --user numpy scipy matplotlib scikit-image cython keras
 
 Build and run the test script with::
 
