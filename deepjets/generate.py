@@ -1,4 +1,4 @@
-from ._libdeepjets import generate as _generate
+from ._libdeepjets import generate_pythia as _generate
 import os
 
 def generate(config, nevents,
