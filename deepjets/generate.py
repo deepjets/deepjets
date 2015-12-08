@@ -8,7 +8,7 @@ def generate(config, nevents,
              jet_size=0.6, subjet_size=0.3,
              jet_pt_min=12.5, subjet_pt_min=0.05,
              w_pt_min=-1, w_pt_max=-1):
-    xmldoc = os.path.join(os.environ.get('PYTHIADIR', '/usr/local'),
+    xmldoc = os.path.join(os.environ.get('PYTHIA_DIR', '/usr/local'),
                           'share/Pythia8/xmldoc')
     for event in _generate(config, xmldoc, nevents,
                            random_seed=random_seed,
