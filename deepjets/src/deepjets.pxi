@@ -5,5 +5,5 @@ cdef extern from "deepjets.h":
         vector[PseudoJet] subjets
 
     bool keep_event(Event&, double, double)
-    void jets_to_arrays(Result&, double*, double*, double*)
+    void jets_to_arrays(Result&, double*, double*, double*, double*)
     Result* get_jets(Event&, double, double, double, double, double)

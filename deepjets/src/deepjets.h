@@ -39,7 +39,9 @@ bool keep_event(Event& event, double WpTMin, double WpTMax) {
   return checkWpT != 0;
 }
 
-void jets_to_arrays(Result& result, double* jet_arr, double* subjets_arr, double* constit_arr) {
+void jets_to_arrays(Result& result,
+                    double* jet_arr, double* jet_constit_arr,
+                    double* subjets_arr, double* subjets_constit_arr) {
   /*
    * Fill arrays from the contents of a Result struct
    */
@@ -47,24 +49,27 @@ void jets_to_arrays(Result& result, double* jet_arr, double* subjets_arr, double
   jet_arr[1] = result.jet.eta();
   jet_arr[2] = result.jet.phi_std();
 
+  std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
+
+  for (unsigned int i = 0; i < constits.size(); ++i) {
+      jet_constit_arr[i * 4 + 0] = constits[i].E();
+      jet_constit_arr[i * 4 + 1] = constits[i].Et();
+      jet_constit_arr[i * 4 + 2] = constits[i].eta();
+      jet_constit_arr[i * 4 + 3] = constits[i].phi_std();
+  }
+
   // Get details and constituents from subjets.
   int iconstit = 0;
-  unsigned int Jsize;
-  std::vector<fastjet::PseudoJet> Jconstits;
-
-  for (unsigned int j = 0; j < result.subjets.size(); ++j) {
-    Jconstits = result.subjets[j].constituents();
-    Jsize     = Jconstits.size();
-    subjets_arr[j * 3 + 0] = result.subjets[j].perp();
-    subjets_arr[j * 3 + 1] = result.subjets[j].eta();
-    subjets_arr[j * 3 + 2] = result.subjets[j].phi_std();
-    // Output subjet details.
-    //fprintf( f_jets, "%g, %g, %g, %i\n", JpT, Jeta, Jphi, Jsize );
-    for (unsigned int i = 0; i < Jsize; ++i) {
-      constit_arr[iconstit * 4 + 0] = Jconstits[i].E();
-      constit_arr[iconstit * 4 + 1] = Jconstits[i].Et();
-      constit_arr[iconstit * 4 + 2] = Jconstits[i].eta();
-      constit_arr[iconstit * 4 + 3] = Jconstits[i].phi_std();
+  for (unsigned int i = 0; i < result.subjets.size(); ++i) {
+    subjets_arr[i * 3 + 0] = result.subjets[i].perp();
+    subjets_arr[i * 3 + 1] = result.subjets[i].eta();
+    subjets_arr[i * 3 + 2] = result.subjets[i].phi_std();
+    constits = result.subjets[i].constituents();
+    for (unsigned int j = 0; j < constits.size(); ++j) {
+      subjets_constit_arr[iconstit * 4 + 0] = constits[j].E();
+      subjets_constit_arr[iconstit * 4 + 1] = constits[j].Et();
+      subjets_constit_arr[iconstit * 4 + 2] = constits[j].eta();
+      subjets_constit_arr[iconstit * 4 + 3] = constits[j].phi_std();
       ++iconstit;
     }
   }
