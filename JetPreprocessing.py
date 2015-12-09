@@ -2,7 +2,6 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from matplotlib.colors import LogNorm
 from skimage.transform import rotate
 from shutil import copyfile
@@ -90,6 +89,16 @@ def NormaliseJet(pixels):
     sum_I = np.sum(pixels**2)
     return pixels / sum_I
 
+def JetMass(jet_csts):
+    """Returns jet mass calculated from constituent 4-vectors."""
+    
+    E_tot  = np.sum( jet_csts[:,1]*np.cosh(jet_csts[:,2]) )
+    px_tot = np.sum( jet_csts[:,1]*np.cos(jet_csts[:,3]) )
+    py_tot = np.sum( jet_csts[:,1]*np.sin(jet_csts[:,3]) )
+    pz_tot = np.sum( jet_csts[:,1]*np.sinh(jet_csts[:,2]) )
+    
+    return np.sqrt( E_tot**2-px_tot**2-py_tot**2-pz_tot**2 )
+
 def ShowJetImage(pixels, etaphi_range=(-1.25, 1.25, -1.25, 1.25), vmin=1e-9, vmax=1e3):
     fig  = plt.figure(figsize=(5, 5))
     ax   = fig.add_subplot(111)
@@ -103,12 +112,14 @@ def ShowJetImage(pixels, etaphi_range=(-1.25, 1.25, -1.25, 1.25), vmin=1e-9, vma
   
 etaphi_range = (-1.25, 1.25, -1.25, 1.25)
 etaphi_delta = (0.1, 0.1)
+njets        = 1000
+jet_masses   = np.zeros(njets)
 eta_edges    = np.arange(etaphi_range[0], 1.01*etaphi_range[1], etaphi_delta[0])
 phi_edges    = np.arange(etaphi_range[2], 1.01*etaphi_range[3], etaphi_delta[1])
 pixels       = np.zeros(( len(eta_edges)-1, len(phi_edges)-1 ))
 t_pixels     = np.zeros(( len(eta_edges)-1, len(phi_edges)-1 ))
-njets        = 1000
 generate     = False
+
 for i in range(njets):
     if generate:
         call('./WprimeJetGen > out.txt'.split())
@@ -117,6 +128,7 @@ for i in range(njets):
         all_jets, jet_csts = ReadJetFiles('test')
     else:
         all_jets, jet_csts = ReadJetFiles('JetData/{0}'.format(i))
+    jet_masses[i]      = JetMass(jet_csts)
     lsubjet_centre     = all_jets[1][1:3] 
     jet_csts           = TranslateCsts(jet_csts, lsubjet_centre)
     jet_pixels         = Pixelise(jet_csts, eta_edges, phi_edges)
@@ -129,5 +141,13 @@ for i in range(njets):
     t_pix     = ReflectJet(t_pix)
     t_pix     = NormaliseJet(t_pix)
     t_pixels += t_pix
+
 ShowJetImage(pixels / njets)
 ShowJetImage( t_pixels / njets, vmin=1e-9, vmax=np.amax(t_pixels / njets) )
+
+fig  = plt.figure(figsize=(5, 5))
+ax   = fig.add_subplot(111)
+p    = ax.hist(jet_masses, bins=20)
+fig.tight_layout()
+plt.show()
+plt.close()
