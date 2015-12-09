@@ -16,18 +16,22 @@ If you don't have pip installed, do the following::
    curl -O https://bootstrap.pypa.io/get-pip.py
    python get-pip.py --user
 
-Install HDF5 and PyTables (we use this to store the jet images as numpy arrays)::
+If this isn't in your .bashrc already, add it::
+
+   export PATH=~/.local/bin${PATH:+:$PATH}
+
+Install HDF5 and h5py (we use this to store the jet images and neural nets)::
 
    sudo apt-get install libhdf5-dev
-   pip install --user tables
+   pip install --user h5py
 
 Install required Python packages::
 
-   pip install --user numpy scipy matplotlib scikit-image cython keras
+   pip install --user cython numpy scipy matplotlib scikit-image keras
 
 Build and run the test script with::
 
-   export PYTHIADIR=/usr/local
-   export FASTJETDIR=/usr/local
+   export PYTHIA_DIR=/usr/local
+   export FASTJET_DIR=/usr/local
    python setup.py build_ext --inplace
    python test.py
