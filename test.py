@@ -6,12 +6,12 @@ from matplotlib import pyplot as plt
 
 eta_edges = np.linspace(-1.2, 1.2, 26)
 phi_edges = np.linspace(-1.2, 1.2, 26)
-nevents = 200
+nevents = 1000
 
-# W'
+# W
 jet_mass_wprime = []
 pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
-for event in generate('wprime.config', nevents, jet_size=1.2):
+for event in generate('w.config', nevents, jet_size=1.2):
     leading_jet, constit, subjets, trimmed_constit = event
     jet_mass_wprime.append(jet_mass(trimmed_constit))
     pixels += preprocess(leading_jet, subjets, trimmed_constit, eta_edges, phi_edges)
