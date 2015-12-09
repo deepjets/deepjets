@@ -46,10 +46,9 @@ def generate_pythia(string config, string xmldoc,
             if not keep_event(pythia.event, w_pt_min, w_pt_max):
                 continue
 
-            result = new Result()
-            get_jets(pythia.event, result[0],
-                     eta_max, jet_size, subjet_size,
-                     jet_pt_min, subjet_pt_min)
+            result = get_jets(pythia.event,
+                              eta_max, jet_size, subjet_size,
+                              jet_pt_min, subjet_pt_min)
 
             num_subjets = result.subjets.size()
             num_constit = 0

@@ -5,13 +5,14 @@
 
 using namespace Pythia8;
 
+/*
+ * Instead if passing around many arguments, we use a Result struct
+ */
 struct Result {
-
   ~Result() {
     delete jet_clusterseq;
     delete subjet_clusterseq;
   }
-
   fastjet::PseudoJet jet;
   std::vector<fastjet::PseudoJet> subjets;
   fastjet::ClusterSequence* jet_clusterseq;
@@ -39,6 +40,9 @@ bool keep_event(Event& event, double WpTMin, double WpTMax) {
 }
 
 void jets_to_arrays(Result& result, double* jet_arr, double* subjets_arr, double* constit_arr) {
+  /*
+   * Fill arrays from the contents of a Result struct
+   */
   jet_arr[0] = result.jet.perp();
   jet_arr[1] = result.jet.eta();
   jet_arr[2] = result.jet.phi_std();
@@ -66,14 +70,15 @@ void jets_to_arrays(Result& result, double* jet_arr, double* subjets_arr, double
   }
 }
 
-void get_jets(Event& event,
-              Result& result,
-              double etaMax,
-              double R, double TR,
-              double JpTMin, double TJpTMin) {
-  // Find leading pT jet in event with anti-kt algorithm (params R, JpTMin, etaMax).
-  // Find subjets by re-cluster jet using kt algorith (params TR, TJpTMin).
-  // Write jet properties, constituents to fname_jets.csv, fname_csts.csv.
+Result* get_jets(Event& event,
+                 double etaMax,
+                 double R, double TR,
+                 double JpTMin, double TJpTMin) {
+  /*
+   * Find leading pT jet in event with anti-kt algorithm (params R, JpTMin, etaMax).
+   * Find subjets by re-cluster jet using kt algorith (params TR, TJpTMin).
+   * Return a Result struct
+   */
 
   // Set up FastJet jet finder.
   fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, R, -1); // anti-kt
@@ -115,8 +120,10 @@ void get_jets(Event& event,
   // Run Fastjet trimmer on leading jet.
   fastjet::ClusterSequence* TclustSeq = new fastjet::ClusterSequence(TfjInputs, TjetDef);
 
-  result.jet = jet;
-  result.subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * TJpTMin));
-  result.jet_clusterseq = clustSeq;
-  result.subjet_clusterseq = TclustSeq;
+  Result* result = new Result();
+  result->jet = jet;
+  result->subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * TJpTMin));
+  result->jet_clusterseq = clustSeq;
+  result->subjet_clusterseq = TclustSeq;
+  return result;
 }
