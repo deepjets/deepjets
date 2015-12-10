@@ -4,7 +4,7 @@ deepjets: Deep Learning Jet Images
 
 Reimplementing http://arxiv.org/abs/1511.05190
 
-Install `CGAL <http://www.cgal.org/>`_ and `GMP <https://gmplib.org/>`::
+Install `CGAL <http://www.cgal.org/>`_ and `GMP <https://gmplib.org/>`_::
 
    sudo apt-get install libcgal-dev libcgal11v5 libgmp-dev libgmp10
 
