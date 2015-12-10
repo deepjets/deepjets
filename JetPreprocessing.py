@@ -8,10 +8,10 @@ from shutil import copyfile
 from subprocess import call
 
 def ReadJetFiles(filename):
-    """Return jet, constituent details as numpy arrays from file.
+    """Return jet, constituent details as structured numpy arrays from file.
     
-       Jet format: pT, eta, phi, size.
-       Cst format: E,  ET,  eta, phi."""
+       Pythia jet format: pT, eta, phi, size.
+       Pythia cst format: E,  ET,  eta, phi."""
     
     with open('{0}_jets.csv'.format(filename), 'r') as f:
         all_jets = np.genfromtxt(f, delimiter=',', usecols=(0,1,2), names=('pT','eta','phi'))
@@ -114,6 +114,7 @@ def ReflectJet(pixels, all_jets=[0.0]):
         theta  = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
         theta  = (np.pi/2)+theta
         parity = np.sign( np.cos(-theta)*all_jets['eta'][3] - np.sin(-theta)*all_jets['phi'][3] )
+        
     else:
         pix_l  = np.sum( pixels[:,:-(-width//2)].flatten() )
         pix_r  = np.sum( pixels[:,(width//2):].flatten() )
@@ -170,6 +171,7 @@ for i in range(njets):
         copyfile('{0}_jets.csv'.format('test'), 'JetData/{0}_jets.csv'.format(i))
         copyfile('{0}_csts.csv'.format('test'), 'JetData/{0}_csts.csv'.format(i))
         all_jets, jet_csts = ReadJetFiles('test')
+        
     else:
         all_jets, jet_csts = ReadJetFiles('JetData/{0}'.format(i))
     
@@ -207,6 +209,7 @@ if test:
     pixels   = ReflectJet(pixels, all_jets)
     print "Reflected"
     ShowJetImage(pixels, vmin=0.09, vmax=11.0)
+
 else:
     ShowJetImage(pixels / njets)
     ShowJetImage(t_pixels / njets)
