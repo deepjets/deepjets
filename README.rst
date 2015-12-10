@@ -4,12 +4,18 @@ deepjets: Deep Learning Jet Images
 
 Reimplementing http://arxiv.org/abs/1511.05190
 
-Install the following (more detailed instructions on the way):
+Install `CGAL <http://www.cgal.org/>`_ and `GMP <https://gmplib.org/>`_::
 
-* PYTHIA: http://home.thep.lu.se/Pythia/
-* FastJet: http://fastjet.fr/
-* CGAL: http://www.cgal.org/
-* GMP: https://gmplib.org/
+   sudo apt-get install libcgal-dev libcgal11v5 libgmp-dev libgmp10
+
+or on Mac OS::
+
+   brew install cgal gmp
+
+Install `PYTHIA <http://home.thep.lu.se/Pythia/>`_ and
+`FastJet <http://fastjet.fr/>`_ with the ``install.sh`` script::
+
+   ./install.sh
 
 If you don't have pip installed, do the following::
 
