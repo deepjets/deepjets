@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage.transform import rotate
 from shutil import copyfile
 from subprocess import call
@@ -60,12 +61,15 @@ def InitPixels(etaphi_range=(-1.25, 1.25, -1.25, 1.25), etaphi_delta=(0.1, 0.1))
     
     return (eta_edges, phi_edges, pixels)
     
-def Pixelise(jet_csts, eta_edges, phi_edges):
-    """Return eta-phi histogram of transverse energy deposits."""
+def Pixelise(jet_csts, eta_edges, phi_edges, cutoff=0.0):
+    """Return eta-phi histogram of transverse energy deposits.
     
+       Optionally set all instensities below cutoff to zero."""
+    
+    weights = [ ET if ET > cutoff else 0.0 for ET in jet_csts['ET'] ]
     pixels, eta_edges, phi_edges = np.histogram2d(jet_csts['phi'], jet_csts['eta'],
                                                   bins=(eta_edges, phi_edges),
-                                                  weights=jet_csts['ET'])
+                                                  weights=weights)
     
     return pixels
     
@@ -110,7 +114,7 @@ def ReflectJet(pixels, all_jets=[0.0]):
     width, height = pixels.shape
     
     if len(all_jets) > 3:
-        # Use subleading subject information to rotate
+        # Use subsubleading subject information to reflect
         theta  = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
         theta  = (np.pi/2)+theta
         parity = np.sign( np.cos(-theta)*all_jets['eta'][3] - np.sin(-theta)*all_jets['phi'][3] )
@@ -140,18 +144,23 @@ def NormaliseJet(pixels):
 def ShowJetImage(pixels, etaphi_range=(-1.25, 1.25, -1.25, 1.25), vmin=1e-9, vmax=1e3):
     """Displays jet image."""    
     
-    fig = plt.figure(figsize=(5, 5))
+    fig = plt.figure(figsize=(6, 5))
     ax  = fig.add_subplot(111)
     p   = ax.imshow(pixels, extent=etaphi_range, origin='low',
-                    interpolation='none', norm=LogNorm(vmin=vmin, vmax=vmax))
-    fig.colorbar(p, ax=ax)
+                    interpolation='nearest', norm=LogNorm(vmin=vmin, vmax=vmax), cmap='jet')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(p, cax=cax, ticks=[1e-9,1e-7,1e-5,1e-3,1e-1,1e1,1e3])
+    cbar.set_label(r'$E_T$ [GeV]', rotation=90, fontsize=18)
+    ax.set_xlabel(r'$\eta$', fontsize=18)
+    ax.set_ylabel(r'$\phi$', fontsize=18)
     fig.tight_layout()
     plt.show()
-    fig.savefig('AvJetImage.pdf', format='pdf')
     plt.close()
 
 etaphi_range = (-1.25, 1.25, -1.25, 1.25)
 etaphi_delta = (0.1, 0.1)
+cutoff       = 0.1
 njets        = 1000
 generate     = False
 normalise    = False
@@ -178,7 +187,7 @@ for i in range(njets):
     jet_masses[i] = JetMass(jet_csts)
     jet_csts      = TranslateCsts(jet_csts, all_jets)
     all_jets      = TranslateJets(all_jets)
-    pixels_i      = Pixelise(jet_csts, eta_edges, phi_edges)
+    pixels_i      = Pixelise(jet_csts, eta_edges, phi_edges, cutoff)
     pixels       += pixels_i
     t_pixels_i    = RotateJet(pixels_i, all_jets)
     t_pixels_i    = ReflectJet(t_pixels_i, all_jets)
