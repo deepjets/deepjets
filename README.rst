@@ -8,9 +8,13 @@ Install `CGAL <http://www.cgal.org/>`_ and `GMP <https://gmplib.org/>`_::
 
    sudo apt-get install libcgal-dev libcgal11v5 libgmp-dev libgmp10
 
+on Fedora::
+
+   sudo dnf install gmp.x86_64 gmp-devel.x86_64 CGAL.x86_64 CGAL-devel.x86_64
+
 or on Mac OS::
 
-   brew install cgal gmp
+   brew install cgal gmp boost
 
 Install `PYTHIA <http://home.thep.lu.se/Pythia/>`_ and
 `FastJet <http://fastjet.fr/>`_ with the ``install.sh`` script::
