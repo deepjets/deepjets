@@ -40,8 +40,10 @@ local_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(local_path)
 sys.path.insert(0, local_path)
 
-PYTHIA_DIR = os.environ.get('PYTHIA_DIR', '/usr/local')
-FASTJET_DIR = os.environ.get('FASTJET_DIR', '/usr/local')
+try:
+    DEEPJETS_SFT_DIR=os.environ['DEEPJETS_SFT_DIR']
+except KeyError:
+    raise RuntimeError("first run \"source setup.sh\"")
 
 libdeepjets = Extension(
     'deepjets._libdeepjets',
@@ -52,13 +54,11 @@ libdeepjets = Extension(
         np.get_include(),
         'deepjets/src',
         '/usr/local/include',
-        os.path.join(PYTHIA_DIR, 'include'),
-        os.path.join(FASTJET_DIR, 'include'),
+        os.path.join(DEEPJETS_SFT_DIR, 'include'),
     ],
     library_dirs=[
         '/usr/local/lib',
-        os.path.join(PYTHIA_DIR, 'lib'),
-        os.path.join(FASTJET_DIR, 'lib'),
+        os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
     libraries='pythia8 fastjet CGAL gmp'.split(),
     extra_compile_args=[
