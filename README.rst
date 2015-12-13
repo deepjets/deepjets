@@ -18,7 +18,8 @@ or on Mac OS::
    brew install cgal gmp boost
 
 Set up the environment variables (always do this, even after installing for the
-first time)::
+first time) by sourcing setup.sh. If desired, first change the software
+installation path at the top of the file. Then run::
 
    source setup.sh
 
@@ -36,9 +37,21 @@ If this isn't in your .bashrc already, add it::
 
    export PATH=~/.local/bin${PATH:+:$PATH}
 
-Install HDF5 and h5py (we use this to store the jet images and neural nets)::
+Install HDF5 and h5py (we use this to store the jet images and neural nets).
+On Debian-based systems::
 
    sudo apt-get install libhdf5-dev
+
+On RPM-based systems::
+
+   sudo dnf install hdf5.x86_64 hdf5-devel.x86_64
+
+On Mac OS::
+
+   brew install hdf5
+
+Finally install h5py::
+
    pip install --user h5py
 
 Install required Python packages::
@@ -47,7 +60,5 @@ Install required Python packages::
 
 Build and run the test script with::
 
-   export PYTHIA_DIR=/usr/local
-   export FASTJET_DIR=/usr/local
    python setup.py build_ext --inplace
    python test.py
