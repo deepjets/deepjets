@@ -27,7 +27,7 @@ cd ..
 
 cd pythia8212
 make clean
-./configure --prefix=$PREFIX
+./configure --prefix=$PREFIX --enable-shared
 make -j2
 make install
 chmod +x $PREFIX/bin/pythia8-config
