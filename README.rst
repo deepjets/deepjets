@@ -15,7 +15,7 @@ on an RPM-based system (Fedora)::
 
 or on Mac OS::
 
-   brew install cgal gmp boost
+   brew install cgal gmp boost wget
 
 Set up the environment variables (always do this, even after installing for the
 first time) by sourcing setup.sh. If desired, first change the software
