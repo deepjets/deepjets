@@ -1,5 +1,5 @@
 # change the following path if desired
-export DEEPJETS_SFT_DIR=~/software/hep
+export DEEPJETS_SFT_DIR=/data/edawe/public/software/hep # on the UI
 
 # you should not need to edit below this line
 export PATH=${DEEPJETS_SFT_DIR}/bin:${PATH}
