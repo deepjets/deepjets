@@ -70,6 +70,7 @@ Setting up the environment on the UI
 Activate Noel's UI environment::
 
    source /data/edawe/public/setup.sh
+   source setup.sh
 
 
 Running the test script
