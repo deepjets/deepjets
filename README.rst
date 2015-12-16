@@ -4,6 +4,11 @@ deepjets: Deep Learning Jet Images
 
 Reimplementing http://arxiv.org/abs/1511.05190
 
+Manual Installation
+-------------------
+
+See below for instructions on using the existing setup on the UI.
+
 Install boost, `CGAL <http://www.cgal.org/>`_ and `GMP <https://gmplib.org/>`_.
 On a Debian-based system (Ubuntu)::
 
@@ -57,6 +62,18 @@ Finally install h5py::
 Install required Python packages::
 
    pip install --user cython numpy scipy matplotlib scikit-image keras
+
+
+Setting up the environment on the UI
+------------------------------------
+
+Activate Noel's UI environment::
+
+   source /data/edawe/public/setup.sh
+
+
+Running the test script
+-----------------------
 
 Build and run the test script with::
 
