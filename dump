@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--events', type=int, default=100)
+parser.add_argument('--output', '-o', default='events.h5')
+parser.add_argument('config')
+args = parser.parse_args()
+
+from deepjets import generate
+import numpy as np
+import h5py
+
+f = h5py.File(args.output, 'w')
+dt_jet = h5py.special_dtype(vlen=np.dtype([('pT', np.double), ('eta', np.double), ('phi', np.double)]))
+dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', np.double), ('eta', np.double), ('phi', np.double)]))
+
+dset_jets = f.create_dataset('jets', (args.events,), dtype=dt_jet)
+dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit)
+dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
+
+i = 0
+for event in generate(args.config, args.events):
+    jets, constit, trimmed_constit = event
+    dset_jets[i] = jets
+    dset_constit = constit
+    dset_trimmed_constit[i] = trimmed_constit
+    i += 1
+
+f.close()
