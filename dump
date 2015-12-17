@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
+import os
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--events', type=int, default=100)
-parser.add_argument('--output', '-o', default='events.h5')
+parser.add_argument('--output', '-o', default=None)
 parser.add_argument('config')
 args = parser.parse_args()
+
+if args.output is None:
+    args.output = os.path.splitext(args.config)[0] + '.h5'
 
 from deepjets import generate
 import numpy as np

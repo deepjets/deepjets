@@ -9,3 +9,4 @@ build
 *.jpg
 *.jpeg
 *.pdf
+*.h5
