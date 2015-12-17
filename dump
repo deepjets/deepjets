@@ -6,6 +6,10 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument('--events', type=int, default=100)
 parser.add_argument('--output', '-o', default=None)
+parser.add_argument('--jet-size', type=float, default=1.2)
+parser.add_argument('--cut-on-pdgid', type=int, default=0)
+parser.add_argument('--pt-min', type=float, default=-1)
+parser.add_argument('--pt-max', type=float, default=-1)
 parser.add_argument('config')
 args = parser.parse_args()
 
