@@ -7,7 +7,8 @@ def generate_pythia(string config, string xmldoc,
                     float beam_ecm=13000.,
                     float eta_max=5.,
                     float jet_size=0.6, float subjet_size=0.3,
-                    float jet_pt_min=12.5, float subjet_pt_min=0.05):
+                    float jet_pt_min=12.5, float subjet_pt_min=0.05,
+                    int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1):
     """
     Generate Pythia events and yield jet and constituent arrays
     """
@@ -46,6 +47,9 @@ def generate_pythia(string config, string xmldoc,
             # Generate event. Quit if failure.
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
+            
+            if not keep_event(pythia.event, cut_on_pdgid, pt_min, pt_max):
+                continue
 
             result = get_jets(pythia.event,
                               eta_max, jet_size, subjet_size,

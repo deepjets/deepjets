@@ -11,7 +11,8 @@ nevents = 1000
 # W
 jet_mass_wprime = []
 pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
-for event in generate('w.config', nevents, jet_size=1.2):
+for event in generate('wprime.config', nevents, jet_size=1.2,
+                      cut_on_pdgid=24, pt_min=250, pt_max=300):
     jets, constit, trimmed_constit = event
     jet_mass_wprime.append(jet_mass(trimmed_constit))
     pixels += preprocess(jets, trimmed_constit, eta_edges, phi_edges)

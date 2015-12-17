@@ -20,23 +20,23 @@ struct Result {
 };
 
 
-bool keep_event(Event& event, double WpTMin, double WpTMax) {
+bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
   // Check W pT.
-  if (WpTMin < 0 && WpTMax < 0) return true;
-  int checkWpT = 0;
-  double WpT   = 0.;
+  if (pt_min < 0 && pt_max < 0) return true;
+  bool passes = false;
+  double pt = 0.;
   for (int i = 0; i < event.size(); ++i) {
-    if (event[i].id() == 24 || event[i].id() == -24) {
-      WpT = abs(event[i].pT());
-      if (WpT < WpTMin || WpT > WpTMax) {
+    if (abs(event[i].id()) == cut_on_pdgid) {
+      pt = abs(event[i].pT());
+      if (pt < pt_min || pt > pt_max) {
         break;
       } else {
-        checkWpT = 1;
+        passes = true;
         break;
       }
     }
   }
-  return checkWpT != 0;
+  return passes;
 }
 
 void jets_to_arrays(Result& result,
