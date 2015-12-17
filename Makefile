@@ -19,5 +19,6 @@ in: inplace # just a shortcut
 inplace:
 	@$(PYTHON) setup.py build_ext -i
 
-trailing-spaces:
-	@find deepjets -name "*.py" | xargs perl -pi -e 's/[ \t]*$$//'
+events:
+	./dump wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
+	./dump qcd.config --events 1000000 &

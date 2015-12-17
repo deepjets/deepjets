@@ -24,16 +24,17 @@ bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
   // Check W pT.
   if (pt_min < 0 && pt_max < 0) return true;
   bool passes = false;
-  double pt = 0.;
+  double pt;
   for (int i = 0; i < event.size(); ++i) {
     if (abs(event[i].id()) == cut_on_pdgid) {
       pt = abs(event[i].pT());
-      if (pt < pt_min || pt > pt_max) {
+      if (pt_min >= 0 && pt < pt_min) {
         break;
-      } else {
-        passes = true;
+      } else if (pt_max > pt_min && pt > pt_max) {
         break;
       }
+      passes = true;
+      break;
     }
   }
   return passes;
