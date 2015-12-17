@@ -9,7 +9,7 @@ def generate_pythia(string config, string xmldoc,
                     float jet_size=0.6, float subjet_size=0.3,
                     float jet_pt_min=12.5, float subjet_pt_min=0.05):
     """
-    Generate and yield Pythia events
+    Generate Pythia events and yield jet and constituent arrays
     """
     cdef int ievent;
     cdef Pythia* pythia = new Pythia(xmldoc, False)
@@ -31,12 +31,14 @@ def generate_pythia(string config, string xmldoc,
     cdef int num_subjets = 0
     cdef int num_subjets_constit = 0
 
-    cdef np.ndarray jet_arr = np.empty(3, dtype=np.double)
+    cdef np.ndarray jet_arr
     cdef np.ndarray jet_constit_arr
-    cdef np.ndarray subjets_arr
-    cdef np.ndarray subjets_constit_arr
+    cdef np.ndarray subjet_constit_arr
 
     cdef Result* result
+
+    dtype_jet = np.dtype([('pT', np.double), ('eta', np.double), ('phi', np.double)])
+    dtype_constit = np.dtype([('ET', np.double), ('eta', np.double), ('phi', np.double)])
 
     try:
         ievent = 0
@@ -54,19 +56,18 @@ def generate_pythia(string config, string xmldoc,
             num_subjets_constit = 0
             for isubjet in range(result.subjets.size()):
                 num_subjets_constit += result.subjets[isubjet].constituents().size()
-
-            jet_constit_arr = np.empty((num_jet_constit, 4), dtype=np.double)
-            subjets_arr = np.empty((num_subjets, 3), dtype=np.double)
-            subjets_constit_arr = np.empty((num_subjets_constit, 4), dtype=np.double)
+            
+            jet_arr = np.empty((num_subjets + 1,), dtype=dtype_jet)
+            jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
+            subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
 
             jets_to_arrays(result[0],
                            <double*> jet_arr.data,
                            <double*> jet_constit_arr.data,
-                           <double*> subjets_arr.data,
-                           <double*> subjets_constit_arr.data)
+                           <double*> subjet_constit_arr.data)
             del result
 
-            yield jet_arr, jet_constit_arr, subjets_arr, subjets_constit_arr
+            yield jet_arr, jet_constit_arr, subjet_constit_arr
             ievent += 1
         pythia.stat()
     finally:

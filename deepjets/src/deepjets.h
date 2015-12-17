@@ -40,8 +40,7 @@ bool keep_event(Event& event, double WpTMin, double WpTMax) {
 }
 
 void jets_to_arrays(Result& result,
-                    double* jet_arr, double* jet_constit_arr,
-                    double* subjets_arr, double* subjets_constit_arr) {
+                    double* jet_arr, double* jet_constit_arr, double* subjet_constit_arr) {
   /*
    * Fill arrays from the contents of a Result struct
    */
@@ -52,24 +51,22 @@ void jets_to_arrays(Result& result,
   std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
 
   for (unsigned int i = 0; i < constits.size(); ++i) {
-      jet_constit_arr[i * 4 + 0] = constits[i].E();
-      jet_constit_arr[i * 4 + 1] = constits[i].Et();
-      jet_constit_arr[i * 4 + 2] = constits[i].eta();
-      jet_constit_arr[i * 4 + 3] = constits[i].phi_std();
+      jet_constit_arr[i * 3 + 0] = constits[i].Et();
+      jet_constit_arr[i * 3 + 1] = constits[i].eta();
+      jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
   }
 
   // Get details and constituents from subjets.
   int iconstit = 0;
   for (unsigned int i = 0; i < result.subjets.size(); ++i) {
-    subjets_arr[i * 3 + 0] = result.subjets[i].perp();
-    subjets_arr[i * 3 + 1] = result.subjets[i].eta();
-    subjets_arr[i * 3 + 2] = result.subjets[i].phi_std();
+    jet_arr[(i + 1) * 3 + 0] = result.subjets[i].perp();
+    jet_arr[(i + 1) * 3 + 1] = result.subjets[i].eta();
+    jet_arr[(i + 1) * 3 + 2] = result.subjets[i].phi_std();
     constits = result.subjets[i].constituents();
     for (unsigned int j = 0; j < constits.size(); ++j) {
-      subjets_constit_arr[iconstit * 4 + 0] = constits[j].E();
-      subjets_constit_arr[iconstit * 4 + 1] = constits[j].Et();
-      subjets_constit_arr[iconstit * 4 + 2] = constits[j].eta();
-      subjets_constit_arr[iconstit * 4 + 3] = constits[j].phi_std();
+      subjet_constit_arr[iconstit * 3 + 0] = constits[j].Et();
+      subjet_constit_arr[iconstit * 3 + 1] = constits[j].eta();
+      subjet_constit_arr[iconstit * 3 + 2] = constits[j].phi_std();
       ++iconstit;
     }
   }

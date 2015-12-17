@@ -12,18 +12,18 @@ nevents = 1000
 jet_mass_wprime = []
 pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
 for event in generate('w.config', nevents, jet_size=1.2):
-    leading_jet, constit, subjets, trimmed_constit = event
+    jets, constit, trimmed_constit = event
     jet_mass_wprime.append(jet_mass(trimmed_constit))
-    pixels += preprocess(leading_jet, subjets, trimmed_constit, eta_edges, phi_edges)
+    pixels += preprocess(jets, trimmed_constit, eta_edges, phi_edges)
 plot_jet_image(pixels / nevents, eta_edges, phi_edges, filename='wprime.png')
 
 # QCD dijets
 jet_mass_qcd = []
 pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
 for event in generate('qcd.config', nevents, jet_size=1.2):
-    leading_jet, constit, subjets, trimmed_constit = event
+    jets, constit, trimmed_constit = event
     jet_mass_qcd.append(jet_mass(trimmed_constit))
-    pixels += preprocess(leading_jet, subjets, trimmed_constit, eta_edges, phi_edges)
+    pixels += preprocess(jets, trimmed_constit, eta_edges, phi_edges)
 plot_jet_image(pixels / nevents, eta_edges, phi_edges, filename='qcd.png')
 
 fig = plt.figure(figsize=(5, 5))
