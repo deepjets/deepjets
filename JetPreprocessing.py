@@ -158,11 +158,13 @@ def ShowJetImage(pixels, etaphi_range=(-1.25, 1.25, -1.25, 1.25), vmin=1e-9, vma
     plt.show()
     plt.close()
 
+"""
 etaphi_range = (-1.25, 1.25, -1.25, 1.25)
 etaphi_delta = (0.1, 0.1)
 cutoff       = 0.1
 njets        = 1000
 generate     = False
+write_images = False
 normalise    = False
 test         = False
 
@@ -177,12 +179,12 @@ for i in range(njets):
     
     if generate:
         call('./WprimeJetGen > out.txt'.split())
-        copyfile('{0}_jets.csv'.format('test'), 'JetData/{0}_jets.csv'.format(i))
-        copyfile('{0}_csts.csv'.format('test'), 'JetData/{0}_csts.csv'.format(i))
+        copyfile('{0}_jets.csv'.format('test'), 'WprimeJetData/{0}_jets.csv'.format(i))
+        copyfile('{0}_csts.csv'.format('test'), 'WprimeJetData/{0}_csts.csv'.format(i))
         all_jets, jet_csts = ReadJetFiles('test')
         
     else:
-        all_jets, jet_csts = ReadJetFiles('JetData/{0}'.format(i))
+        all_jets, jet_csts = ReadJetFiles('WprimeJetData/{0}'.format(i))        
     
     jet_masses[i] = JetMass(jet_csts)
     jet_csts      = TranslateCsts(jet_csts, all_jets)
@@ -191,6 +193,10 @@ for i in range(njets):
     pixels       += pixels_i
     t_pixels_i    = RotateJet(pixels_i, all_jets)
     t_pixels_i    = ReflectJet(t_pixels_i, all_jets)
+    
+    if write_images:
+        with open('WprimeJetImages/{0}_pix.npy'.format(i), 'w') as f:
+            np.save(f, t_pixels_i)
     
     if normalise:
         t_pixels_i = NormaliseJet(t_pixels_i)
@@ -229,3 +235,4 @@ else:
     fig.tight_layout()
     plt.show()
     plt.close()
+"""
