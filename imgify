@@ -27,7 +27,7 @@ dset_trimmed_constit = h5_input['trimmed_constituents']
 # create the output file
 h5_output = h5py.File(args.output, 'w')
 dt_images = np.dtype([('pT', np.double), ('mass', np.double), ('image', np.double, (25, 25))])
-dset_images = h5_output.create_dataset('images', (len(dset_jets),), dt=dt_images)
+dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
 
 for event in xrange(len(dset_jets)):
     jets = dset_jets[event]

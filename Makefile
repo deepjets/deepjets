@@ -22,3 +22,7 @@ inplace:
 events:
 	./generate wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
 	./generate qcd.config --events 1000000 &
+
+images:
+	./imgify wprime.h5 &
+	./imgify qcd.h5 &
