@@ -20,5 +20,5 @@ inplace:
 	@$(PYTHON) setup.py build_ext -i
 
 events:
-	./dump wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
-	./dump qcd.config --events 1000000 &
+	./generate wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
+	./generate qcd.config --events 1000000 &
