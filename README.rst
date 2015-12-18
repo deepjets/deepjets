@@ -73,10 +73,11 @@ Activate Noel's UI environment::
    source setup.sh
 
 
-Running the test script
------------------------
+Compiling, and generating events and images
+-------------------------------------------
 
-Build and run the test script with::
+Simply::
 
-   python setup.py build_ext --inplace
-   python test.py
+   make
+   make events
+   make images
