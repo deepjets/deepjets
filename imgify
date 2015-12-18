@@ -35,6 +35,6 @@ for event in xrange(len(dset_jets)):
     mass = jet_mass(trimmed_constit)
     image = preprocess(jets, trimmed_constit, eta_edges, phi_edges)
     # save the jet mass, pT and image
-    dset_images[event] = (mass, jets['pT'][0], image)
+    dset_images[event] = (jets['pT'][0], mass, image)
 
 h5_output.close()

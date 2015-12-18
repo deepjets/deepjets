@@ -34,7 +34,7 @@ plt.savefig(output_prefix + '_jet_mass.png')
 
 fig = plt.figure(figsize=(5, 5))
 ax  = fig.add_subplot(111)
-ax.hist(dset_images['pT'], bins=np.linspace(0, 120, 20),
+ax.hist(dset_images['pT'], bins=np.linspace(0, 600, 100),
         histtype='stepfilled', facecolor='none', edgecolor='blue')
 fig.tight_layout()
 plt.savefig(output_prefix + '_jet_pt.png')
