@@ -1,40 +1,48 @@
 #!/usr/bin/env python
 
-import os
-from argparse import ArgumentParser
 
-parser = ArgumentParser()
-parser.add_argument('--output', '-o', default=None)
-parser.add_argument('events_file')
-args = parser.parse_args()
+def imgify(input):
+    import os
+    import numpy as np
+    from deepjets.preprocessing import preprocess
+    from deepjets.utils import jet_mass
+    import h5py
 
-if args.output is None:
-    args.output = os.path.splitext(args.events_file)[0] + '_images.h5'
+    output = os.path.splitext(input)[0] + '_images.h5'
+    eta_edges = np.linspace(-1.2, 1.2, 26)
+    phi_edges = np.linspace(-1.2, 1.2, 26)
 
-import numpy as np
-from deepjets.preprocessing import preprocess
-from deepjets.utils import jet_mass
-import h5py
+    # read from the events file
+    h5_input = h5py.File(args.events_file, 'r')
+    dset_jets = h5_input['jets']
+    dset_trimmed_constit = h5_input['trimmed_constituents']
 
-eta_edges = np.linspace(-1.2, 1.2, 26)
-phi_edges = np.linspace(-1.2, 1.2, 26)
+    # create the output file
+    h5_output = h5py.File(args.output, 'w')
+    dt_images = np.dtype([('pT', np.double), ('mass', np.double), ('image', np.double, (25, 25))])
+    dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
 
-# read from the events file
-h5_input = h5py.File(args.events_file, 'r')
-dset_jets = h5_input['jets']
-dset_trimmed_constit = h5_input['trimmed_constituents']
+    for event in xrange(len(dset_jets)):
+        jets = dset_jets[event]
+        trimmed_constit = dset_trimmed_constit[event]
+        mass = jet_mass(trimmed_constit)
+        image = preprocess(jets, trimmed_constit, eta_edges, phi_edges)
+        # save the jet mass, pT and image
+        dset_images[event] = (jets['pT'][0], mass, image)
 
-# create the output file
-h5_output = h5py.File(args.output, 'w')
-dt_images = np.dtype([('pT', np.double), ('mass', np.double), ('image', np.double, (25, 25))])
-dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
+    h5_output.close()
 
-for event in xrange(len(dset_jets)):
-    jets = dset_jets[event]
-    trimmed_constit = dset_trimmed_constit[event]
-    mass = jet_mass(trimmed_constit)
-    image = preprocess(jets, trimmed_constit, eta_edges, phi_edges)
-    # save the jet mass, pT and image
-    dset_images[event] = (jets['pT'][0], mass, image)
 
-h5_output.close()
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('-n', type=int, default=-1)
+    parser.add_argument('files', nargs='+')
+    args = parser.parse_args()
+    
+    from deepjets.parallel import map_pool, FuncWorker
+
+    map_pool(
+        FuncWorker, [(imgify, filename) for filename in args.files],
+        n_jobs=args.n)
