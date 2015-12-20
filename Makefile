@@ -20,8 +20,11 @@ inplace:
 	@$(PYTHON) setup.py build_ext -i
 
 events:
-	./generate wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
-	./generate qcd.config --events 1000000 &
+	#./generate wprime.config --events 1000000 --cut-on-pdgid 24 --pt-min 100 &
+	for pthatmin in $$(seq 100 50 500); do \
+		./generate qcd.config --events 100000 --output qcd_$${pthatmin}.h5 --seed $${pthatmin} --params "PhaseSpace:pTHatMin = $${pthatmin}" & \
+		./generate w.config --events 100000 --output w_$${pthatmin}.h5 --seed $${pthatmin} --params "PhaseSpace:pTHatMin = $${pthatmin}" & \
+	done
 
 images:
 	./imgify wprime.h5 &
