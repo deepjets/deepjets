@@ -7,20 +7,22 @@ def imgify(input):
     from deepjets.preprocessing import preprocess
     from deepjets.utils import jet_mass
     import h5py
-
-    output = os.path.splitext(input)[0] + '_images.h5'
+    
     eta_edges = np.linspace(-1.2, 1.2, 26)
     phi_edges = np.linspace(-1.2, 1.2, 26)
 
     # read from the events file
-    h5_input = h5py.File(args.events_file, 'r')
+    h5_input = h5py.File(input, 'r')
     dset_jets = h5_input['jets']
     dset_trimmed_constit = h5_input['trimmed_constituents']
 
     # create the output file
-    h5_output = h5py.File(args.output, 'w')
+    output = os.path.splitext(input)[0] + '_images.h5'
+    h5_output = h5py.File(output, 'w')
     dt_images = np.dtype([('pT', np.double), ('mass', np.double), ('image', np.double, (25, 25))])
     dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
+    
+    print("imgify({0}) -> {1} ...".format(input, output))
 
     for event in xrange(len(dset_jets)):
         jets = dset_jets[event]
