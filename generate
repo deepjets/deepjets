@@ -5,17 +5,22 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--events', type=int, default=1000)
+parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--output', '-o', default=None)
 parser.add_argument('--jet-size', type=float, default=1.2)
 parser.add_argument('--subjet-size', type=float, default=0.3)
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pt-min', type=float, default=-1)
 parser.add_argument('--pt-max', type=float, default=-1)
+parser.add_argument('--params', default=None)
 parser.add_argument('config')
 args = parser.parse_args()
 
 if args.output is None:
     args.output = os.path.splitext(args.config)[0] + '.h5'
+
+if args.params is not None:
+    args.params = dict([token.split('=') for token in args.params.split(';')])
 
 from deepjets import generate
 import numpy as np
@@ -31,10 +36,12 @@ dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), 
 
 i = 0
 for event in generate(args.config, args.events,
+                      random_seed=args.seed,
                       jet_size=args.jet_size,
                       subjet_size=args.subjet_size,
                       cut_on_pdgid=args.cut_on_pdgid,
-                      pt_min=args.pt_min, pt_max=args.pt_max):
+                      pt_min=args.pt_min, pt_max=args.pt_max,
+                      params_dict=args.params):
     jets, constit, trimmed_constit = event
     dset_jets[i] = jets
     dset_constit = constit
