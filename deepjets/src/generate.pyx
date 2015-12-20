@@ -8,16 +8,14 @@ def generate_pythia(string config, string xmldoc,
                     float eta_max=5.,
                     float jet_size=0.6, float subjet_size=0.3,
                     float jet_pt_min=12.5, float subjet_pt_min=0.05,
-                    int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1):
+                    int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1,
+                    params_dict=None):
     """
     Generate Pythia events and yield jet and constituent arrays
     """
     cdef int ievent;
     cdef Pythia* pythia = new Pythia(xmldoc, False)
 
-    pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
-    pythia.readString('Random:setSeed = on')
-    pythia.readString('Random:seed = {0}'.format(random_seed))
     pythia.readString("Init:showProcesses = on")
     pythia.readString("Init:showMultipartonInteractions = off")
     pythia.readString("Init:showChangedSettings = on")
@@ -26,6 +24,12 @@ def generate_pythia(string config, string xmldoc,
     pythia.readString("Next:numberShowProcess = 0")
     pythia.readString("Next:numberShowEvent = 0")
     pythia.readFile(config)
+    pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
+    pythia.readString('Random:setSeed = on')
+    pythia.readString('Random:seed = {0}'.format(random_seed))
+    if params_dict is not None:
+        for param, value in params_dict.items():
+            pythia.readString('{0} = {1}'.format(param, value))
     pythia.init()
 
     cdef int num_jet_constit = 0
