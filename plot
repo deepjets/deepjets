@@ -12,8 +12,8 @@ def plot(input):
     
     print("plotting {0} ...".format(input))
 
-    eta_edges = np.linspace(-1.2, 1.2, 26)
-    phi_edges = np.linspace(-1.2, 1.2, 26)
+    eta_edges = np.linspace(-2, 2, 40)
+    phi_edges = np.linspace(-2, 2, 40)
     pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
 
     h5file = h5py.File(input, 'r')

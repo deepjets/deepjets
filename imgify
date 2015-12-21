@@ -8,8 +8,8 @@ def imgify(input):
     from deepjets.utils import jet_mass
     import h5py
     
-    eta_edges = np.linspace(-1.2, 1.2, 26)
-    phi_edges = np.linspace(-1.2, 1.2, 26)
+    eta_edges = np.linspace(-2, 2, 40)
+    phi_edges = np.linspace(-2, 2, 40)
 
     # read from the events file
     h5_input = h5py.File(input, 'r')
@@ -19,7 +19,10 @@ def imgify(input):
     # create the output file
     output = os.path.splitext(input)[0] + '_images.h5'
     h5_output = h5py.File(output, 'w')
-    dt_images = np.dtype([('pT', np.double), ('mass', np.double), ('image', np.double, (25, 25))])
+    dt_images = np.dtype([
+        ('pT', np.double),
+        ('mass', np.double),
+        ('image', np.double, (eta_edges.shape[0] - 1, phi_edges.shape[0] - 1))])
     dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
     
     print("imgify({0}) -> {1} ...".format(input, output))
