@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+import math
+
+dphi = lambda phi1, phi2 : abs(math.fmod((math.fmod(phi1, 2*math.pi) - math.fmod(phi2, 2*math.pi)) + 3*math.pi, 2*math.pi) - math.pi)
+
+def dR(jet1, jet2):
+    return ((jet1['eta'] - jet2['eta'])**2 + dphi(jet1['phi'], jet2['phi'])**2)**0.5
 
 def imgify(input):
     import os
@@ -22,6 +28,7 @@ def imgify(input):
     dt_images = np.dtype([
         ('pT', np.double),
         ('mass', np.double),
+        ('dR_subjets', np.double),
         ('image', np.double, (eta_edges.shape[0] - 1, phi_edges.shape[0] - 1))])
     dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
     
@@ -29,11 +36,14 @@ def imgify(input):
 
     for event in xrange(len(dset_jets)):
         jets = dset_jets[event]
+        dR_subjets = -1
+        if len(jets) >= 3:
+            dR_subjets = dR(jets[1], jets[2])
         trimmed_constit = dset_trimmed_constit[event]
         mass = jet_mass(trimmed_constit)
         image = preprocess(jets, trimmed_constit, eta_edges, phi_edges)
         # save the jet mass, pT and image
-        dset_images[event] = (jets['pT'][0], mass, image)
+        dset_images[event] = (jets['pT'][0], mass, dR_subjets, image)
 
     h5_output.close()
 
