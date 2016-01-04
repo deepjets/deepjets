@@ -1,0 +1,113 @@
+#!/usr/bin/python
+
+from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
+from keras.models import Sequential
+from keras.layers.core import Dense, MaxoutDense, Dropout, Activation
+# https://groups.google.com/forum/#!topic/keras-users/8Ncd0dpuPNE
+# BatchNormalization is preferred over LRN
+from keras.layers.normalization import BatchNormalization, LRN2D
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.regularizers import l2
+
+from sklearn import cross_validation
+import numpy as np
+import h5py
+
+
+def train(model,
+          signal_files, background_files,
+          epochs=100, patience=10, batch_size=32, flatten=False):
+    X = []
+    y = []
+    for fname in signal_files:
+        with h5py.File(fname, 'r') as infile:
+            images = infile['images']['image']
+            if flatten:
+                images = images.reshape(-1, images.shape[1] * images.shape[2])
+            X.append(images)
+            y.append(np.repeat([[1, 0]], images.shape[0], axis=0))
+    for fname in background_files:
+        with h5py.File(fname, 'r') as infile:
+            images = infile['images']['image']
+            if flatten:
+                images = images.reshape(-1, images.shape[1] * images.shape[2])
+            X.append(images)
+            y.append(np.repeat([[0, 1]], images.shape[0], axis=0))
+    X = np.concatenate(X)
+    y = np.concatenate(y)
+
+    X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.2)
+
+    stopper = EarlyStopping(monitor='val_loss', patience=patience, verbose=1)
+    model.fit(X_train, y_train, nb_epoch=epochs, batch_size=batch_size,
+              validation_split=1./8., callbacks=[stopper], verbose=2)
+    print model.evaluate(X_test, y_test, batch_size=batch_size)
+
+
+def get_maxout():
+    # MaxOut network
+    model = Sequential()
+    model.add(MaxoutDense(256, input_shape=(625,), nb_feature=5,
+                          init='he_uniform'))
+    model.add(MaxoutDense(128, nb_feature=5))
+    model.add(Dense(64))
+    model.add(Activation('relu'))
+    model.add(Dense(25))
+    model.add(Activation('relu'))
+    model.add(Dense(2))
+    model.add(Activation('sigmoid'))
+    return model
+
+
+def get_convnet():
+    # ConvNet architecture
+    # [Dropout -> Conv -> ReLU -> MaxPool] * 3 -> LRN -> [Dropout -> FC -> ReLU] -> Dropout -> Sigmoid
+    model = Sequential()
+    model.add(ZeroPadding2D())
+    # [Dropout -> Conv -> ReLU -> MaxPool] * 3
+    for filtersize, poolsize in [(11, 2), (3, 3), (3, 3)]:
+        model.add(Dropout(0.2))
+        model.add(Convolution2D(32, 1, filtersize, filtersize,
+                                # init='he_uniform' ?
+                                W_regularizer=l2()))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(poolsize=(poolsize, poolsize)))
+    # -> LRN
+    model.add(LRN2D())
+    # -> [Dropout -> FC -> ReLU]
+    model.add(Dropout(0.2))
+    model.add(Dense(64))
+    model.add(Activation('relu'))
+    # -> Dropout -> Sigmoid
+    model.add(Dropout(0.1))
+    model.add(Dense(2))
+    model.add(Activation('sigmoid'))
+    return model
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('type', default='maxout', choices=['maxout', 'convnet'])
+    parser.add_argument('sig', nargs='+')
+    parser.add_argument('bkg', nargs='+')
+    args = parser.parse_args()
+    
+    if args.type == 'maxout':
+        model = get_maxout()
+    else:
+        model = get_convnet()
+
+    optimizer = Adam(lr=0.01)
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+
+    # Plot the network
+    from keras.utils.visualize_util import plot
+    plot(model, to_file='model.png')
+    
+    # Train the network
+    train(model=model,
+          signal_files=args.sig, background_files=args.bkg,
+          flatten=args.type=='maxout')

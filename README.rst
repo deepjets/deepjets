@@ -42,7 +42,7 @@ If this isn't in your .bashrc already, add it::
 
    export PATH=~/.local/bin${PATH:+:$PATH}
 
-Install HDF5 and h5py (we use this to store the jet images and neural nets).
+Install HDF5 (we use this to store the jet images and neural nets).
 On Debian-based systems::
 
    sudo apt-get install libhdf5-dev
@@ -55,13 +55,13 @@ On Mac OS::
 
    brew install hdf5
 
-Finally install h5py::
-
-   pip install --user h5py
-
 Install required Python packages::
 
-   pip install --user cython numpy scipy matplotlib scikit-image keras
+   pip install --user cython numpy scipy matplotlib scikit-image h5py
+
+Finally, install the latest keras::
+
+   pip install -U https://github.com/fchollet/keras/zipball/master
 
 
 Setting up the environment on the UI
