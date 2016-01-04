@@ -57,12 +57,12 @@ On Mac OS::
 
 Install required Python packages::
 
-   pip install --user cython numpy scipy matplotlib scikit-image h5py
+   pip install --user cython numpy scipy matplotlib scikit-image h5py pydot
 
 Finally, install the latest Theano and keras::
 
-   pip install -U https://github.com/Theano/Theano/zipball/master
-   pip install -U https://github.com/fchollet/keras/zipball/master
+   pip install --user -U https://github.com/Theano/Theano/zipball/master
+   pip install --user -U https://github.com/fchollet/keras/zipball/master
 
 
 Setting up the environment on the UI
