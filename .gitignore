@@ -9,4 +9,6 @@ build
 *.jpg
 *.jpeg
 *.pdf
+*.eps
+*.svg
 *.h5

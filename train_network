@@ -15,6 +15,18 @@ import numpy as np
 import h5py
 
 
+def save_model(model, name):
+    json_string = model.to_json()
+    open('model_{0}_arch.json'.format(name), 'w').write(json_string)
+    model.save_weights('model_{0}_weights.h5'.format(name))
+
+
+def load_model(name):
+    model = model_from_json(open('model_{0}_arch.json'.format(name)).read())
+    model.load_weights('model_{0}_weights.h5'.format(name))
+    return model
+
+
 def train(model,
           signal_files, background_files,
           epochs=100, patience=10, batch_size=32, flatten=False):
@@ -22,14 +34,14 @@ def train(model,
     y = []
     for fname in signal_files:
         with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image']
+            images = infile['images']['image'][:10000]
             if flatten:
                 images = images.reshape(-1, images.shape[1] * images.shape[2])
             X.append(images)
             y.append(np.repeat([[1, 0]], images.shape[0], axis=0))
     for fname in background_files:
         with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image']
+            images = infile['images']['image'][:10000]
             if flatten:
                 images = images.reshape(-1, images.shape[1] * images.shape[2])
             X.append(images)
@@ -105,8 +117,8 @@ if __name__ == '__main__':
     model.compile(loss='categorical_crossentropy', optimizer=Adam())
 
     # Plot the network (requires pydot and graphviz)
-    #from keras.utils.visualize_util import plot
-    #plot(model, to_file='model.png')
+    from keras.utils.visualize_util import to_graph
+    open('model.svg', 'w').write(to_graph(model).create(prog='dot', format='svg'))
     
     # Train the network
     train(model=model,

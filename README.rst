@@ -63,6 +63,7 @@ Finally, install the latest Theano and keras::
 
    pip install --user -U https://github.com/Theano/Theano/zipball/master
    pip install --user -U https://github.com/fchollet/keras/zipball/master
+   pip install pyparsing==1.5.7
 
 
 Setting up the environment on the UI
