@@ -103,9 +103,9 @@ if __name__ == '__main__':
     optimizer = Adam(lr=0.01)
     model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
-    # Plot the network
-    from keras.utils.visualize_util import plot
-    plot(model, to_file='model.png')
+    # Plot the network (requires pydot and graphviz)
+    #from keras.utils.visualize_util import plot
+    #plot(model, to_file='model.png')
     
     # Train the network
     train(model=model,
