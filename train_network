@@ -52,8 +52,9 @@ def train(model,
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.2)
 
     stopper = EarlyStopping(monitor='val_loss', patience=patience, verbose=1)
-    model.fit(X_train, y_train, nb_epoch=epochs, batch_size=batch_size,
-              validation_split=1./8., callbacks=[stopper], verbose=2)
+    hist = model.fit(X_train, y_train, nb_epoch=epochs, batch_size=batch_size,
+                     validation_split=1./8., callbacks=[stopper], verbose=2)
+    # TODO: plot hist.history
     print model.evaluate(X_test, y_test, batch_size=batch_size)
 
 
