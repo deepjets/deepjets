@@ -45,10 +45,10 @@ def train(model,
     print model.evaluate(X_test, y_test, batch_size=batch_size)
 
 
-def get_maxout():
+def get_maxout(size):
     # MaxOut network
     model = Sequential()
-    model.add(MaxoutDense(256, input_shape=(625,), nb_feature=5,
+    model.add(MaxoutDense(256, input_shape=(size**2,), nb_feature=5,
                           init='he_uniform'))
     model.add(MaxoutDense(128, nb_feature=5))
     model.add(Dense(64))
@@ -91,12 +91,14 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('type', nargs='?', default='maxout', choices=['maxout', 'convnet'])
+    parser.add_argument('--image-size', type=int, default=25)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--sig', nargs='+')
     parser.add_argument('--bkg', nargs='+')
     args = parser.parse_args()
     
     if args.type == 'maxout':
-        model = get_maxout()
+        model = get_maxout(size=args.image_size)
     else:
         model = get_convnet()
 
@@ -110,4 +112,5 @@ if __name__ == '__main__':
     # Train the network
     train(model=model,
           signal_files=args.sig, background_files=args.bkg,
-          flatten=args.type=='maxout')
+          flatten=args.type=='maxout',
+          batch_size=args.batch_size)
