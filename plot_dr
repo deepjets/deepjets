@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+import matplotlib.pyplot as plt
+import numpy as np
+from glob import glob
+import h5py
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('sample')
+args = parser.parse_args()
+
+hists_v_pt = []
+hists_v_mopt = []
+for file in glob('{0}_*_images.h5'.format(args.sample)):
+    with h5py.File(file, 'r') as infile:
+        dset_images = infile['images']
+        hist, _, _ = np.histogram2d(
+            dset_images['pT'], dset_images['dR_subjets'],
+            bins=(np.linspace(150, 500, 31), np.linspace(0.3, 1.2, 31)))
+        hists_v_pt.append(hist)
+        hist, _, _ = np.histogram2d(
+            2 * dset_images['mass'] / dset_images['pT'],
+            dset_images['dR_subjets'],
+            bins=(np.linspace(0.3, 1.2, 31), np.linspace(0.3, 1.2, 31)))
+        hists_v_mopt.append(hist)
+
+hist_v_pt = np.sum(hists_v_pt, axis=0)
+hist_v_pt /= hist_v_pt.sum(axis=1)[:, np.newaxis]
+hist_v_mopt = np.sum(hists_v_mopt, axis=0)
+hist_v_mopt /= hist_v_mopt.sum(axis=1)[:, np.newaxis]
+
+fig = plt.figure(figsize=(6, 5))
+ax = fig.add_subplot(111)
+ax.imshow(hist_v_pt.T, cmap='jet', extent=(150, 500, 0.3, 1.2),
+          interpolation='nearest',
+          origin='low',
+          aspect='auto')
+ax.set_ylabel(r'$\Delta R$', fontsize=18)
+ax.set_xlabel(r'$p_{T}$', fontsize=18)
+fig.tight_layout()
+fig.savefig('dR_v_pt_{0}.png'.format(args.sample))
+
+fig = plt.figure(figsize=(6, 5))
+ax = fig.add_subplot(111)
+ax.imshow(hist_v_mopt.T, cmap='jet', extent=(0.3, 1.2, 0.3, 1.2),
+          interpolation='nearest',
+          origin='low',
+          aspect='auto')
+ax.set_ylabel(r'$\Delta R$', fontsize=18)
+ax.set_xlabel(r'$2 m / p_{T}$', fontsize=18)
+fig.tight_layout()
+fig.savefig('dR_v_mopt_{0}.png'.format(args.sample))
