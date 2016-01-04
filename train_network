@@ -102,8 +102,7 @@ if __name__ == '__main__':
     else:
         model = get_convnet()
 
-    optimizer = Adam(lr=0.01)
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+    model.compile(loss='categorical_crossentropy', optimizer=Adam())
 
     # Plot the network (requires pydot and graphviz)
     #from keras.utils.visualize_util import plot
