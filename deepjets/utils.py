@@ -4,13 +4,10 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot_jet_image(pixels, eta_edges, phi_edges,
-                   vmin=1e-9, vmax=1e3, filename='jet_image.png'):
+def plot_jet_image(ax, pixels, eta_edges, phi_edges, vmin=1e-9, vmax=1e3):
     """Displays jet image."""
     eta_min, eta_max = eta_edges.min(), eta_edges.max()
     phi_min, phi_max = phi_edges.min(), phi_edges.max()
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.add_subplot(111)
     p = ax.imshow(pixels, extent=(eta_min, eta_max, phi_min, phi_max),
                   origin='low',
                   interpolation='nearest',
@@ -22,9 +19,6 @@ def plot_jet_image(pixels, eta_edges, phi_edges,
     cbar.set_label(r'$E_T$ [GeV]', rotation=90, fontsize=18)
     ax.set_xlabel(r'$\eta$', fontsize=18)
     ax.set_ylabel(r'$\phi$', fontsize=18)
-    fig.tight_layout()
-    fig.savefig(filename)
-    plt.close()
 
 
 def jet_mass(jet_csts):

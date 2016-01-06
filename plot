@@ -19,8 +19,14 @@ def plot(input):
     h5file = h5py.File(input, 'r')
     dset_images = h5file['images']
     output_prefix = os.path.splitext(input)[0]
+
+    # plot jet images
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
     avg_image = dset_images['image'].sum(axis=0) / len(dset_images)
-    plot_jet_image(avg_image, eta_edges, phi_edges, filename=output_prefix + '.png')
+    plot_jet_image(ax, avg_image, eta_edges, phi_edges)
+    fig.tight_layout()
+    fig.savefig(output_prefix + '.png')
 
     # plot
     fig = plt.figure(figsize=(5, 5))
