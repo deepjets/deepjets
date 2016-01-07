@@ -12,8 +12,8 @@ def plot(input):
     
     print("plotting {0} ...".format(input))
 
-    eta_edges = np.linspace(-2, 2, 40)
-    phi_edges = np.linspace(-2, 2, 40)
+    eta_edges = np.linspace(-1.3, 1.3, 26)
+    phi_edges = np.linspace(-1.3, 1.3, 26)
     pixels = np.zeros((len(eta_edges) - 1, len(phi_edges) - 1))
 
     h5file = h5py.File(input, 'r')
@@ -24,7 +24,7 @@ def plot(input):
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     avg_image = dset_images['image'].sum(axis=0) / len(dset_images)
-    plot_jet_image(ax, avg_image, eta_edges, phi_edges)
+    plot_jet_image(ax, avg_image, eta_edges, phi_edges, vmax=1e-2)
     fig.tight_layout()
     fig.savefig(output_prefix + '.png')
 

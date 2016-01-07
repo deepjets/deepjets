@@ -19,6 +19,7 @@ struct Result {
   std::vector<fastjet::PseudoJet> subjets;
   fastjet::ClusterSequence* jet_clusterseq;
   fastjet::ClusterSequence* subjet_clusterseq;
+  double shrinkage;
 };
 
 
@@ -119,9 +120,13 @@ Result* get_jets(Event& event,
     TfjInputs.push_back(Jconstits[i]);
   }
 
+  double shrinkage = 1.;
+  double actual_size;
   if (shrink) {
     // Shrink distance parameter to 2 * m / pT
-    jet_size = std::min(jet_size, std::abs(2 * jet.m() / jet.perp()));
+    actual_size = std::min(jet_size, std::abs(2 * jet.m() / jet.perp()));
+    shrinkage = actual_size / jet_size;
+    jet_size = actual_size;
     // TODO handle case where m==0
   }
 
@@ -134,5 +139,6 @@ Result* get_jets(Event& event,
   result->subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * subjet_pt_min_fraction));
   result->jet_clusterseq = clustSeq;
   result->subjet_clusterseq = TclustSeq;
+  result->shrinkage = shrinkage;
   return result;
 }

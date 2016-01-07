@@ -81,9 +81,10 @@ def generate_pythia(string config, string xmldoc,
                            <DTYPE_t*> jet_arr.data,
                            <DTYPE_t*> jet_constit_arr.data,
                            <DTYPE_t*> subjet_constit_arr.data)
-            del result
+            
+            yield jet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
 
-            yield jet_arr, jet_constit_arr, subjet_constit_arr
+            del result
             ievent += 1
         pythia.stat()
     finally:

@@ -34,6 +34,7 @@ dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', np.double), ('eta', np.dou
 dset_jets = f.create_dataset('jets', (args.events,), dtype=dt_jet)
 dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit)
 dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
+dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=np.double)
 
 i = 0
 for event in generate(args.config, args.events,
@@ -44,10 +45,11 @@ for event in generate(args.config, args.events,
                       cut_on_pdgid=args.cut_on_pdgid,
                       pt_min=args.pt_min, pt_max=args.pt_max,
                       params_dict=args.params):
-    jets, constit, trimmed_constit = event
+    jets, constit, trimmed_constit, shrinkage = event
     dset_jets[i] = jets
     dset_constit = constit
     dset_trimmed_constit[i] = trimmed_constit
+    dset_shrinkage[i] = shrinkage
     i += 1
 
 f.close()

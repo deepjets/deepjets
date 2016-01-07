@@ -3,6 +3,7 @@ cdef extern from "deepjets.h":
     cppclass Result:
         PseudoJet jet
         vector[PseudoJet] subjets
+        double shrinkage
 
     bool keep_event(Event&, int, double, double)
     void jets_to_arrays(Result&, double*, double*, double*)
