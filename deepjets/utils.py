@@ -8,7 +8,7 @@ def plot_jet_image(ax, pixels, eta_edges, phi_edges, vmin=1e-9, vmax=1e3):
     """Displays jet image."""
     eta_min, eta_max = eta_edges.min(), eta_edges.max()
     phi_min, phi_max = phi_edges.min(), phi_edges.max()
-    p = ax.imshow(pixels, extent=(eta_min, eta_max, phi_min, phi_max),
+    p = ax.imshow(pixels.T, extent=(eta_min, eta_max, phi_min, phi_max),
                   origin='low',
                   interpolation='nearest',
                   norm=LogNorm(vmin=vmin, vmax=vmax),
