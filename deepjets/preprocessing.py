@@ -1,5 +1,5 @@
 import numpy as np
-from skimage.transform import rotate as rotate_pixels
+from skimage import transform
 
 
 def translate(jet_csts, all_jets):
@@ -24,13 +24,13 @@ def pixelize(jet_csts, eta_edges, phi_edges, cutoff=0.0):
     Optionally set all instensities below cutoff to zero.
     """
     pixels, _, _ = np.histogram2d(
-        jet_csts['phi'], jet_csts['eta'],
-        bins=(phi_edges, eta_edges),
+        jet_csts['eta'], jet_csts['phi'],
+        bins=(eta_edges, phi_edges),
         weights=jet_csts['ET'] * (jet_csts['ET'] > cutoff))
     return pixels
 
 
-def rotate(pixels, all_jets):
+def rotate_image(pixels, all_jets):
     """Return rotated and repixelised image array.
 
     Rotation puts subleading subjet or first principle component at -pi/2.
@@ -39,33 +39,33 @@ def rotate(pixels, all_jets):
     if len(all_jets) > 2:
         # Use subleading subject information to rotate
         theta = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
-        theta = 90.0 + theta * 180.0 / np.pi
-        return rotate_pixels(pixels, theta, order=3)
+        theta = -90.0-(theta*180.0/np.pi)
+        return transform.rotate(pixels, theta, order=3)
 
     # Use principle component of image intensity to rotate
     width, height  = pixels.shape
-    pix_coords     = np.array([[i, j] for j in range(-height+1, height, 2)
-                                      for i in range(-width+1, width, 2)])
+    pix_coords     = np.array([[i, j] for i in range(-width+1, width, 2)
+                                      for j in range(-height+1, height, 2)])
     covX           = np.cov(pix_coords, rowvar=0,
                             aweights=np.reshape(pixels, (width*height)),
                             bias=1)
     e_vals, e_vecs = np.linalg.eigh(covX)
     pc             = e_vecs[:, -1]
     theta          = np.arctan2(pc[1], pc[0])
-    theta          = 90 + theta * 180.0 / np.pi
-    t_pixels       = rotate_pixels(pixels, theta, order=3)
+    theta          = -90.0-(theta*180.0/np.pi)
+    t_pixels       = transform.rotate(pixels, theta, order=3)
     # Check orientation of principle component
-    pix_bot = np.sum(t_pixels[:-(-height//2)].flatten())
-    pix_top = np.sum(t_pixels[(height//2):].flatten())
+    pix_bot = np.sum(t_pixels[:, :-(-height//2)])
+    pix_top = np.sum(t_pixels[:, (height//2):])
 
     if pix_top > pix_bot:
-        t_pixels = rotate_pixels(t_pixels, 180.0, order=3)
-        theta    = theta + 180.0
+        t_pixels = transform.rotate(t_pixels, 180.0, order=3)
+        theta   += 180.0
 
     return t_pixels
 
 
-def reflect(pixels, all_jets):
+def reflect_image(pixels, all_jets):
     """Return reflected image array.
 
     Reflection puts subsubleading subjet or highest intensity on right side.
@@ -76,12 +76,12 @@ def reflect(pixels, all_jets):
     if len(all_jets) > 3:
         # Use subsubleading subject information to reflect
         theta  = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
-        theta  = (np.pi/2)+theta
-        parity = np.sign(np.cos(-theta)*all_jets['eta'][3] -
+        theta  = -(np.pi/2)-theta
+        parity = np.sign(np.cos(-theta)*all_jets['eta'][3] +
                          np.sin(-theta)*all_jets['phi'][3])
     else:
-        pix_l  = np.sum( pixels[:,:-(-width//2)].flatten() )
-        pix_r  = np.sum( pixels[:,(width//2):].flatten() )
+        pix_l  = np.sum(pixels[:-(-width//2)].flatten())
+        pix_r  = np.sum(pixels[(width//2):].flatten())
         parity = np.sign(pix_r - pix_l)
 
     if parity >= 0:
@@ -90,23 +90,59 @@ def reflect(pixels, all_jets):
     t_pixels = np.array(pixels)
 
     for i in range(width):
-        t_pixels[:,i] = pixels[:,-i]
+        t_pixels[i] = pixels[-i-1]
 
     return t_pixels
 
 
-def normalize(pixels):
+def zoom_image(pixels, scale):
+    """Return rescaled and cropped image array.
+
+       Expansion interpolates with cubic spline."""
+
+    width, height = pixels.shape
+
+    if scale < 1:
+        raise ValueError("zoom scale factor must be at least 1")
+    elif scale == 1:
+        # copy
+        return np.array(pixels)
+
+    t_width  = int(np.ceil(scale*width))
+    t_height = int(np.ceil(scale*height))
+
+    if t_width//2 != width//2:
+        t_width -= 1
+
+    if t_height//2 != height//2:
+        t_height -= 1
+
+    t_pixels = transform.resize(pixels, (t_width, t_height), order=3)
+
+    return t_pixels[(t_width-width)/2:(t_width+width)/2,
+                    (t_height-height)/2:(t_height+height)/2]
+
+
+def normalize_image(pixels):
     """Return normalized image array: sum(I**2) == 1.
     """
     return pixels / np.sum(pixels**2)
 
 
 def preprocess(jets, constit, eta_edges, phi_edges,
-               cutoff=0.1, norm=False):
+               cutoff=0.1,
+               rotate=True,
+               reflect=True,
+               zoom=False,
+               normalize=False):
     translate(constit, jets)
     pixels = pixelize(constit, eta_edges, phi_edges, cutoff)
-    pixels = rotate(pixels, jets)
-    pixels = reflect(pixels, jets)
-    if norm:
-        pixels = normalize(pixels)
+    if rotate:
+        pixels = rotate_image(pixels, jets)
+    if reflect:
+        pixels = reflect_image(pixels, jets)
+    if zoom is not False:
+        pixels = zoom_image(pixels, zoom)
+    if normalize:
+        pixels = normalize_image(pixels)
     return pixels
