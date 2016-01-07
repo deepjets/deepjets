@@ -23,7 +23,7 @@ if args.output is None:
 if args.params is not None:
     args.params = dict([token.split('=') for token in args.params.split(';')])
 
-from deepjets import generate
+from deepjets.generate import generate
 import numpy as np
 import h5py
 
@@ -39,7 +39,7 @@ i = 0
 for event in generate(args.config, args.events,
                       random_seed=args.seed,
                       jet_size=args.jet_size,
-                      subjet_size_fraction=args.subjet_size,
+                      subjet_size_fraction=args.subjet_size_fraction,
                       shrink=args.shrink,
                       cut_on_pdgid=args.cut_on_pdgid,
                       pt_min=args.pt_min, pt_max=args.pt_max,
