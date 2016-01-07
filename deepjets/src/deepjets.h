@@ -2,6 +2,8 @@
 #include "Pythia8Plugins/FastJet3.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmath>
+#include <algorithm>
 
 using namespace Pythia8;
 
@@ -74,24 +76,22 @@ void jets_to_arrays(Result& result,
 }
 
 Result* get_jets(Event& event,
-                 double etaMax,
-                 double R, double TR,
-                 double JpTMin, double TJpTMin) {
+                 double eta_max,
+                 double jet_size, double subjet_size_fraction,
+                 double jet_pt_min, double subjet_pt_min_fraction,
+                 bool shrink) {
   /*
-   * Find leading pT jet in event with anti-kt algorithm (params R, JpTMin, etaMax).
-   * Find subjets by re-cluster jet using kt algorith (params TR, TJpTMin).
+   * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min, eta_max).
+   * Find subjets by re-cluster jet using kt algorith (params subjet_size_fraction * jet_size, subjet_size_fraction).
    * Return a Result struct
    */
 
-  // Set up FastJet jet finder.
-  fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, R, -1); // anti-kt
-  std::vector<fastjet::PseudoJet> fjInputs;
-
   // Begin FastJet analysis: extract particles from event record.
+  std::vector<fastjet::PseudoJet> fjInputs;
   for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
     // Require visible particles inside detector.
-    if ( !event[i].isVisible() ) continue;
-    if ( abs(event[i].eta()) > etaMax ) continue;
+    if (!event[i].isVisible()) continue;
+    if (abs(event[i].eta()) > eta_max) continue;
 
     // Create a PseudoJet from the complete Pythia particle.
     fastjet::PseudoJet particleTemp = event[i];
@@ -103,29 +103,35 @@ Result* get_jets(Event& event,
   }
 
   // Run Fastjet algorithm and sort jets in pT order.
-  vector<fastjet::PseudoJet> sortedjets;
+  std::vector<fastjet::PseudoJet> sortedjets;
+  fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, jet_size, -1); // anti-kt
   fastjet::ClusterSequence* clustSeq = new fastjet::ClusterSequence(fjInputs, jetDef);
-  sortedjets = sorted_by_pt(clustSeq->inclusive_jets(JpTMin));
+  sortedjets = sorted_by_pt(clustSeq->inclusive_jets(jet_pt_min));
 
-  // Get details and constituents from leading jet.
+  // Get leading jet.
   fastjet::PseudoJet& jet = sortedjets[0];
   std::vector<fastjet::PseudoJet> Jconstits = jet.constituents();
   int Jsize = Jconstits.size();
 
-  // Set up FastJet jet trimmer.
-  fastjet::JetDefinition TjetDef(fastjet::genkt_algorithm, TR, 1); // kt
+  // Store constituents from leading jet.
   std::vector<fastjet::PseudoJet> TfjInputs;
   for (int i = 0; i < Jsize; ++i) {
-    // Store constituents from leading jet.
     TfjInputs.push_back(Jconstits[i]);
   }
 
+  if (shrink) {
+    // Shrink distance parameter to 2 * m / pT
+    jet_size = std::min(jet_size, std::abs(2 * jet.m() / jet.perp()));
+    // TODO handle case where m==0
+  }
+
   // Run Fastjet trimmer on leading jet.
+  fastjet::JetDefinition TjetDef(fastjet::genkt_algorithm, subjet_size_fraction * jet_size, 1); // kt
   fastjet::ClusterSequence* TclustSeq = new fastjet::ClusterSequence(TfjInputs, TjetDef);
 
   Result* result = new Result();
   result->jet = jet;
-  result->subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * TJpTMin));
+  result->subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * subjet_pt_min_fraction));
   result->jet_clusterseq = clustSeq;
   result->subjet_clusterseq = TclustSeq;
   return result;

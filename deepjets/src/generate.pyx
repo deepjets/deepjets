@@ -1,3 +1,6 @@
+DTYPE = np.float64
+ctypedef np.float64_t DTYPE_t
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -6,13 +9,17 @@ def generate_pythia(string config, string xmldoc,
                     int random_seed=0,
                     float beam_ecm=13000.,
                     float eta_max=5.,
-                    float jet_size=0.6, float subjet_size=0.3,
-                    float jet_pt_min=12.5, float subjet_pt_min=0.05,
+                    float jet_size=0.6, float subjet_size_fraction=0.5,
+                    float jet_pt_min=12.5, float subjet_pt_min_fraction=0.05,
+                    bool shrink=False, 
                     int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1,
                     params_dict=None):
     """
     Generate Pythia events and yield jet and constituent arrays
     """
+    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
+        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+
     cdef int ievent;
     cdef Pythia* pythia = new Pythia(xmldoc, False)
 
@@ -23,7 +30,7 @@ def generate_pythia(string config, string xmldoc,
     pythia.readString("Next:numberShowInfo = 0")
     pythia.readString("Next:numberShowProcess = 0")
     pythia.readString("Next:numberShowEvent = 0")
-    pythia.readFile(config)
+    pythia.readFile(config)  # read user config after options above
     pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
     pythia.readString('Random:setSeed = on')
     pythia.readString('Random:seed = {0}'.format(random_seed))
@@ -42,8 +49,8 @@ def generate_pythia(string config, string xmldoc,
 
     cdef Result* result
 
-    dtype_jet = np.dtype([('pT', np.double), ('eta', np.double), ('phi', np.double)])
-    dtype_constit = np.dtype([('ET', np.double), ('eta', np.double), ('phi', np.double)])
+    dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
+    dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
 
     try:
         ievent = 0
@@ -56,8 +63,9 @@ def generate_pythia(string config, string xmldoc,
                 continue
 
             result = get_jets(pythia.event,
-                              eta_max, jet_size, subjet_size,
-                              jet_pt_min, subjet_pt_min)
+                              eta_max, jet_size, subjet_size_fraction,
+                              jet_pt_min, subjet_pt_min_fraction,
+                              shrink)
 
             num_jet_constit = result.jet.constituents().size()
             num_subjets = result.subjets.size()
@@ -70,9 +78,9 @@ def generate_pythia(string config, string xmldoc,
             subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
 
             jets_to_arrays(result[0],
-                           <double*> jet_arr.data,
-                           <double*> jet_constit_arr.data,
-                           <double*> subjet_constit_arr.data)
+                           <DTYPE_t*> jet_arr.data,
+                           <DTYPE_t*> jet_constit_arr.data,
+                           <DTYPE_t*> subjet_constit_arr.data)
             del result
 
             yield jet_arr, jet_constit_arr, subjet_constit_arr
