@@ -4,7 +4,9 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot_jet_image(ax, pixels, eta_edges, phi_edges, vmin=1e-9, vmax=1e3):
+def plot_jet_image(ax, pixels,
+                   eta_edges=np.linspace(-1, 1, 26), phi_edges=np.linspace(-1, 1, 26),
+                   vmin=1e-9, vmax=1e-2):
     """Displays jet image."""
     eta_min, eta_max = eta_edges.min(), eta_edges.max()
     phi_min, phi_max = phi_edges.min(), phi_edges.max()

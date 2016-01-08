@@ -70,7 +70,6 @@ def reflect_image(pixels, all_jets):
 
     Reflection puts subsubleading subjet or highest intensity on right side.
     """
-
     width, height = pixels.shape
 
     if len(all_jets) > 3:
@@ -98,8 +97,8 @@ def reflect_image(pixels, all_jets):
 def zoom_image(pixels, scale):
     """Return rescaled and cropped image array.
 
-       Expansion interpolates with cubic spline."""
-
+    Expansion interpolates with cubic spline.
+    """
     width, height = pixels.shape
 
     if scale < 1:
@@ -122,6 +121,30 @@ def zoom_image(pixels, scale):
     return t_pixels[(t_width-width)/2:(t_width+width)/2,
                     (t_height-height)/2:(t_height+height)/2]
 
+def zoooom_image(pixels, scale, out_width=25):
+    """Return rescaled and cropped image array with width out_width.
+
+    Expansion interpolates with cubic spline.
+    """
+    if scale < 1:
+        raise ValueError("zoom scale factor must be at least 1")
+    
+    width, height = pixels.shape
+    out_height = int(np.rint( float(out_width*height)/width ))
+    t_width = int(np.rint( out_width*scale ))
+    t_height = int(np.rint( out_height*scale ))
+
+    if t_width//2 != out_width//2:
+        t_width += 1
+
+    if t_height//2 != out_height//2:
+        t_height += 1
+
+    t_pixels = transform.resize(pixels, (t_width, t_height), order=3)
+
+    return t_pixels[(t_width-out_width)/2:(t_width+out_width)/2,
+                    (t_height-out_height)/2:(t_height+out_height)/2]
+
 
 def normalize_image(pixels):
     """Return normalized image array: sum(I**2) == 1.
@@ -143,6 +166,24 @@ def preprocess(jets, constit, eta_edges, phi_edges,
         pixels = reflect_image(pixels, jets)
     if zoom is not False:
         pixels = zoom_image(pixels, zoom)
+    if normalize:
+        pixels = normalize_image(pixels)
+    return pixels
+
+def preprooocess(jets, constit, eta_edges, phi_edges,
+                 cutoff=0.1,
+                 rotate=True,
+                 reflect=True,
+                 zoom=False,
+                 normalize=False):
+    translate(constit, jets)
+    pixels = pixelize(constit, eta_edges, phi_edges, cutoff)
+    if rotate:
+        pixels = rotate_image(pixels, jets)
+    if reflect:
+        pixels = reflect_image(pixels, jets)
+    if zoom is not False:
+        pixels = zoooom_image(pixels, zoom)
     if normalize:
         pixels = normalize_image(pixels)
     return pixels
