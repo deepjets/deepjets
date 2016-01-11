@@ -18,6 +18,15 @@ def translate(jet_csts, all_jets):
     all_jets['phi'] = np.mod(all_jets['phi'] + np.pi, 2*np.pi) - np.pi
 
 
+def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), border_size=2):
+    """Return pixel edges required to contain all subjets.
+    """
+    im_edge  = (1+(1+border_size)*subjet_size_fraction)*jet_size
+    
+    return (np.arange(-im_edge, im_edge+pix_size[0], pix_size[0]),
+            np.arange(-im_edge, im_edge+pix_size[1], pix_size[1]))
+
+
 def pixelize(jet_csts, eta_edges, phi_edges, cutoff=0.0):
     """Return eta-phi histogram of transverse energy deposits.
 
@@ -121,6 +130,7 @@ def zoom_image(pixels, scale):
     return t_pixels[(t_width-width)/2:(t_width+width)/2,
                     (t_height-height)/2:(t_height+height)/2]
 
+
 def zoooom_image(pixels, scale, out_width=25):
     """Return rescaled and cropped image array with width out_width.
 
@@ -169,6 +179,7 @@ def preprocess(jets, constit, eta_edges, phi_edges,
     if normalize:
         pixels = normalize_image(pixels)
     return pixels
+
 
 def preprooocess(jets, constit, eta_edges, phi_edges,
                  cutoff=0.1,

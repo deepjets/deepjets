@@ -4,23 +4,21 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot_jet_image(ax, pixels,
-                   eta_edges=np.linspace(-1, 1, 26), phi_edges=np.linspace(-1, 1, 26),
-                   vmin=1e-9, vmax=1e-2):
+def plot_jet_image(ax, pixels, vmin=1e-9, vmax=1e-2):
     """Displays jet image."""
-    eta_min, eta_max = eta_edges.min(), eta_edges.max()
-    phi_min, phi_max = phi_edges.min(), phi_edges.max()
-    p = ax.imshow(pixels.T, extent=(eta_min, eta_max, phi_min, phi_max),
+    p = ax.imshow(pixels.T, extent=(-1, 1, -1, 1),
                   origin='low',
                   interpolation='nearest',
                   norm=LogNorm(vmin=vmin, vmax=vmax),
                   cmap='jet')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = plt.colorbar(p, cax=cax, ticks=[1e-9,1e-7,1e-5,1e-3,1e-1,1e1,1e3])
-    cbar.set_label(r'$E_T$ [GeV]', rotation=90, fontsize=18)
-    ax.set_xlabel(r'$\eta$', fontsize=18)
-    ax.set_ylabel(r'$\phi$', fontsize=18)
+    cbar = plt.colorbar(
+        p, cax=cax,
+        ticks=np.logspace(np.log10(vmin), np.log10(vmax), 1+np.log10(vmax)-np.log10(vmin)))
+    cbar.set_label(r'Intensity', rotation=90, fontsize=18)
+    ax.set_xlabel(r'$x_1$', fontsize=18)
+    ax.set_ylabel(r'$x_2$', fontsize=18)
 
 
 def jet_mass(jet_csts):
