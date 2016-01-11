@@ -27,14 +27,14 @@ def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), bord
             np.arange(-im_edge, im_edge+pix_size[1], pix_size[1]))
 
 
-def pixelize(jet_csts, eta_edges, phi_edges, cutoff=0.0):
+def pixelize(jet_csts, edges, cutoff=0.1):
     """Return eta-phi histogram of transverse energy deposits.
 
     Optionally set all instensities below cutoff to zero.
     """
     pixels, _, _ = np.histogram2d(
         jet_csts['eta'], jet_csts['phi'],
-        bins=(eta_edges, phi_edges),
+        bins=(edges[0], edges[1]),
         weights=jet_csts['ET'] * (jet_csts['ET'] > cutoff))
     return pixels
 
@@ -103,7 +103,7 @@ def reflect_image(pixels, all_jets):
     return t_pixels
 
 
-def zoom_image(pixels, scale):
+def zoom_image_fixed_size(pixels, scale):
     """Return rescaled and cropped image array.
 
     Expansion interpolates with cubic spline.
@@ -131,7 +131,7 @@ def zoom_image(pixels, scale):
                     (t_height-height)/2:(t_height+height)/2]
 
 
-def zoooom_image(pixels, scale, out_width=25):
+def zoom_image(pixels, scale, out_width=25):
     """Return rescaled and cropped image array with width out_width.
 
     Expansion interpolates with cubic spline.
@@ -140,9 +140,9 @@ def zoooom_image(pixels, scale, out_width=25):
         raise ValueError("zoom scale factor must be at least 1")
     
     width, height = pixels.shape
-    out_height = int(np.rint( float(out_width*height)/width ))
-    t_width = int(np.rint( out_width*scale ))
-    t_height = int(np.rint( out_height*scale ))
+    out_height    = int(np.rint( float(out_width*height)/width ))
+    t_width       = int(np.rint( out_width*scale ))
+    t_height      = int(np.rint( out_height*scale ))
 
     if t_width//2 != out_width//2:
         t_width += 1
@@ -162,14 +162,36 @@ def normalize_image(pixels):
     return pixels / np.sum(pixels**2)
 
 
-def preprocess(jets, constit, eta_edges, phi_edges,
-               cutoff=0.1,
-               rotate=True,
-               reflect=True,
-               zoom=False,
-               normalize=False):
+def preprocess_fixed_size(jets, constit, edges,
+                          cutoff=0.1,
+                          rotate=True,
+                          reflect=True,
+                          zoom=False,
+                          normalize=False):
     translate(constit, jets)
-    pixels = pixelize(constit, eta_edges, phi_edges, cutoff)
+    pixels = pixelize(constit, edges, cutoff)
+    
+    if rotate:
+        pixels = rotate_image(pixels, jets)
+    if reflect:
+        pixels = reflect_image(pixels, jets)
+    if zoom is not False:
+        pixels = zoom_image_fixed_size(pixels, zoom)
+    if normalize:
+        pixels = normalize_image(pixels)
+    
+    return pixels
+
+
+def preprocess(jets, constits, edges,
+                 cutoff=0.1,
+                 rotate=True,
+                 reflect=True,
+                 zoom=False,
+                 normalize=False):
+    translate(constits, jets)
+    pixels = pixelize(constits, edges)
+    
     if rotate:
         pixels = rotate_image(pixels, jets)
     if reflect:
@@ -178,23 +200,5 @@ def preprocess(jets, constit, eta_edges, phi_edges,
         pixels = zoom_image(pixels, zoom)
     if normalize:
         pixels = normalize_image(pixels)
-    return pixels
-
-
-def preprooocess(jets, constit, eta_edges, phi_edges,
-                 cutoff=0.1,
-                 rotate=True,
-                 reflect=True,
-                 zoom=False,
-                 normalize=False):
-    translate(constit, jets)
-    pixels = pixelize(constit, eta_edges, phi_edges, cutoff)
-    if rotate:
-        pixels = rotate_image(pixels, jets)
-    if reflect:
-        pixels = reflect_image(pixels, jets)
-    if zoom is not False:
-        pixels = zoooom_image(pixels, zoom)
-    if normalize:
-        pixels = normalize_image(pixels)
+    
     return pixels
