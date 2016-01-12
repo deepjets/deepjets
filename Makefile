@@ -35,7 +35,3 @@ events:
 		echo "$(setup) ./generate w.config --jet-size 1 --events 100000 --output $(output)/w_1p0_$${pthatmin}.h5 --seed $${pthatmin} --params \"PhaseSpace:pTHatMin = $${pthatmin}\"" | qsub -e $(output)/log -o $(output)/log -N w_1p0_$${pthatmin}; \
 		echo "$(setup) ./generate w.config --jet-size 1 --events 100000 --output $(output)/w_shrink_1p0_$${pthatmin}.h5 --shrink --seed $${pthatmin} --params \"PhaseSpace:pTHatMin = $${pthatmin}\"" | qsub -e $(output)/log -o $(output)/log -N w_shrink_1p0_$${pthatmin}; \
 	done
-
-images:
-	./imgify wprime.h5 &
-	./imgify qcd.h5 &
