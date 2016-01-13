@@ -7,7 +7,7 @@ dphi = lambda phi1, phi2 : abs(math.fmod((math.fmod(phi1, 2*math.pi) - math.fmod
 def dR(jet1, jet2):
     return ((jet1['eta'] - jet2['eta'])**2 + dphi(jet1['phi'], jet2['phi'])**2)**0.5
 
-def imgify(input, normalize):
+def imgify(input, normalize, edges):
     import os
     import numpy as np
     from deepjets.preprocessing import preprocess
@@ -57,11 +57,25 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-n', type=int, default=-1)
     parser.add_argument('--normalize', default=False, action='store_true')
+    parser.add_argument('--jet-size', type=float, default=1.2)
+    parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+    parser.add_argument('--pix-size', default='0.1,0.1')
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
     
     from deepjets.parallel import map_pool, FuncWorker
+    from deepjets.preprocessing import pixel_edges
+    
+    eta, phi = args.pix_size.split(',')
+    eta_size = float(eta) 
+    phi_size = float(phi)
+
+    edges = pixel_edges(
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        pix_size=(eta_size, phi_size))
 
     map_pool(
-        FuncWorker, [(imgify, filename, args.normalize) for filename in args.files],
+        FuncWorker,
+        [(imgify, filename, args.normalize, edges) for filename in args.files],
         n_jobs=args.n)

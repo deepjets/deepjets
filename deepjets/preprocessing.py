@@ -22,7 +22,7 @@ def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), bord
     """Return pixel edges required to contain all subjets.
     """
     im_edge  = (1+(1+border_size)*subjet_size_fraction)*jet_size
-    
+
     return (np.arange(-im_edge, im_edge+pix_size[0], pix_size[0]),
             np.arange(-im_edge, im_edge+pix_size[1], pix_size[1]))
 
@@ -138,7 +138,7 @@ def zoom_image(pixels, scale, out_width=25):
     """
     if scale < 1:
         raise ValueError("zoom scale factor must be at least 1")
-    
+
     width, height = pixels.shape
     out_height    = int(np.rint( float(out_width*height)/width ))
     t_width       = int(np.rint( out_width*scale ))
@@ -170,7 +170,7 @@ def preprocess_fixed_size(jets, constit, edges,
                           normalize=False):
     translate(constit, jets)
     pixels = pixelize(constit, edges, cutoff)
-    
+
     if rotate:
         pixels = rotate_image(pixels, jets)
     if reflect:
@@ -179,19 +179,19 @@ def preprocess_fixed_size(jets, constit, edges,
         pixels = zoom_image_fixed_size(pixels, zoom)
     if normalize:
         pixels = normalize_image(pixels)
-    
+
     return pixels
 
 
 def preprocess(jets, constits, edges,
-                 cutoff=0.1,
-                 rotate=True,
-                 reflect=True,
-                 zoom=False,
-                 normalize=False):
+               cutoff=0.1,
+               rotate=True,
+               reflect=True,
+               zoom=False,
+               normalize=False):
     translate(constits, jets)
     pixels = pixelize(constits, edges)
-    
+
     if rotate:
         pixels = rotate_image(pixels, jets)
     if reflect:
@@ -200,5 +200,5 @@ def preprocess(jets, constits, edges,
         pixels = zoom_image(pixels, zoom)
     if normalize:
         pixels = normalize_image(pixels)
-    
+
     return pixels

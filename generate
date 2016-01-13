@@ -35,6 +35,7 @@ dset_jets = f.create_dataset('jets', (args.events,), dtype=dt_jet)
 dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit)
 dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
 dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=np.double)
+# TODO save jet_size and subjet_size_fraction in H5 file
 
 i = 0
 for event in generate(args.config, args.events,
