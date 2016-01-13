@@ -14,9 +14,6 @@ def imgify(input, normalize, edges):
     from deepjets.utils import jet_mass
     import h5py
     
-    eta_edges = np.linspace(-1.3, 1.3, 26)
-    phi_edges = np.linspace(-1.3, 1.3, 26)
-
     # read from the events file
     h5_input = h5py.File(input, 'r')
     dset_jets = h5_input['jets']
@@ -42,7 +39,7 @@ def imgify(input, normalize, edges):
             dR_subjets = dR(jets[1], jets[2])
         trimmed_constit = dset_trimmed_constit[event]
         mass = jet_mass(trimmed_constit)
-        image = preprocess(jets, trimmed_constit, eta_edges, phi_edges,
+        image = preprocess(jets, trimmed_constit, edges,
                            zoom=1. / dset_shrinkage[event],
                            normalize=normalize)
         # save the jet mass, pT and image
