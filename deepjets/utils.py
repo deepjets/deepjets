@@ -7,7 +7,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def plot_jet_image(ax, pixels, vmin=1e-9, vmax=1e-2):
     """Displays jet image."""
-    p = ax.imshow(pixels.T, extent=(-1, 1, -1, 1),
+    width, height = pixels.T.shape
+    dw, dh = 1./width, 1./height
+    p = ax.imshow(pixels.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh),
                   origin='low',
                   interpolation='nearest',
                   norm=LogNorm(vmin=vmin, vmax=vmax),
