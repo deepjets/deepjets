@@ -4,16 +4,20 @@ import math
 
 dphi = lambda phi1, phi2 : abs(math.fmod((math.fmod(phi1, 2*math.pi) - math.fmod(phi2, 2*math.pi)) + 3*math.pi, 2*math.pi) - math.pi)
 
+
 def dR(jet1, jet2):
     return ((jet1['eta'] - jet2['eta'])**2 + dphi(jet1['phi'], jet2['phi'])**2)**0.5
 
-def imgify(input, normalize, edges):
+
+def imgify(input, normalize, edges, image_size):
     import os
     import numpy as np
     from deepjets.preprocessing import preprocess
     from deepjets.utils import jet_mass
     import h5py
     
+    eta_edges, phi_edges = edges
+
     # read from the events file
     h5_input = h5py.File(input, 'r')
     dset_jets = h5_input['jets']
@@ -27,7 +31,7 @@ def imgify(input, normalize, edges):
         ('pT', np.double),
         ('mass', np.double),
         ('dR_subjets', np.double),
-        ('image', np.double, (eta_edges.shape[0] - 1, phi_edges.shape[0] - 1))])
+        ('image', np.double, (image_size, image_size))])
     dset_images = h5_output.create_dataset('images', (len(dset_jets),), dtype=dt_images)
     
     print("imgify({0}) -> {1} ...".format(input, output))
@@ -57,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--jet-size', type=float, default=1.2)
     parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
     parser.add_argument('--pix-size', default='0.1,0.1')
+    parser.add_argument('--image-size', type=int, default=25)
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
     
@@ -74,5 +79,6 @@ if __name__ == '__main__':
 
     map_pool(
         FuncWorker,
-        [(imgify, filename, args.normalize, edges) for filename in args.files],
+        [(imgify, filename, args.normalize, edges, args.image_size)
+            for filename in args.files],
         n_jobs=args.n)

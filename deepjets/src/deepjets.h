@@ -51,6 +51,7 @@ void jets_to_arrays(Result& result,
   jet_arr[0] = result.jet.perp();
   jet_arr[1] = result.jet.eta();
   jet_arr[2] = result.jet.phi_std();
+  jet_arr[3] = result.jet.m();
 
   std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
 
@@ -63,9 +64,10 @@ void jets_to_arrays(Result& result,
   // Get details and constituents from subjets.
   int iconstit = 0;
   for (unsigned int i = 0; i < result.subjets.size(); ++i) {
-    jet_arr[(i + 1) * 3 + 0] = result.subjets[i].perp();
-    jet_arr[(i + 1) * 3 + 1] = result.subjets[i].eta();
-    jet_arr[(i + 1) * 3 + 2] = result.subjets[i].phi_std();
+    jet_arr[(i + 1) * 4 + 0] = result.subjets[i].perp();
+    jet_arr[(i + 1) * 4 + 1] = result.subjets[i].eta();
+    jet_arr[(i + 1) * 4 + 2] = result.subjets[i].phi_std();
+    jet_arr[(i + 1) * 4 + 3] = result.subjets[i].m();
     constits = result.subjets[i].constituents();
     for (unsigned int j = 0; j < constits.size(); ++j) {
       subjet_constit_arr[iconstit * 3 + 0] = constits[j].Et();
