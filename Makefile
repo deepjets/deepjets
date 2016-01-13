@@ -4,6 +4,8 @@ PYTHON := $(shell which python)
 output := /data/edawe/public/deepjets/events
 setup := cd /home/edawe/workspace/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
 
+.PHONY: events
+
 all: clean inplace
 
 clean-pyc:
