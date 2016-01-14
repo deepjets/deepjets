@@ -2,19 +2,19 @@ import numpy as np
 from skimage import transform
 
 
-def translate(jet_csts, all_jets):
+def translate(jet_csts, subjets):
     """Translate constituents and jets, leading subjet at (eta, phi) = (0, 0).
     """
     # Translate constituents
-    jet_csts['eta'] -= all_jets['eta'][1]
-    jet_csts['phi'] -= all_jets['phi'][1]
+    jet_csts['eta'] -= subjets['eta'][0]
+    jet_csts['phi'] -= subjets['phi'][0]
     # Ensure phi in [-pi, pi]
     jet_csts['phi'] = np.mod(jet_csts['phi'] + np.pi, 2*np.pi) - np.pi
     # Translate jets
-    all_jets['eta'] -= all_jets['eta'][1]
-    all_jets['phi'] -= all_jets['phi'][1]
+    subjets['eta'] -= subjets['eta'][0]
+    subjets['phi'] -= subjets['phi'][0]
     # Ensure phi in [-pi, pi]
-    all_jets['phi'] = np.mod(all_jets['phi'] + np.pi, 2*np.pi) - np.pi
+    subjets['phi'] = np.mod(subjets['phi'] + np.pi, 2*np.pi) - np.pi
 
 
 def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), border_size=2):
@@ -37,15 +37,15 @@ def pixelize(jet_csts, edges, cutoff=0.1):
     return pixels
 
 
-def rotate_image(pixels, all_jets):
+def rotate_image(pixels, subjets):
     """Return rotated and repixelised image array.
 
     Rotation puts subleading subjet or first principle component at -pi/2.
     Repixelisation interpolates with cubic spline.
     """
     # Use subleading subject information to rotate
-    if len(all_jets) > 2:
-        theta = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
+    if len(subjets) > 1:
+        theta = np.arctan2(subjets['phi'][1], subjets['eta'][1])
         theta = -90.0-(theta*180.0/np.pi)
         return transform.rotate(pixels, theta, order=3)
 
@@ -69,24 +69,24 @@ def rotate_image(pixels, all_jets):
     return t_pixels
 
 
-def reflect_image(pixels, all_jets):
+def reflect_image(pixels, subjets):
     """Return reflected image array.
 
     Reflection puts subsubleading subjet or highest intensity on right side.
     """
     width, height = pixels.shape
-    if len(all_jets) > 3:
+    if len(subjets) > 2:
         # Use subsubleading subject information to find parity
-        theta = np.arctan2(all_jets['phi'][2], all_jets['eta'][2])
+        theta = np.arctan2(subjets['phi'][1], subjets['eta'][1])
         theta = -(np.pi/2)-theta
-        parity = np.sign(np.cos(-theta)*all_jets['eta'][3] +
-                         np.sin(-theta)*all_jets['phi'][3])
+        parity = np.sign(np.cos(-theta)*subjets['eta'][2] +
+                         np.sin(-theta)*subjets['phi'][2])
     else:
         # Use intensity to find parity
         pix_l = np.sum(pixels[:-(-width//2)].flatten())
         pix_r = np.sum(pixels[(width//2):].flatten())
         parity = np.sign(pix_r - pix_l)
-    
+
     if parity >= 0:
         return pixels
     t_pixels = np.array(pixels)
@@ -105,7 +105,7 @@ def zoom_image_fixed_size(pixels, zoom):
     elif zoom == 1:
         # copy
         return np.array(pixels)
-    
+
     width, height = pixels.shape
     t_width = int(np.ceil(zoom*width))
     t_height = int(np.ceil(zoom*height))
@@ -145,18 +145,18 @@ def normalize_image(pixels):
     return pixels / np.sum(pixels**2)
 
 
-def preprocess_fixed_size(jets, constit, edges,
+def preprocess_fixed_size(subjets, constit, edges,
                           cutoff=0.1,
                           rotate=True,
                           reflect=True,
                           zoom=False,
                           normalize=False):
-    translate(constit, jets)
+    translate(constit, subjets)
     pixels = pixelize(constit, edges, cutoff)
     if rotate:
-        pixels = rotate_image(pixels, jets)
+        pixels = rotate_image(pixels, subjets)
     if reflect:
-        pixels = reflect_image(pixels, jets)
+        pixels = reflect_image(pixels, subjets)
     if zoom is not False:
         pixels = zoom_image_fixed_size(pixels, zoom)
     if normalize:
@@ -164,19 +164,19 @@ def preprocess_fixed_size(jets, constit, edges,
     return pixels
 
 
-def preprocess(jets, constits, edges,
+def preprocess(subjets, constits, edges,
                cutoff=0.1,
                rotate=True,
                reflect=True,
                zoom=False,
                out_width=25,
                normalize=False):
-    translate(constits, jets)
+    translate(constits, subjets)
     pixels = pixelize(constits, edges)
     if rotate:
-        pixels = rotate_image(pixels, jets)
+        pixels = rotate_image(pixels, subjets)
     if reflect:
-        pixels = reflect_image(pixels, jets)
+        pixels = reflect_image(pixels, subjets)
     if zoom is not False:
         pixels = zoom_image(pixels, zoom, out_width)
     if normalize:
