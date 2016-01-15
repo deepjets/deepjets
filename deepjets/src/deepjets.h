@@ -82,7 +82,7 @@ Result* get_jets(Event& event,
                  double eta_max,
                  double jet_size, double subjet_size_fraction,
                  double jet_pt_min, double subjet_pt_min_fraction,
-                 bool shrink) {
+                 bool shrink, double shrink_mass) {
   /*
    * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min, eta_max).
    * Find subjets by re-cluster jet using kt algorith (params subjet_size_fraction * jet_size, subjet_size_fraction).
@@ -126,7 +126,11 @@ Result* get_jets(Event& event,
   double actual_size;
   if (shrink) {
     // Shrink distance parameter to 2 * m / pT
-    actual_size = std::min(jet_size, std::abs(2 * jet.m() / jet.perp()));
+    if (shrink_mass <= 0) {
+        // Use jet mass
+        shrink_mass = jet.m();
+    }
+    actual_size = std::min(jet_size, std::abs(2 * shrink_mass / jet.perp()));
     shrinkage = actual_size / jet_size;
     jet_size = actual_size;
     // TODO handle case where m==0

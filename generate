@@ -10,6 +10,7 @@ parser.add_argument('--output', '-o', default=None)
 parser.add_argument('--jet-size', type=float, default=1.2)
 parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
 parser.add_argument('--shrink', default=False, action='store_true')
+parser.add_argument('--shrink-mass', default='jet')
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pt-min', type=float, default=-1)
 parser.add_argument('--pt-max', type=float, default=-1)
@@ -22,6 +23,12 @@ if args.output is None:
 
 if args.params is not None:
     args.params = dict([token.split('=') for token in args.params.split(';')])
+
+if args.shrink_mass == 'jet':
+    # shrink with jet mass
+    args.shrink_mass = -1
+else:
+    args.shrink_mass = float(args.shrink_mass)
 
 from deepjets.generate import generate
 from deepjets.utils import mass, tot_mom, pT, dR
@@ -57,6 +64,7 @@ for event in generate(args.config, args.events,
                       jet_size=args.jet_size,
                       subjet_size_fraction=args.subjet_size_fraction,
                       shrink=args.shrink,
+                      shrink_mass=args.shrink_mass,
                       cut_on_pdgid=args.cut_on_pdgid,
                       pt_min=args.pt_min, pt_max=args.pt_max,
                       params_dict=args.params):

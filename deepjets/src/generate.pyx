@@ -11,7 +11,8 @@ def generate_pythia(string config, string xmldoc,
                     float eta_max=5.,
                     float jet_size=0.6, float subjet_size_fraction=0.5,
                     float jet_pt_min=12.5, float subjet_pt_min_fraction=0.05,
-                    bool shrink=False, 
+                    bool shrink=False,
+                    float shrink_mass=-1.,
                     int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1,
                     params_dict=None):
     """
@@ -65,7 +66,7 @@ def generate_pythia(string config, string xmldoc,
             result = get_jets(pythia.event,
                               eta_max, jet_size, subjet_size_fraction,
                               jet_pt_min, subjet_pt_min_fraction,
-                              shrink)
+                              shrink, shrink_mass)
 
             num_jet_constit = result.jet.constituents().size()
             num_subjets = result.subjets.size()

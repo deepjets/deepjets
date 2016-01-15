@@ -9,6 +9,7 @@ def imgify(input, normalize, pix_size, image_size):
     
     # read from the events file
     h5_input = h5py.File(input, 'r')
+    dset_jet = h5_input['jet']
     dset_subjets = h5_input['subjets']
     dset_trimmed_constit = h5_input['trimmed_constituents']
     dset_shrinkage = h5_input['shrinkage']
