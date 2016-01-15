@@ -73,7 +73,7 @@ for event in generate(args.config, args.events,
     
     dset_jet[i] = jets[0]
     dset_subjets[i] = jets[1:]
-    dset_constit = constit
+    dset_constit[i] = constit
     dset_trimmed_constit[i] = trimmed_constit
     dset_shrinkage[i] = shrinkage
 
