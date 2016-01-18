@@ -39,7 +39,7 @@ def mass(E, px, py, pz):
 
 def jet_mass(jet_csts):
     """Returns jet mass calculated from constituent 4-vectors."""
-    return mass(tot_mom(jet_csts))
+    return mass(*tot_mom(jet_csts))
 
 
 def pT(E, px, py, pz):
