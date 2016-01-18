@@ -1,45 +1,5 @@
 #!/usr/bin/env python
 
-from keras.callbacks import EarlyStopping
-from keras.optimizers import Adam
-from deepjets.models import get_maxout, get_convnet
-
-from sklearn import cross_validation
-import numpy as np
-import h5py
-
-
-def train(model,
-          signal_files, background_files,
-          epochs=100, patience=10, batch_size=32, flatten=False):
-    X = []
-    y = []
-    for fname in signal_files:
-        with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image'][:10000]
-            if flatten:
-                images = images.reshape(-1, images.shape[1] * images.shape[2])
-            X.append(images)
-            y.append(np.repeat([[1, 0]], images.shape[0], axis=0))
-    for fname in background_files:
-        with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image'][:10000]
-            if flatten:
-                images = images.reshape(-1, images.shape[1] * images.shape[2])
-            X.append(images)
-            y.append(np.repeat([[0, 1]], images.shape[0], axis=0))
-    X = np.concatenate(X)
-    y = np.concatenate(y)
-
-    X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.2)
-
-    stopper = EarlyStopping(monitor='val_loss', patience=patience, verbose=1)
-    hist = model.fit(X_train, y_train, nb_epoch=epochs, batch_size=batch_size,
-                     validation_split=1./8., callbacks=[stopper], verbose=2)
-    # TODO: plot hist.history
-    print model.evaluate(X_test, y_test, batch_size=batch_size)
-
-
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
@@ -51,12 +11,16 @@ if __name__ == '__main__':
     parser.add_argument('--bkg', nargs='+')
     args = parser.parse_args()
     
+    from keras.optimizers import Adam
+    from deepjets.models import get_maxout, get_convnet
+    from deepjets.learning import train
+
     if args.type == 'maxout':
         model = get_maxout(size=args.image_size)
     else:
         model = get_convnet()
 
-    model.compile(loss='categorical_crossentropy', optimizer=Adam())
+    model.compile(loss='categorical_crossentropy', optimizer=Adam()) # learn rate
 
     # Train the network
     train(model=model,
