@@ -16,7 +16,7 @@ def plot(input):
     dset_images = h5file['images']
     h5file_events = h5py.File(input.replace('_images', ''), 'r')
     dset_jet = h5file_events['jet']
-    dset_trimmed_pt = h5file_events['trimmed_pt']
+    dset_trimmed_pt = h5file_events['trimmed_pT']
     dset_trimmed_mass = h5file_events['trimmed_mass']
 
     output_prefix = os.path.splitext(input)[0]
