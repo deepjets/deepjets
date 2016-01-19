@@ -68,5 +68,6 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
     # Normalize
     pt_hist = np.true_divide(pt_hist, pt_hist.sum())
     image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
+    image_weights = np.true_divide(image_weights, image_weights.mean())
 
     return images, pt, image_weights
