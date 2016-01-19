@@ -44,9 +44,10 @@ def generate_pythia(string config, string xmldoc,
     cdef int num_subjets = 0
     cdef int num_subjets_constit = 0
 
-    cdef np.ndarray jet_arr
-    cdef np.ndarray jet_constit_arr
-    cdef np.ndarray subjet_constit_arr
+    cdef np.ndarray jet_arr  # contains jet and trimmed jet
+    cdef np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
+    cdef np.ndarray jet_constit_arr  # contains original jet constituents
+    cdef np.ndarray subjet_constit_arr  # contains trimmed jet constituents
 
     cdef Result* result
 
@@ -74,16 +75,18 @@ def generate_pythia(string config, string xmldoc,
             for isubjet in range(result.subjets.size()):
                 num_subjets_constit += result.subjets[isubjet].constituents().size()
             
-            jet_arr = np.empty((num_subjets + 1,), dtype=dtype_jet)
+            jet_arr = np.empty((2,), dtype=dtype_jet)
+            subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
             jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
             subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
 
-            jets_to_arrays(result[0],
-                           <DTYPE_t*> jet_arr.data,
-                           <DTYPE_t*> jet_constit_arr.data,
-                           <DTYPE_t*> subjet_constit_arr.data)
+            result_to_arrays(result[0],
+                             <DTYPE_t*> jet_arr.data,
+                             <DTYPE_t*> subjet_arr.data,
+                             <DTYPE_t*> jet_constit_arr.data,
+                             <DTYPE_t*> subjet_constit_arr.data)
             
-            yield jet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
+            yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
 
             del result
             ievent += 1

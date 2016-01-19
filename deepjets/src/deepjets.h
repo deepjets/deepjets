@@ -22,9 +22,7 @@ struct Result {
   double shrinkage;
 };
 
-
 bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
-  // Check W pT.
   if (pt_min < 0 && pt_max < 0) return true;
   bool passes = false;
   double pt;
@@ -43,8 +41,9 @@ bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
   return passes;
 }
 
-void jets_to_arrays(Result& result,
-                    double* jet_arr, double* jet_constit_arr, double* subjet_constit_arr) {
+void result_to_arrays(Result& result,
+                      double* jet_arr, double* subjet_arr,
+                      double* jet_constit_arr, double* subjet_constit_arr) {
   /*
    * Fill arrays from the contents of a Result struct
    */
@@ -61,13 +60,16 @@ void jets_to_arrays(Result& result,
       jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
   }
 
+  fastjet::PseudoJet subjet_sum;
+
   // Get details and constituents from subjets.
   int iconstit = 0;
   for (unsigned int i = 0; i < result.subjets.size(); ++i) {
-    jet_arr[(i + 1) * 4 + 0] = result.subjets[i].perp();
-    jet_arr[(i + 1) * 4 + 1] = result.subjets[i].eta();
-    jet_arr[(i + 1) * 4 + 2] = result.subjets[i].phi_std();
-    jet_arr[(i + 1) * 4 + 3] = result.subjets[i].m();
+    subjet_sum += result.subjets[i];
+    subjet_arr[i * 4 + 0] = result.subjets[i].perp();
+    subjet_arr[i * 4 + 1] = result.subjets[i].eta();
+    subjet_arr[i * 4 + 2] = result.subjets[i].phi_std();
+    subjet_arr[i * 4 + 3] = result.subjets[i].m();
     constits = result.subjets[i].constituents();
     for (unsigned int j = 0; j < constits.size(); ++j) {
       subjet_constit_arr[iconstit * 3 + 0] = constits[j].Et();
@@ -76,6 +78,12 @@ void jets_to_arrays(Result& result,
       ++iconstit;
     }
   }
+
+  // The trimmed jet
+  jet_arr[4] = subjet_sum.perp();
+  jet_arr[5] = subjet_sum.eta();
+  jet_arr[6] = subjet_sum.phi_std();
+  jet_arr[7] = subjet_sum.m();
 }
 
 Result* get_jets(Event& event,

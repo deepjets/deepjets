@@ -43,13 +43,12 @@ dt_jets = h5py.special_dtype(vlen=dt_jet)
 dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
 
 dset_jet = f.create_dataset('jet', (args.events,), dtype=dt_jet)
+dset_trimmed_jet = f.create_dataset('trimmed_jet', (args.events,), dtype=dt_jet)
 dset_subjets = f.create_dataset('subjets', (args.events,), dtype=dt_jets)
 dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit)
 dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
 dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=DTYPE)
 dset_dr_subjets = f.create_dataset('dR_subjets', (args.events,), dtype=DTYPE)
-dset_trimmed_pt = f.create_dataset('trimmed_pT', (args.events,), dtype=DTYPE)
-dset_trimmed_mass = f.create_dataset('trimmed_mass', (args.events,), dtype=DTYPE)
 
 # config dsets
 dset_jet_size = f.create_dataset('jet_size', (1,), dtype=DTYPE)
@@ -69,23 +68,20 @@ for event in generate(args.config, args.events,
                       pt_min=args.pt_min, pt_max=args.pt_max,
                       params_dict=args.params):
 
-    jets, constit, trimmed_constit, shrinkage = event
+    jets, subjets, constit, trimmed_constit, shrinkage = event
     
     dset_jet[i] = jets[0]
-    dset_subjets[i] = jets[1:]
+    dset_trimmed_jet[i] = jets[1]
+    dset_subjets[i] = subjets
     dset_constit[i] = constit
     dset_trimmed_constit[i] = trimmed_constit
     dset_shrinkage[i] = shrinkage
 
     dR_subjets = -1
-    if len(jets) >= 3:
-        dR_subjets = dR(jets[1], jets[2])
+    if len(subjets) >= 2:
+        dR_subjets = dR(subjets[0], subjets[1])
     dset_dr_subjets[i] = dR_subjets
         
-    jet_mom_trimmed = tot_mom(trimmed_constit)
-    dset_trimmed_pt[i] = pT(*jet_mom_trimmed)
-    dset_trimmed_mass[i] = mass(*jet_mom_trimmed)
-
     i += 1
 
 f.close()

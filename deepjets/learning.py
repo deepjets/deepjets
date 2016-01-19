@@ -17,14 +17,14 @@ def train(model,
     y = []
     for fname in signal_files:
         with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image'][:10000]
+            images = infile['images'][:10000]
             if flatten:
                 images = images.reshape(-1, images.shape[1] * images.shape[2])
             X.append(images)
             y.append(np.repeat([[1, 0]], images.shape[0], axis=0))
     for fname in background_files:
         with h5py.File(fname, 'r') as infile:
-            images = infile['images']['image'][:10000]
+            images = infile['images'][:10000]
             if flatten:
                 images = images.reshape(-1, images.shape[1] * images.shape[2])
             X.append(images)

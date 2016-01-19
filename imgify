@@ -49,7 +49,8 @@ def imgify(input, normalize, pix_size, image_size):
         trimmed_constit = dset_trimmed_constit[event]
         image = preprocess(subjets, trimmed_constit, edges,
                            zoom=1. / dset_shrinkage[event],
-                           normalize=normalize)
+                           normalize=normalize,
+                           out_width=image_size)
         # save the jet mass, pT and image
         dset_images[event] = image
 

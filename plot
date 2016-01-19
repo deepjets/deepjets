@@ -16,8 +16,7 @@ def plot(input):
     dset_images = h5file['images']
     h5file_events = h5py.File(input.replace('_images', ''), 'r')
     dset_jet = h5file_events['jet']
-    dset_trimmed_pt = h5file_events['trimmed_pT']
-    dset_trimmed_mass = h5file_events['trimmed_mass']
+    dset_trimmed_jet = h5file_events['trimmed_jet']
 
     output_prefix = os.path.splitext(input)[0]
 
@@ -38,7 +37,7 @@ def plot(input):
     
     fig = plt.figure(figsize=(5, 5))
     ax  = fig.add_subplot(111)
-    ax.hist(dset_trimmed_mass[:], bins=np.linspace(0, 120, 20),
+    ax.hist(dset_trimmed_jet['mass'], bins=np.linspace(0, 120, 20),
             histtype='stepfilled', facecolor='none', edgecolor='blue')
     fig.tight_layout()
     plt.savefig(output_prefix + '_jet_trimmed_mass.png')
@@ -52,7 +51,7 @@ def plot(input):
     
     fig = plt.figure(figsize=(5, 5))
     ax  = fig.add_subplot(111)
-    ax.hist(dset_trimmed_pt[:], bins=np.linspace(0, 600, 100),
+    ax.hist(dset_trimmed_jet['pT'], bins=np.linspace(0, 600, 100),
             histtype='stepfilled', facecolor='none', edgecolor='blue')
     fig.tight_layout()
     plt.savefig(output_prefix + '_jet_trimmed_pt.png')
