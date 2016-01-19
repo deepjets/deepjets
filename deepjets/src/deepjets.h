@@ -16,6 +16,7 @@ struct Result {
     delete subjet_clusterseq;
   }
   fastjet::PseudoJet jet;
+  fastjet::PseudoJet trimmed_jet;
   std::vector<fastjet::PseudoJet> subjets;
   fastjet::ClusterSequence* jet_clusterseq;
   fastjet::ClusterSequence* subjet_clusterseq;
@@ -47,10 +48,16 @@ void result_to_arrays(Result& result,
   /*
    * Fill arrays from the contents of a Result struct
    */
+  // The original jet
   jet_arr[0] = result.jet.perp();
   jet_arr[1] = result.jet.eta();
   jet_arr[2] = result.jet.phi_std();
   jet_arr[3] = result.jet.m();
+  // The trimmed jet
+  jet_arr[4] = result.trimmed_jet.perp();
+  jet_arr[5] = result.trimmed_jet.eta();
+  jet_arr[6] = result.trimmed_jet.phi_std();
+  jet_arr[7] = result.trimmed_jet.m();
 
   std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
 
@@ -60,12 +67,9 @@ void result_to_arrays(Result& result,
       jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
   }
 
-  fastjet::PseudoJet subjet_sum;
-
   // Get details and constituents from subjets.
   int iconstit = 0;
   for (unsigned int i = 0; i < result.subjets.size(); ++i) {
-    subjet_sum += result.subjets[i];
     subjet_arr[i * 4 + 0] = result.subjets[i].perp();
     subjet_arr[i * 4 + 1] = result.subjets[i].eta();
     subjet_arr[i * 4 + 2] = result.subjets[i].phi_std();
@@ -78,18 +82,13 @@ void result_to_arrays(Result& result,
       ++iconstit;
     }
   }
-
-  // The trimmed jet
-  jet_arr[4] = subjet_sum.perp();
-  jet_arr[5] = subjet_sum.eta();
-  jet_arr[6] = subjet_sum.phi_std();
-  jet_arr[7] = subjet_sum.m();
 }
 
 Result* get_jets(Event& event,
                  double eta_max,
                  double jet_size, double subjet_size_fraction,
-                 double jet_pt_min, double subjet_pt_min_fraction,
+                 double subjet_pt_min_fraction,
+                 double trimmed_pt_min, double trimmed_pt_max,
                  bool shrink, double shrink_mass) {
   /*
    * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min, eta_max).
@@ -97,7 +96,7 @@ Result* get_jets(Event& event,
    * Return a Result struct
    */
 
-  // Begin FastJet analysis: extract particles from event record.
+  // Begin FastJet analysis: extract particles from event record
   std::vector<fastjet::PseudoJet> fjInputs;
   for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
     // Require visible particles inside detector.
@@ -113,18 +112,22 @@ Result* get_jets(Event& event,
     fjInputs.push_back(particleTemp);
   }
 
-  // Run Fastjet algorithm and sort jets in pT order.
-  std::vector<fastjet::PseudoJet> sortedjets;
+  // Run Fastjet algorithm and sort jets in pT order
   fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, jet_size, -1); // anti-kt
   fastjet::ClusterSequence* clustSeq = new fastjet::ClusterSequence(fjInputs, jetDef);
-  sortedjets = sorted_by_pt(clustSeq->inclusive_jets(jet_pt_min));
+  std::vector<fastjet::PseudoJet> sortedjets(sorted_by_pt(clustSeq->inclusive_jets())); // no pT cut here
 
-  // Get leading jet.
+  if (sortedjets.empty()) {
+    delete clustSeq;
+    return NULL;
+  }
+
+  // Get leading jet
   fastjet::PseudoJet& jet = sortedjets[0];
   std::vector<fastjet::PseudoJet> Jconstits = jet.constituents();
   int Jsize = Jconstits.size();
 
-  // Store constituents from leading jet.
+  // Store constituents from leading jet
   std::vector<fastjet::PseudoJet> TfjInputs;
   for (int i = 0; i < Jsize; ++i) {
     TfjInputs.push_back(Jconstits[i]);
@@ -141,16 +144,40 @@ Result* get_jets(Event& event,
     actual_size = std::min(jet_size, std::abs(2 * shrink_mass / jet.perp()));
     shrinkage = actual_size / jet_size;
     jet_size = actual_size;
-    // TODO handle case where m==0
+    // TODO handle case where m==0?
   }
 
-  // Run Fastjet trimmer on leading jet.
+  // Run Fastjet trimmer on leading jet
   fastjet::JetDefinition TjetDef(fastjet::genkt_algorithm, subjet_size_fraction * jet_size, 1); // kt
   fastjet::ClusterSequence* TclustSeq = new fastjet::ClusterSequence(TfjInputs, TjetDef);
+  std::vector<fastjet::PseudoJet> sortedsubjets(sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * subjet_pt_min_fraction)));
+
+  // Sum subjets to make trimmed jet
+  fastjet::PseudoJet trimmed_jet;
+  for(std::vector<fastjet::PseudoJet>::iterator it = sortedsubjets.begin(); it != sortedsubjets.end(); ++it) {
+    trimmed_jet += *it;
+  }
+
+  // pT cuts on trimmed jet
+  if (trimmed_pt_min > 0) {
+    if (trimmed_jet.perp() < trimmed_pt_min) {
+      delete clustSeq;
+      delete TclustSeq;
+      return NULL;
+    }
+  }
+  if (trimmed_pt_max > 0) {
+    if (trimmed_jet.perp() >= trimmed_pt_max) {
+      delete clustSeq;
+      delete TclustSeq;
+      return NULL;
+    }
+  }
 
   Result* result = new Result();
   result->jet = jet;
-  result->subjets = sorted_by_pt(TclustSeq->inclusive_jets(jet.perp() * subjet_pt_min_fraction));
+  result->trimmed_jet = trimmed_jet;
+  result->subjets = sortedsubjets;
   result->jet_clusterseq = clustSeq;
   result->subjet_clusterseq = TclustSeq;
   result->shrinkage = shrinkage;

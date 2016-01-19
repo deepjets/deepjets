@@ -9,11 +9,12 @@ def generate_pythia(string config, string xmldoc,
                     int random_seed=0,
                     float beam_ecm=13000.,
                     float eta_max=5.,
-                    float jet_size=0.6, float subjet_size_fraction=0.5,
-                    float jet_pt_min=12.5, float subjet_pt_min_fraction=0.05,
-                    bool shrink=False,
-                    float shrink_mass=-1.,
-                    int cut_on_pdgid=0, float pt_min=-1, float pt_max=-1,
+                    float jet_size=0.6,
+                    float subjet_size_fraction=0.5,
+                    float subjet_pt_min_fraction=0.05,
+                    float trimmed_pt_min=10., float trimmed_pt_max=-1., 
+                    bool shrink=False, float shrink_mass=-1.,
+                    int cut_on_pdgid=0, float pdgid_pt_min=-1, float pdgid_pt_max=-1,
                     params_dict=None):
     """
     Generate Pythia events and yield jet and constituent arrays
@@ -61,13 +62,18 @@ def generate_pythia(string config, string xmldoc,
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
             
-            if not keep_event(pythia.event, cut_on_pdgid, pt_min, pt_max):
+            if not keep_event(pythia.event, cut_on_pdgid, pdgid_pt_min, pdgid_pt_max):
                 continue
 
             result = get_jets(pythia.event,
                               eta_max, jet_size, subjet_size_fraction,
-                              jet_pt_min, subjet_pt_min_fraction,
+                              subjet_pt_min_fraction,
+                              trimmed_pt_min, trimmed_pt_max,
                               shrink, shrink_mass)
+
+            if result == NULL:
+                # didn't find any jets passing cuts in this event
+                continue
 
             num_jet_constit = result.jet.constituents().size()
             num_subjets = result.subjets.size()
