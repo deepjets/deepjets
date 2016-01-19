@@ -1,3 +1,5 @@
+from joblib import Parallel, delayed
+
 from .generate import generate
 from .preprocessing import preprocess, pixel_edges
 from .utils import pT, tot_mom
@@ -36,37 +38,35 @@ def get_images(config, nevents, pt_min, pt_max,
     return images, pt
 
 
+def _generate_one_bin(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
+    params_dict = {
+        'PhaseSpace:pTHatMin': pt_lo - 20.,
+        'PhaseSpace:pTHatMax': pt_hi + 20.}
+    return get_images(config, nevents_per_pt_bin,
+                      pt_min=pt_lo, pt_max=pt_hi,
+                      params_dict=params_dict,
+                      **kwargs)
+
+
 def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
-               pt_bins=10, **kwargs):
+               pt_bins=10, n_jobs=-1, **kwargs):
     """
     Construct a sample of images over a pT range by combining samples
     constructed in pT intervals in this range.
     """
     pt_bin_edges = np.linspace(pt_min, pt_max, pt_bins + 1)
-    all_images = None
-    all_pt = np.empty(nevents_per_pt_bin * pt_bins, dtype=np.double)
-    for pt_bin_idx in xrange(pt_bin_edges.shape[0] - 1):
-        pt_lo, pt_hi = pt_bin_edges[pt_bin_idx], pt_bin_edges[pt_bin_idx + 1]
-        params_dict = {
-            'PhaseSpace:pTHatMin': pt_lo - 20.,
-            'PhaseSpace:pTHatMax': pt_hi + 20.}
-        images, pt = get_images(config, nevents_per_pt_bin,
-                                pt_min=pt_lo, pt_max=pt_hi,
-                                params_dict=params_dict,
-                                **kwargs)
-        if pt_bin_idx == 0:
-            # now we know the shape of the images
-            all_images = np.empty(
-                (nevents_per_pt_bin * pt_bins, images.shape[1], images.shape[2]),
-                dtype=np.double)
-        # fill in this bin
-        all_images[pt_bin_idx * nevents_per_pt_bin:(pt_bin_idx + 1) * nevents_per_pt_bin] = images
-        all_pt[pt_bin_idx * nevents_per_pt_bin:(pt_bin_idx + 1) * nevents_per_pt_bin] = pt
+
+    out = Parallel(n_jobs=n_jobs)(
+        delayed(_generate_one_bin)(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs)
+            for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]))
+
+    images = np.concatenate([x[0] for x in out])
+    pt = np.concatenate([x[1] for x in out])
 
     # Compute weights such that pT distribution is flat
-    pt_hist, edges = np.histogram(all_pt, bins=np.linspace(pt_min, pt_max, (pt_bins * 4) + 1))
+    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, (pt_bins * 4) + 1))
     # Normalize
     pt_hist = np.true_divide(pt_hist, pt_hist.sum())
-    image_weights = np.take(pt_hist, np.searchsorted(edges, all_pt) - 1)
+    image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
 
-    return all_images, all_pt, image_weights
+    return images, pt, image_weights
