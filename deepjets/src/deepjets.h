@@ -88,6 +88,7 @@ Result* get_jets(Event& event,
                  double eta_max,
                  double jet_size, double subjet_size_fraction,
                  double subjet_pt_min_fraction,
+                 double subjet_dr_min,
                  double trimmed_pt_min, double trimmed_pt_max,
                  bool shrink, double shrink_mass) {
   /*
@@ -171,6 +172,17 @@ Result* get_jets(Event& event,
       delete clustSeq;
       delete TclustSeq;
       return NULL;
+    }
+  }
+
+  // Check subjet_dr_min condition
+  if (subjet_dr_min > 0) {
+    if (sortedsubjets.size() >= 2) {
+        if (sortedsubjets[0].delta_R(sortedsubjets[1]) < subjet_dr_min) {
+            delete clustSeq;
+            delete TclustSeq;
+            return NULL;
+        }
     }
   }
 
