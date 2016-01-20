@@ -17,7 +17,7 @@ def translate(jet_csts, subjets):
     subjets['phi'] = np.mod(subjets['phi'] + np.pi, 2*np.pi) - np.pi
 
 
-def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), border_size=2):
+def pixel_edges(jet_size=1.2, subjet_size_fraction=0.5, pix_size=(0.1,0.1), border_size=1):
     """Return pixel edges required to contain all subjets.
     """
     im_edge  = (1+(1+border_size)*subjet_size_fraction)*jet_size
