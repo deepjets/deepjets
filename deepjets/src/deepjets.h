@@ -62,9 +62,9 @@ void result_to_arrays(Result& result,
   std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
 
   for (unsigned int i = 0; i < constits.size(); ++i) {
-      jet_constit_arr[i * 3 + 0] = constits[i].Et();
-      jet_constit_arr[i * 3 + 1] = constits[i].eta();
-      jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
+    jet_constit_arr[i * 3 + 0] = constits[i].Et();
+    jet_constit_arr[i * 3 + 1] = constits[i].eta();
+    jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
   }
 
   // Get details and constituents from subjets.
@@ -139,13 +139,23 @@ Result* get_jets(Event& event,
   if (shrink) {
     // Shrink distance parameter to 2 * m / pT
     if (shrink_mass <= 0) {
-        // Use jet mass
-        shrink_mass = jet.m();
+      // Use jet mass
+      shrink_mass = jet.m();
+      if (shrink_mass <= 0) {
+        // Skip event
+        delete clustSeq;
+        return NULL;
+      }
     }
-    actual_size = std::min(jet_size, std::abs(2 * shrink_mass / jet.perp()));
+    actual_size = 2 * shrink_mass / jet.perp();
+    if (actual_size > jet_size) {
+      // Original clustering must have been too small?
+      // Skip event
+      delete clustSeq;
+      return NULL;
+    }
     shrinkage = actual_size / jet_size;
     jet_size = actual_size;
-    // TODO handle case where m==0?
   }
 
   // Run Fastjet trimmer on leading jet
@@ -179,9 +189,9 @@ Result* get_jets(Event& event,
   if (subjet_dr_min > 0) {
     if (sortedsubjets.size() >= 2) {
       if (sortedsubjets[0].delta_R(sortedsubjets[1]) < subjet_dr_min) {
-          delete clustSeq;
-          delete TclustSeq;
-          return NULL;
+        delete clustSeq;
+        delete TclustSeq;
+        return NULL;
       }
     }
   }
