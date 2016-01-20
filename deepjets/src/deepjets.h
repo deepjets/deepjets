@@ -178,11 +178,11 @@ Result* get_jets(Event& event,
   // Check subjet_dr_min condition
   if (subjet_dr_min > 0) {
     if (sortedsubjets.size() >= 2) {
-        if (sortedsubjets[0].delta_R(sortedsubjets[1]) < subjet_dr_min) {
-            delete clustSeq;
-            delete TclustSeq;
-            return NULL;
-        }
+      if (sortedsubjets[0].delta_R(sortedsubjets[1]) < subjet_dr_min) {
+          delete clustSeq;
+          delete TclustSeq;
+          return NULL;
+      }
     }
   }
 
