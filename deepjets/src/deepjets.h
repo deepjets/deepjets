@@ -1,5 +1,6 @@
 #include "Pythia8/Pythia.h"
 #include "Pythia8Plugins/FastJet3.h"
+#include "fastjet/contrib/Nsubjettiness.hh"
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmath>
@@ -21,6 +22,13 @@ struct Result {
   fastjet::ClusterSequence* jet_clusterseq;
   fastjet::ClusterSequence* subjet_clusterseq;
   double shrinkage;
+  double subjet_dr;
+  double tau_1;
+  double tau_2;
+  double tau_3;
+  double trimmed_tau_1;
+  double trimmed_tau_2;
+  double trimmed_tau_3;
 };
 
 bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
@@ -90,7 +98,8 @@ Result* get_jets(Event& event,
                  double subjet_pt_min_fraction,
                  double subjet_dr_min,
                  double trimmed_pt_min, double trimmed_pt_max,
-                 bool shrink, double shrink_mass) {
+                 bool shrink, double shrink_mass,
+                 bool compute_auxvars) {
   /*
    * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min, eta_max).
    * Find subjets by re-cluster jet using kt algorith (params subjet_size_fraction * jet_size, subjet_size_fraction).
@@ -186,13 +195,14 @@ Result* get_jets(Event& event,
   }
 
   // Check subjet_dr_min condition
-  if (subjet_dr_min > 0) {
-    if (sortedsubjets.size() >= 2) {
-      if (sortedsubjets[0].delta_R(sortedsubjets[1]) < subjet_dr_min) {
-        delete clustSeq;
-        delete TclustSeq;
-        return NULL;
-      }
+  double subjet_dr = -1;
+  if (sortedsubjets.size() >= 2) {
+    subjet_dr = sortedsubjets[0].delta_R(sortedsubjets[1]);
+    if (subjet_dr_min > 0 && subjet_dr < subjet_dr_min) {
+      // Skip event
+      delete clustSeq;
+      delete TclustSeq;
+      return NULL;
     }
   }
 
@@ -203,5 +213,22 @@ Result* get_jets(Event& event,
   result->jet_clusterseq = clustSeq;
   result->subjet_clusterseq = TclustSeq;
   result->shrinkage = shrinkage;
+  result->subjet_dr = subjet_dr;
+
+  if (compute_auxvars) {
+    // Compute n-subjetiness ratio tau_21
+    fastjet::contrib::NormalizedCutoffMeasure normalized_measure(1, jet_size, 1000000);
+    fastjet::contrib::WTA_KT_Axes wta_kt_axes;
+    fastjet::contrib::Nsubjettiness tau1(1, wta_kt_axes, normalized_measure);
+    fastjet::contrib::Nsubjettiness tau2(2, wta_kt_axes, normalized_measure);
+    fastjet::contrib::Nsubjettiness tau3(3, wta_kt_axes, normalized_measure);
+
+    result->tau_1 = tau1.result(jet);
+    result->tau_2 = tau2.result(jet);
+    result->tau_3 = tau3.result(jet);
+    result->trimmed_tau_1 = tau1.result(trimmed_jet);
+    result->trimmed_tau_2 = tau2.result(trimmed_jet);
+    result->trimmed_tau_3 = tau3.result(trimmed_jet);
+  }
   return result;
 }

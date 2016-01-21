@@ -11,7 +11,8 @@ def generate(config, nevents,
              trimmed_pt_min=10., trimmed_pt_max=-1.,
              shrink=False, shrink_mass=-1,
              cut_on_pdgid=0, pdgid_pt_min=-1, pdgid_pt_max=-1,
-             params_dict=None):
+             params_dict=None,
+             compute_auxvars=False):
     xmldoc = os.path.join(os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
                           'share/Pythia8/xmldoc')
     for event in _generate(config, xmldoc, nevents,
@@ -29,5 +30,6 @@ def generate(config, nevents,
                            cut_on_pdgid=cut_on_pdgid,
                            pdgid_pt_min=pdgid_pt_min,
                            pdgid_pt_max=pdgid_pt_max,
-                           params_dict=params_dict):
+                           params_dict=params_dict,
+                           compute_auxvars=compute_auxvars):
         yield event

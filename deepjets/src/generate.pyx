@@ -16,7 +16,8 @@ def generate_pythia(string config, string xmldoc,
                     float trimmed_pt_min=10., float trimmed_pt_max=-1., 
                     bool shrink=False, float shrink_mass=-1.,
                     int cut_on_pdgid=0, float pdgid_pt_min=-1, float pdgid_pt_max=-1,
-                    params_dict=None):
+                    params_dict=None,
+                    bool compute_auxvars=False):
     """
     Generate Pythia events and yield jet and constituent arrays
     """
@@ -71,7 +72,8 @@ def generate_pythia(string config, string xmldoc,
                               subjet_pt_min_fraction,
                               subjet_dr_min,
                               trimmed_pt_min, trimmed_pt_max,
-                              shrink, shrink_mass)
+                              shrink, shrink_mass,
+                              compute_auxvars)
 
             if result == NULL:
                 # didn't find any jets passing cuts in this event
@@ -94,7 +96,19 @@ def generate_pythia(string config, string xmldoc,
                              <DTYPE_t*> jet_constit_arr.data,
                              <DTYPE_t*> subjet_constit_arr.data)
             
-            yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
+            if compute_auxvars:
+                auxdict = {
+                    'subjet_dr': result.subjet_dr,
+                    'tau_1': result.tau_1,
+                    'tau_2': result.tau_2,
+                    'tau_3': result.tau_3,
+                    'trimmed_tau_1': result.trimmed_tau_1,
+                    'trimmed_tau_2': result.trimmed_tau_2,
+                    'trimmed_tau_3': result.trimmed_tau_3,
+                    }
+                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage, auxdict
+            else:
+                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
 
             del result
             ievent += 1

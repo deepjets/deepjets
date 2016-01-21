@@ -10,12 +10,17 @@ cd $PREFIX/src
 
 if [ ! -d fastjet-3.1.3 ]; then
     wget http://fastjet.fr/repo/fastjet-3.1.3.tar.gz
-    tar xvfz fastjet-3.1.3.tar.gz
+    tar xfz fastjet-3.1.3.tar.gz
+fi
+
+if [ ! -d fjcontrib-1.021 ]; then
+    wget http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
+    tar xfz fjcontrib-1.021.tar.gz
 fi
 
 if [ ! -d pythia8212 ]; then
     wget http://home.thep.lu.se/~torbjorn/pythia8/pythia8212.tgz
-    tar xvfz pythia8212.tgz
+    tar xfz pythia8212.tgz
 fi
 
 cd fastjet-3.1.3
@@ -23,6 +28,14 @@ make clean
 ./configure --prefix=$PREFIX --enable-cgal
 make -j2
 make install
+cd ..
+
+cd fjcontrib-1.021
+make clean
+./configure --prefix=$PREFIX --fastjet-config=$PREFIX/bin/fastjet-config
+make -j2
+make install
+make fragile-shared-install
 cd ..
 
 cd pythia8212
