@@ -26,9 +26,6 @@ struct Result {
   double tau_1;
   double tau_2;
   double tau_3;
-  double trimmed_tau_1;
-  double trimmed_tau_2;
-  double trimmed_tau_3;
 };
 
 bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
@@ -226,9 +223,6 @@ Result* get_jets(Event& event,
     result->tau_1 = tau1.result(jet);
     result->tau_2 = tau2.result(jet);
     result->tau_3 = tau3.result(jet);
-    result->trimmed_tau_1 = tau1.result(trimmed_jet);
-    result->trimmed_tau_2 = tau2.result(trimmed_jet);
-    result->trimmed_tau_3 = tau3.result(trimmed_jet);
   }
   return result;
 }

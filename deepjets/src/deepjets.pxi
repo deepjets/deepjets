@@ -9,9 +9,6 @@ cdef extern from "deepjets.h":
         double tau_1
         double tau_2
         double tau_3
-        double trimmed_tau_1
-        double trimmed_tau_2
-        double trimmed_tau_3
 
     bool keep_event(Event&, int, double, double)
     void result_to_arrays(Result&, double*, double*, double*, double*)

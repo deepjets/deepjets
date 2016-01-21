@@ -102,9 +102,6 @@ def generate_pythia(string config, string xmldoc,
                     'tau_1': result.tau_1,
                     'tau_2': result.tau_2,
                     'tau_3': result.tau_3,
-                    'trimmed_tau_1': result.trimmed_tau_1,
-                    'trimmed_tau_2': result.trimmed_tau_2,
-                    'trimmed_tau_3': result.trimmed_tau_3,
                     }
                 yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage, auxdict
             else:
