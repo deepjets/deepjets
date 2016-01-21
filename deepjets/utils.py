@@ -1,15 +1,36 @@
+import h5py
 import math
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot_jet_image(ax, pixels, vmin=1e-9, vmax=1e-2):
+def load_images(image_h5_file, n_images=-1, shuffle=False):
+    """Loads images from h5 file.
+    
+    Optionally choose number of images to load and whether to shuffle on loading.
+    TODO: add support for additional fields.
+    """
+    with h5py.File(image_h5_file, 'r') as h5file:
+        images = h5file['images']['image']
+    if shuffle:
+        np.random.shuffle(images)
+    if n_images < 0:
+        n_images = len(images)
+    elif n_images > len(images):
+        print 'Cannot load {0} images from {1}, only {2} images present.'.format(
+            n_images, image_h5_file, len(images))
+        n_images = len(images)
+    images = images[:n_images]
+    return images
+    
+
+def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     """Displays jet image."""
-    width, height = pixels.T.shape
+    width, height = image.T.shape
     dw, dh = 1./width, 1./height
-    p = ax.imshow(pixels.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh),
+    p = ax.imshow(image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh),
                   origin='low',
                   interpolation='nearest',
                   norm=LogNorm(vmin=vmin, vmax=vmax),
@@ -47,6 +68,7 @@ def pT(E, px, py, pz):
 
 
 dphi = lambda phi1, phi2 : abs(math.fmod((math.fmod(phi1, 2*math.pi) - math.fmod(phi2, 2*math.pi)) + 3*math.pi, 2*math.pi) - math.pi)
+
 
 def dR(jet1, jet2):
     return ((jet1['eta'] - jet2['eta'])**2 + dphi(jet1['phi'], jet2['phi'])**2)**0.5

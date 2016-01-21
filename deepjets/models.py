@@ -1,9 +1,9 @@
-from keras.models import Sequential
 from keras.layers.core import Dense, MaxoutDense, Dropout, Activation
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 # https://groups.google.com/forum/#!topic/keras-users/8Ncd0dpuPNE
 # BatchNormalization is preferred over LRN
 from keras.layers.normalization import BatchNormalization
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.models import Sequential
 from keras.regularizers import l2
 
 
@@ -13,10 +13,10 @@ def draw_model(model, name):
     open('model.svg', 'w').write(to_graph(model).create(prog='dot', format='svg'))
 
 
-def save_model(model, name):
+def save_model(model, name, overwrite=True):
     json_string = model.to_json()
     open('model_{0}_arch.json'.format(name), 'w').write(json_string)
-    model.save_weights('model_{0}_weights.h5'.format(name))
+    model.save_weights('model_{0}_weights.h5'.format(name), overwrite)
 
 
 def load_model(name):
@@ -28,7 +28,7 @@ def load_model(name):
 def get_maxout(size):
     # MaxOut network
     model = Sequential()
-    model.add(MaxoutDense(256, input_shape=(size**2,), nb_feature=5,
+    model.add(MaxoutDense(256, input_shape=(size,), nb_feature=5,
                           init='he_uniform'))
     model.add(MaxoutDense(128, nb_feature=5))
     model.add(Dense(64))
