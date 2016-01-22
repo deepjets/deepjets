@@ -1,30 +1,30 @@
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
-from .models import load_model, save_model
+from .models import save_model
 from .utils import load_images
 from keras.optimizers import Adam
 from sklearn import cross_validation
-from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
 
 
-def prepare_datasets(sig_h5_file, bkd_h5_file, out_file_name='train_test',
+def prepare_datasets(sig_h5_file, bkd_h5_file, aux_vars=[], out_file_name='train_test',
                      n_sig=-1, n_bkd=-1, n_folds=2, val_frac=0.1,
                      shuffle=False, shuffle_seed=1):
     """Combine signal, background images; split into k-folded training, validation, test sets.
     
     Returns list of filenames for each k-fold.
-    TODO: add support for additional fields.
+    TODO: test support for additional fields.
     """
     # Load images
-    sig_images = load_images(sig_h5_file, n_sig, shuffle)
-    bkd_images = load_images(bkd_h5_file, n_bkd, shuffle)
+    sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, aux_vars, shuffle)
+    bkd_images, bkd_aux_data = load_images(bkd_h5_file, n_bkd, aux_vars, shuffle)
     n_sig = len(sig_images)
     n_bkd = len(bkd_images)
     n_images = n_sig + n_bkd
     images = np.concatenate((sig_images, bkd_images))
     images = images.reshape(-1, images.shape[1] * images.shape[2])
+    aux_data = {var : np.concatenate((sig_aux_data[var], bkd_aux_data[var])) for var in aux_vars}
     # True classes
     classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
                               np.repeat([[0, 1]], n_bkd, axis=0)])
@@ -38,12 +38,18 @@ def prepare_datasets(sig_h5_file, bkd_h5_file, out_file_name='train_test',
         np.random.shuffle(train)
         with h5py.File(out_file, 'w') as h5file:
             n_val = int(val_frac * len(train))
-            dset_X_train = h5file.create_dataset('X_train', data=images[train][:n_val])
-            dset_Y_train = h5file.create_dataset('Y_train', data=classes[train][:n_val])
-            dset_X_val = h5file.create_dataset('X_val', data=images[train][n_val:])
-            dset_Y_val = h5file.create_dataset('Y_val', data=classes[train][n_val:])
-            dset_X_test = h5file.create_dataset('X_test', data=images[test])
-            dset_Y_test = h5file.create_dataset('Y_test', data=classes[test])
+            h5file.create_dataset('X_train', data=images[train][:n_val])
+            h5file.create_dataset('Y_train', data=classes[train][:n_val])
+            for var in aux_vars:
+                h5file.create_dataset(var + '_train', data=aux_data[var][train][:n_val])
+            h5file.create_dataset('X_val', data=images[train][n_val:])
+            h5file.create_dataset('Y_val', data=classes[train][n_val:])
+            for var in aux_vars:
+                h5file.create_dataset(var + '_val', data=aux_data[var][train][n_val:])
+            h5file.create_dataset('X_test', data=images[test])
+            h5file.create_dataset('Y_test', data=classes[test])
+            for var in aux_vars:
+                h5file.create_dataset(var + '_test', data=aux_data[var][test])
         files.append(out_file)
         i += 1
     return files

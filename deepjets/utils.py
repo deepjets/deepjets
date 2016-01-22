@@ -6,14 +6,15 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def load_images(image_h5_file, n_images=-1, shuffle=False):
+def load_images(image_h5_file, n_images=-1, aux_vars=[], shuffle=False):
     """Loads images from h5 file.
     
     Optionally choose number of images to load and whether to shuffle on loading.
-    TODO: add support for additional fields.
+    TODO: test support for additional fields.
     """
     with h5py.File(image_h5_file, 'r') as h5file:
         images = h5file['images']['image']
+        aux_data = {var : h5file['aux_vars'][var] for var in aux_vars}
     if shuffle:
         np.random.shuffle(images)
     if n_images < 0:
@@ -23,7 +24,7 @@ def load_images(image_h5_file, n_images=-1, shuffle=False):
             n_images, image_h5_file, len(images))
         n_images = len(images)
     images = images[:n_images]
-    return images
+    return (images, aux_data)
     
 
 def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):

@@ -3,7 +3,7 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2
 # https://groups.google.com/forum/#!topic/keras-users/8Ncd0dpuPNE
 # BatchNormalization is preferred over LRN
 from keras.layers.normalization import BatchNormalization
-from keras.models import Sequential
+from keras.models import Sequential, model_from_json
 from keras.regularizers import l2
 
 
@@ -15,13 +15,13 @@ def draw_model(model, name):
 
 def save_model(model, name, overwrite=True):
     json_string = model.to_json()
-    open('model_{0}_arch.json'.format(name), 'w').write(json_string)
-    model.save_weights('model_{0}_weights.h5'.format(name), overwrite)
+    open('{0}_model_arch.json'.format(name), 'w').write(json_string)
+    model.save_weights('{0}_model_weights.h5'.format(name), overwrite)
 
 
 def load_model(name):
-    model = model_from_json(open('model_{0}_arch.json'.format(name)).read())
-    model.load_weights('model_{0}_weights.h5'.format(name))
+    model = model_from_json(open('{0}_model_arch.json'.format(name)).read())
+    model.load_weights('{0}_model_weights.h5'.format(name))
     return model
 
 
