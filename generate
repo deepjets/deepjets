@@ -51,6 +51,9 @@ dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit
 dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
 dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=DTYPE)
 dset_dr_subjets = f.create_dataset('dR_subjets', (args.events,), dtype=DTYPE)
+dset_tau_1 = f.create_dataset('tau_1', (args.events,), dtype=DTYPE)
+dset_tau_2 = f.create_dataset('tau_2', (args.events,), dtype=DTYPE)
+dset_tau_3 = f.create_dataset('tau_3', (args.events,), dtype=DTYPE)
 
 # config dsets
 dset_jet_size = f.create_dataset('jet_size', (1,), dtype=DTYPE)
@@ -64,14 +67,17 @@ for event in generate(args.config, args.events,
                       random_seed=args.seed,
                       jet_size=args.jet_size,
                       subjet_size_fraction=args.subjet_size_fraction,
-                      trimmed_pt_min=args.trimmed_pt_min, trimmed_pt_max=args.trimmed_pt_max,
+                      trimmed_pt_min=args.trimmed_pt_min,
+                      trimmed_pt_max=args.trimmed_pt_max,
                       shrink=args.shrink,
                       shrink_mass=args.shrink_mass,
                       cut_on_pdgid=args.cut_on_pdgid,
-                      pdgid_pt_min=args.pdgid_pt_min, pdgid_pt_max=args.pdgid_pt_max,
-                      params_dict=args.params):
+                      pdgid_pt_min=args.pdgid_pt_min,
+                      pdgid_pt_max=args.pdgid_pt_max,
+                      params_dict=args.params,
+                      compute_auxvars=True):
 
-    jets, subjets, constit, trimmed_constit, shrinkage = event
+    jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
     
     dset_jet[i] = jets[0]
     dset_trimmed_jet[i] = jets[1]
@@ -79,11 +85,10 @@ for event in generate(args.config, args.events,
     dset_constit[i] = constit
     dset_trimmed_constit[i] = trimmed_constit
     dset_shrinkage[i] = shrinkage
-
-    dR_subjets = -1
-    if len(subjets) >= 2:
-        dR_subjets = dR(subjets[0], subjets[1])
-    dset_dr_subjets[i] = dR_subjets
+    dset_dr_subjets[i] = auxvars['subjet_dr']
+    dset_tau_1[i] = auxvars['tau_1']
+    dset_tau_2[i] = auxvars['tau_2']
+    dset_tau_3[i] = auxvars['tau_3']
         
     i += 1
 
