@@ -6,27 +6,16 @@ def plot(input):
     import numpy as np
     from deepjets import generate
     from deepjets.preprocessing import preprocess
-    from deepjets.utils import plot_jet_image, jet_mass
     from matplotlib import pyplot as plt
     import h5py
     
     print("plotting {0} ...".format(input))
 
-    h5file = h5py.File(input, 'r')
-    dset_images = h5file['images']
-    h5file_events = h5py.File(input.replace('_images', ''), 'r')
+    h5file_events = h5py.File(input, 'r')
     dset_jet = h5file_events['jet']
     dset_trimmed_jet = h5file_events['trimmed_jet']
 
     output_prefix = os.path.splitext(input)[0]
-
-    # plot jet images
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.add_subplot(111)
-    avg_image = dset_images[:].sum(axis=0) / len(dset_images)
-    plot_jet_image(ax, avg_image, vmax=1e-2)
-    fig.tight_layout()
-    fig.savefig(output_prefix + '.png')
 
     fig = plt.figure(figsize=(5, 5))
     ax  = fig.add_subplot(111)
@@ -55,6 +44,7 @@ def plot(input):
             histtype='stepfilled', facecolor='none', edgecolor='blue')
     fig.tight_layout()
     plt.savefig(output_prefix + '_jet_trimmed_pt.png')
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
