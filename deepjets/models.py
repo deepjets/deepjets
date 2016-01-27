@@ -4,28 +4,29 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2
 # BatchNormalization is preferred over LRN
 from keras.layers.normalization import BatchNormalization
 from keras.models import Sequential, model_from_json
+from keras.optimizers import Adam
 from keras.regularizers import l2
 
 
-def draw_model(model, name):
+def draw_model(model, model_name):
     # Plot the network (requires pydot and graphviz)
     from keras.utils.visualize_util import to_graph
     open('model.svg', 'w').write(to_graph(model).create(prog='dot', format='svg'))
 
 
-def save_model(model, name, overwrite=True):
+def save_model(model, model_name, overwrite=True):
     json_string = model.to_json()
-    open('{0}_model_arch.json'.format(name), 'w').write(json_string)
-    model.save_weights('{0}_model_weights.h5'.format(name), overwrite)
+    open('{0}_arch.json'.format(model_name), 'w').write(json_string)
+    model.save_weights('{0}_weights.h5'.format(model_name), overwrite)
 
 
-def load_model(name):
-    model = model_from_json(open('{0}_model_arch.json'.format(name)).read())
-    model.load_weights('{0}_model_weights.h5'.format(name))
+def load_model(model_name):
+    model = model_from_json(open('{0}_arch.json'.format(model_name)).read())
+    model.load_weights('{0}_weights.h5'.format(model_name))
     return model
 
 
-def get_maxout(size):
+def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam()):
     # MaxOut network
     model = Sequential()
     model.add(MaxoutDense(256, input_shape=(size,), nb_feature=5,
@@ -37,6 +38,7 @@ def get_maxout(size):
     model.add(Activation('relu'))
     model.add(Dense(2))
     model.add(Activation('sigmoid'))
+    model.compile(loss=loss, optimizer=optimizer)
     return model
 
 

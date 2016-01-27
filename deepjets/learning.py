@@ -1,19 +1,19 @@
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
-from .models import save_model
+import sys
+from .models import load_model, save_model
 from .utils import load_images
-from keras.optimizers import Adam
 from sklearn import cross_validation
 from sklearn.metrics import auc, roc_curve
 
 
-def prepare_datasets(sig_h5_file, bkd_h5_file, aux_vars=[], out_file_name='train_test',
-                     n_sig=-1, n_bkd=-1, n_folds=2, val_frac=0.1,
+def prepare_datasets(sig_h5_file, bkd_h5_file, dataset_name='dataset',
+                     n_sig=-1, n_bkd=-1, test_frac=0.1, val_frac=0.1, n_folds=2, aux_vars=[],
                      shuffle=False, shuffle_seed=1):
     """Combine signal, background images; split into k-folded training, validation, test sets.
     
-    Returns list of filenames for each k-fold.
+    Returns dict with 'test' filename and list of 'train' filenames for each k-fold.
     TODO: test support for additional fields.
     """
     # Load images
@@ -28,75 +28,144 @@ def prepare_datasets(sig_h5_file, bkd_h5_file, aux_vars=[], out_file_name='train
     # True classes
     classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
                               np.repeat([[0, 1]], n_bkd, axis=0)])
-    kf = cross_validation.KFold(n_images, n_folds,
-                                shuffle=True, random_state=shuffle_seed)
-    i = 0
-    files = []
-    for train, test in kf:
-        out_file = out_file_name + '_{0}.h5'.format(i)
+    
+    # Top level train-test split
+    rs = cross_validation.ShuffleSplit(n_images, n_iter=1, test_size=test_frac,
+                                       random_state=shuffle_seed)
+    for trn, tst in rs:
+        train, test = trn, tst
+    out_file = dataset_name + '_test.h5'
+    with h5py.File(out_file, 'w') as h5file:
+        h5file.create_dataset('X_test', data=images[test])
+        h5file.create_dataset('Y_test', data=classes[test])
+        for var in aux_vars:
+            h5file.create_dataset(var + '_test', data=aux_data[var][test])
+    file_dict = {'test' : out_file}
+    
+    # K-fold train-val-test splits
+    if n_folds > 1:
+        kf = cross_validation.KFold(len(train), n_folds,
+                                    shuffle=True, random_state=shuffle_seed)
+        i = 0
+        kf_files = []
+        for ktrain, ktest in kf:
+            out_file = dataset_name + '_train_kf{0}.h5'.format(i)
+            # Shuffle to make sure validation set contains both classes
+            np.random.shuffle(ktrain)
+            with h5py.File(out_file, 'w') as h5file:
+                h5file.create_dataset('X_test', data=images[train][ktest])
+                h5file.create_dataset('Y_test', data=classes[train][ktest])
+                for var in aux_vars:
+                    h5file.create_dataset(var + '_test', data=aux_data[var][train][ktest])
+                n_val = int(val_frac * len(ktrain))
+                h5file.create_dataset('X_val', data=images[train][ktrain][:n_val])
+                h5file.create_dataset('Y_val', data=classes[train][ktrain][:n_val])
+                for var in aux_vars:
+                    h5file.create_dataset(var + '_val', data=aux_data[var][train][ktrain][:n_val])
+                h5file.create_dataset('X_train', data=images[train][ktrain][n_val:])
+                h5file.create_dataset('Y_train', data=classes[train][ktrain][n_val:])
+                for var in aux_vars:
+                    h5file.create_dataset(var + '_train', data=aux_data[var][train][ktrain][n_val:])
+            kf_files.append(out_file)
+            i += 1
+        file_dict['train'] = kf_files
+    else:
+        out_file = dataset_name + '_train.h5'
         # Shuffle to make sure validation set contains both classes
         np.random.shuffle(train)
         with h5py.File(out_file, 'w') as h5file:
             n_val = int(val_frac * len(train))
-            h5file.create_dataset('X_train', data=images[train][:n_val])
-            h5file.create_dataset('Y_train', data=classes[train][:n_val])
+            h5file.create_dataset('X_val', data=images[train][:n_val])
+            h5file.create_dataset('Y_val', data=classes[train][:n_val])
             for var in aux_vars:
-                h5file.create_dataset(var + '_train', data=aux_data[var][train][:n_val])
-            h5file.create_dataset('X_val', data=images[train][n_val:])
-            h5file.create_dataset('Y_val', data=classes[train][n_val:])
+                h5file.create_dataset(var + '_val', data=aux_data[var][train][:n_val])
+            h5file.create_dataset('X_train', data=images[train][n_val:])
+            h5file.create_dataset('Y_train', data=classes[train][n_val:])
             for var in aux_vars:
-                h5file.create_dataset(var + '_val', data=aux_data[var][train][n_val:])
-            h5file.create_dataset('X_test', data=images[test])
-            h5file.create_dataset('Y_test', data=classes[test])
-            for var in aux_vars:
-                h5file.create_dataset(var + '_test', data=aux_data[var][test])
-        files.append(out_file)
-        i += 1
-    return files
+                h5file.create_dataset(var + '_train', data=aux_data[var][train][n_val:])
+        file_dict['train'] = out_file
+    return file_dict
 
 
-def train_model(model, train_test_file, batch_size,
-                epochs=100, patience=10, loss='categorical_crossentropy', optimizer=Adam(),
-                name='unnamed'):
-    """Train model using train, val datasets in train_test_file. Save best AUC using name.
+def train_model(model, train_h5_file, model_name='model',
+                batch_size=32, epochs=100, patience=10, verbose=2, read_into_RAM=False):
+    """Train model using datasets in train_h5_file. Save model with best AUC using name.
+    
+    Passes datasets to Keras directly from train_h5_file each epoch unless read_into_RAM=True.
     """
-    model.compile(loss=loss, optimizer=optimizer)
+    save_model(model, model_name)
+    epoch = 0
     best_auc = 0.
     stop_cdn = 0
-    for epoch in range(epochs):
-        print "Epoch {0}/{1}...".format(epoch + 1, epochs)
-        with h5py.File(train_test_file, 'r') as h5file:
-            # Fitting
-            model.fit(h5file['X_train'], h5file['Y_train'], batch_size=batch_size, verbose=0,
-                      nb_epoch=1, shuffle='batch')
-            # Validation
-            Y_val = h5file['Y_val'][:]
+    stuck_cdn = 0
+    h5file = h5py.File(train_h5_file, 'r')
+    if verbose >= 1:
+        print ("Training on {0} samples, validating on {1} samples\n"
+               "Datasets from {2}").format(
+            len(h5file['X_train']), len(h5file['X_val']), train_h5_file)
+        sys.stdout.flush()
+    if read_into_RAM:
+        X_train = h5file['X_train'][:]
+        Y_train = h5file['Y_train'][:]
+        X_val = h5file['X_val'][:]
+    Y_val = h5file['Y_val'][:]
+    while epoch < epochs:
+        # Fitting and validation
+        if read_into_RAM:
+            model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0)
+            Y_prob = model.predict_proba(X_val, batch_size=batch_size, verbose=0)
+        else:
+            model.fit(h5file['X_train'], h5file['Y_train'], batch_size=batch_size, nb_epoch=1,
+                      shuffle='batch', verbose=0)
             Y_prob = model.predict_proba(h5file['X_val'], batch_size=batch_size, verbose=0)
-            Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
+        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         # Calculate AUC for custom early stopping
         fpr, tpr, _ = roc_curve(Y_val[:, 0], Y_prob[:, 0])
         res = 1. / len(Y_val)
         inv_curve = np.array(
             [[tp, 1. / max(fp, res)]
             for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
-        current_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
+        try:
+            current_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
+        except IndexError:
+            current_auc = -1
+            stuck_cdn += 1
         if current_auc > best_auc:
             best_auc = current_auc
             stop_cdn = 0
-            save_model(model, name)
+            save_model(model, model_name)
         else:
             stop_cdn += 1
-        print "Epochs w/o increase = {0}, AUC = {1}".format(stop_cdn, current_auc)
+        if verbose >= 2:
+            print "Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}\r".format(
+                epoch + 1, epochs, stop_cdn, current_auc)
+            sys.stdout.flush()
         if stop_cdn >= patience:
-            print "Patience tolerance reached"
+            if verbose >= 1:
+                print "Patience tolerance reached"
             break
-    print "Training complete"
+        # Reset model if AUC calculation fails three times
+        if stuck_cdn > 2:
+            if verbose >= 1:
+                print "Training stuck, rolling back to best AUC"
+            model = load_model(model_name)
+            stuck_cdn = 0
+            epoch = 0
+            continue
+        epoch += 1
+    h5file.close()
+    if verbose >= 1:
+        print "Training complete"
 
 
-def test_model(model, train_test_file, batch_size):
-    """Test model using test dataset in train_test_file. Show ROC curve.
+def test_model(model, test_h5_file, batch_size=32, verbose=2):
+    """Test model using dataset in train_test_file. Display ROC curve.
     """
-    with h5py.File(train_test_file, 'r') as h5file:
+    with h5py.File(test_h5_file, 'r') as h5file:
+        if verbose >= 1:
+            print ("Testing on {0} samples\n"
+                   "Dataset from {1}").format(
+                len(h5file['X_test']), test_h5_file)
         # Score from model loss function
         objective_score = model.evaluate(h5file['X_test'], h5file['Y_test'],
                                          batch_size=batch_size, verbose=0)
@@ -113,49 +182,40 @@ def test_model(model, train_test_file, batch_size):
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     # Number of correct classifications
     accuracy = sum([1 for i in range(len(Y_test)) if Y_test[i, Y_pred[i]] == 1.0])
+    
+    if verbose >= 2:
+        print "Score    = {0}".format(objective_score)
+        print "AUC      = {0}".format(final_auc)
+        print "Accuracy = {0}/{1} = {2}".format(
+            accuracy, len(Y_test), float(accuracy) / len(Y_test) )
+        plt.figure()
+        plt.plot(inv_curve[:, 0], inv_curve[:, 1])
+        plt.xlabel("signal efficiency")
+        plt.ylabel("(backgroud efficiency)$^{-1}$")
+        plt.title("Receiver operating characteristic")
+        plt.show()
+    
+    return {'score' : objective_score, 'AUC' : final_auc,
+            'accuracy' : float(accuracy) / len(Y_test), 'ROC curve' : inv_curve}
 
-    print "Score    = {0}".format(objective_score)
-    print "AUC      = {0}".format(final_auc)
-    print "Accuracy = {0}/{1} = {2}".format(
-        accuracy, len(Y_test), float(accuracy) / len(Y_test) )
-    plt.figure()
-    plt.plot(inv_curve[:, 0], inv_curve[:, 1])
-    plt.xlabel("signal efficiency")
-    plt.ylabel("(backgroud efficiency)$^{-1}$")
-    plt.title("Receiver operating characteristic")
-    plt.show()
 
-
-def train_old(model,
-              signal_files, background_files,
-              epochs=100, patience=10, batch_size=32, flatten=False):
+def cross_validate_model(model, train_h5_files, model_name='model',
+                         batch_size=32, epochs=100, patience=10, verbose=2, read_into_RAM=False):
+    """Cross validates model using k-folded datasets in train_h5_files. Returns lists of scores.
     """
-    TODO: update with James' new code
-    """
-    X = []
-    y = []
-    for fname in signal_files:
-        with h5py.File(fname, 'r') as infile:
-            images = infile['images'][:10000]
-            if flatten:
-                images = images.reshape(-1, images.shape[1] * images.shape[2])
-            X.append(images)
-            y.append(np.repeat([[1, 0]], images.shape[0], axis=0))
-    for fname in background_files:
-        with h5py.File(fname, 'r') as infile:
-            images = infile['images'][:10000]
-            if flatten:
-                images = images.reshape(-1, images.shape[1] * images.shape[2])
-            X.append(images)
-            y.append(np.repeat([[0, 1]], images.shape[0], axis=0))
-    X = np.concatenate(X)
-    y = np.concatenate(y)
-
-    X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.2)
-
-    stopper = EarlyStopping(monitor='val_loss', patience=patience, verbose=1)
-    hist = model.fit(X_train, y_train, nb_epoch=epochs, batch_size=batch_size,
-                     validation_split=1./8., callbacks=[stopper], verbose=2)
-    # TODO: plot hist.history
-    print model.evaluate(X_test, y_test, batch_size=batch_size)
-
+    n_folds = len(train_h5_files)
+    scores = np.zeros(n_folds)
+    AUCs = np.zeros(n_folds)
+    accuracies = np.zeros(n_folds)
+    save_model(model, model_name + '_base')
+    for i in xrange(n_folds):
+        model = load_model(model_name + '_base')
+        model_name_i = model_name +'_kf{0}'.format(i)
+        train_model(model, train_h5_files[i], model_name=model_name_i,
+                    batch_size=batch_size, epochs=epochs, patience=patience,
+                    verbose=verbose, read_into_RAM=read_into_RAM)
+        test_results = test_model(model, train_h5_files[i], batch_size=batch_size, verbose=verbose)
+        scores[i] = test_results['score']
+        AUCs[i] = test_results['AUC']
+        accuracies[i] = test_results['accuracy']
+    return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
