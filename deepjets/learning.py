@@ -1,3 +1,4 @@
+from __future__ import print_function
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
@@ -100,9 +101,9 @@ def train_model(model, train_h5_file, model_name='model',
     stuck_cdn = 0
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1:
-        print ("Training on {0} samples, validating on {1} samples\n"
-               "Datasets from {2}").format(
-            len(h5file['X_train']), len(h5file['X_val']), train_h5_file)
+        print(("Training on {0} samples, validating on {1} samples.\n"
+               "Datasets from {2}.").format(
+               len(h5file['X_train']), len(h5file['X_val']), train_h5_file))
         sys.stdout.flush()
     if read_into_RAM:
         X_train = h5file['X_train'][:]
@@ -137,17 +138,17 @@ def train_model(model, train_h5_file, model_name='model',
         else:
             stop_cdn += 1
         if verbose >= 2:
-            print "Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}\r".format(
-                epoch + 1, epochs, stop_cdn, current_auc)
+            print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
+                  epoch + 1, epochs, stop_cdn, current_auc))
             sys.stdout.flush()
         if stop_cdn >= patience:
             if verbose >= 1:
-                print "Patience tolerance reached"
+                print("Patience tolerance reached.")
             break
         # Reset model if AUC calculation fails three times
         if stuck_cdn > 2:
             if verbose >= 1:
-                print "Training stuck, rolling back to best AUC"
+                print("Training stuck, rolling back to best AUC.")
             model = load_model(model_name)
             stuck_cdn = 0
             epoch = 0
@@ -155,17 +156,16 @@ def train_model(model, train_h5_file, model_name='model',
         epoch += 1
     h5file.close()
     if verbose >= 1:
-        print "Training complete"
+        print("Training complete.\n")
 
 
-def test_model(model, test_h5_file, batch_size=32, verbose=2):
+def test_model(model, test_h5_file, batch_size=32, verbose=3):
     """Test model using dataset in train_test_file. Display ROC curve.
     """
     with h5py.File(test_h5_file, 'r') as h5file:
         if verbose >= 1:
-            print ("Testing on {0} samples\n"
-                   "Dataset from {1}").format(
-                len(h5file['X_test']), test_h5_file)
+            print(("Testing on {0} samples.\n"
+                   "Dataset from {1}.").format(len(h5file['X_test']), test_h5_file))
         # Score from model loss function
         objective_score = model.evaluate(h5file['X_test'], h5file['Y_test'],
                                          batch_size=batch_size, verbose=0)
@@ -183,11 +183,11 @@ def test_model(model, test_h5_file, batch_size=32, verbose=2):
     # Number of correct classifications
     accuracy = sum([1 for i in range(len(Y_test)) if Y_test[i, Y_pred[i]] == 1.0])
     
-    if verbose >= 2:
-        print "Score    = {0}".format(objective_score)
-        print "AUC      = {0}".format(final_auc)
-        print "Accuracy = {0}/{1} = {2}".format(
-            accuracy, len(Y_test), float(accuracy) / len(Y_test) )
+    if verbose >= 3:
+        print("Score    = {0}".format(objective_score))
+        print("AUC      = {0}".format(final_auc))
+        print("Accuracy = {0}/{1} = {2}\n".format(
+            accuracy, len(Y_test), float(accuracy) / len(Y_test) ))
         plt.figure()
         plt.plot(inv_curve[:, 0], inv_curve[:, 1])
         plt.xlabel("signal efficiency")
