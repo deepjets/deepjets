@@ -146,11 +146,13 @@ def train_model(model, train_h5_file, model_name='model',
         if stop_cdn >= patience:
             if verbose >= 1:
                 print("\nPatience tolerance reached.")
+                sys.stdout.flush()
             break
         # Reset model if AUC calculation fails three times
         if stuck_cdn > 2:
             if verbose >= 1:
                 print("Training stuck, rolling back to best AUC.")
+                sys.stdout.flush()
             model = load_model(model_name)
             stuck_cdn = 0
             epoch = 0
@@ -159,6 +161,7 @@ def train_model(model, train_h5_file, model_name='model',
     h5file.close()
     if verbose >= 1:
         print("Training complete. Best AUC = {0}\n".format(best_auc))
+        sys.stdout.flush()
     return model
 
 
@@ -169,6 +172,7 @@ def test_model(model, test_h5_file, batch_size=32, verbose=3):
         if verbose >= 1:
             print(("Testing on {0} samples.\n"
                    "Dataset from {1}.").format(len(h5file['X_test']), test_h5_file))
+            sys.stdout.flush()
         # Score from model loss function
         objective_score = model.evaluate(h5file['X_test'], h5file['Y_test'],
                                          batch_size=batch_size, verbose=0)
@@ -191,6 +195,7 @@ def test_model(model, test_h5_file, batch_size=32, verbose=3):
         print("AUC      = {0}".format(final_auc))
         print("Accuracy = {0}/{1} = {2}\n".format(
             accuracy, len(Y_test), float(accuracy) / len(Y_test) ))
+        sys.stdout.flush()
     else:
         print("\n")
     if verbose >= 3:
@@ -245,6 +250,7 @@ def cross_validate_model(model, train_h5_files, model_name='model',
             accuracies.append(result['accuracy'])
     return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
 
+
 def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs_grid,
                           train_h5_files, model_name='model',
                           batch_size=32, epochs=100, patience=10, verbose=2,
@@ -254,6 +260,9 @@ def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs
     results = []
     optimizer_kwargs_grid = ParameterGrid(optimizer_kwargs_grid)
     for optimizer_kwargs in optimizer_kwargs_grid:
+        if verbose >= 1:
+            print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
+            sys.stdout.flush()
         model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
         result = cross_validate_model(model, train_h5_files, model_name,
                                       batch_size, epochs, patience, verbose, read_into_RAM)
