@@ -26,7 +26,7 @@ def load_model(model_name):
     return model
 
 
-def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam()):
+def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam, optimizer_kwargs={}):
     # MaxOut network
     model = Sequential()
     model.add(MaxoutDense(256, input_shape=(size,), nb_feature=5,
@@ -38,6 +38,7 @@ def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam()):
     model.add(Activation('relu'))
     model.add(Dense(2))
     model.add(Activation('sigmoid'))
+    optimizer = optimizer(**optimizer_kwargs)
     model.compile(loss=loss, optimizer=optimizer)
     return model
 

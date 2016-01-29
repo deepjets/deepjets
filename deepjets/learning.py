@@ -5,7 +5,9 @@ import numpy as np
 import sys
 from .models import load_model, save_model
 from .utils import load_images
+from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
+from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
 
 
@@ -138,12 +140,12 @@ def train_model(model, train_h5_file, model_name='model',
         else:
             stop_cdn += 1
         if verbose >= 2:
-            print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
-                  epoch + 1, epochs, stop_cdn, current_auc))
+            print("\rEpoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
+                  epoch + 1, epochs, stop_cdn, current_auc) + 20 * ' ', end='')
             sys.stdout.flush()
         if stop_cdn >= patience:
             if verbose >= 1:
-                print("Patience tolerance reached.")
+                print("\nPatience tolerance reached.")
             break
         # Reset model if AUC calculation fails three times
         if stuck_cdn > 2:
@@ -156,7 +158,8 @@ def train_model(model, train_h5_file, model_name='model',
         epoch += 1
     h5file.close()
     if verbose >= 1:
-        print("Training complete.\n")
+        print("Training complete. Best AUC = {0}\n".format(best_auc))
+    return model
 
 
 def test_model(model, test_h5_file, batch_size=32, verbose=3):
@@ -182,40 +185,78 @@ def test_model(model, test_h5_file, batch_size=32, verbose=3):
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     # Number of correct classifications
     accuracy = sum([1 for i in range(len(Y_test)) if Y_test[i, Y_pred[i]] == 1.0])
-    
-    if verbose >= 3:
+    # Print results
+    if verbose >= 2:
         print("Score    = {0}".format(objective_score))
         print("AUC      = {0}".format(final_auc))
         print("Accuracy = {0}/{1} = {2}\n".format(
             accuracy, len(Y_test), float(accuracy) / len(Y_test) ))
+    else:
+        print("\n")
+    if verbose >= 3:
         plt.figure()
         plt.plot(inv_curve[:, 0], inv_curve[:, 1])
         plt.xlabel("signal efficiency")
         plt.ylabel("(backgroud efficiency)$^{-1}$")
         plt.title("Receiver operating characteristic")
         plt.show()
-    
     return {'score' : objective_score, 'AUC' : final_auc,
             'accuracy' : float(accuracy) / len(Y_test), 'ROC curve' : inv_curve}
 
 
+def train_test_star(args):
+    i, train_h5_file, model_name, batch_size, epochs, patience, verbose, read_into_RAM = args
+    model = load_model(model_name + '_base')
+    model_name_i = model_name +'_kf{0}'.format(i)
+    model = train_model(model, train_h5_file, model_name_i,
+                        batch_size, epochs, patience, verbose, read_into_RAM)
+    return test_model(model, train_h5_file, batch_size, verbose)
+
+
 def cross_validate_model(model, train_h5_files, model_name='model',
-                         batch_size=32, epochs=100, patience=10, verbose=2, read_into_RAM=False):
+                         batch_size=32, epochs=100, patience=10, verbose=2,
+                         read_into_RAM=False, max_jobs=1):
     """Cross validates model using k-folded datasets in train_h5_files. Returns lists of scores.
     """
+    if max_jobs != 1:
+        verbose = 1
+    if max_jobs < 1:
+        max_jobs = cpu_count()
+    max_jobs = min(max_jobs, cpu_count())
     n_folds = len(train_h5_files)
-    scores = np.zeros(n_folds)
-    AUCs = np.zeros(n_folds)
-    accuracies = np.zeros(n_folds)
-    save_model(model, model_name + '_base')
-    for i in xrange(n_folds):
-        model = load_model(model_name + '_base')
-        model_name_i = model_name +'_kf{0}'.format(i)
-        train_model(model, train_h5_files[i], model_name=model_name_i,
-                    batch_size=batch_size, epochs=epochs, patience=patience,
-                    verbose=verbose, read_into_RAM=read_into_RAM)
-        test_results = test_model(model, train_h5_files[i], batch_size=batch_size, verbose=verbose)
-        scores[i] = test_results['score']
-        AUCs[i] = test_results['AUC']
-        accuracies[i] = test_results['accuracy']
+    args = [(i, train_h5_files[i], model_name, batch_size, epochs, patience, verbose, read_into_RAM)
+            for i in xrange(n_folds)]
+    if max_jobs > 1:
+        pool = Pool(max_jobs)
+        results = pool.map(train_test_star, args)
+        pool.close()
+        pool.join()
+        scores = [r['score'] for r in results]
+        AUCs = [r['AUC'] for r in results]
+        accuracies = [r['accuracy'] for r in results]
+    else:
+        scores = []
+        AUCs = []
+        accuracies = []
+        for arg in args:
+            result = train_test_star(arg)
+            scores.append(result['score'])
+            AUCs.append(result['AUC'])
+            accuracies.append(result['accuracy'])
     return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
+
+def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs_grid,
+                          train_h5_files, model_name='model',
+                          batch_size=32, epochs=100, patience=10, verbose=2,
+                          read_into_RAM=False, max_jobs=1):
+    """Performs optimizer_kwargs_grid grid search. Cross validates at each point, returns lists of scores.
+    """
+    results = []
+    optimizer_kwargs_grid = ParameterGrid(optimizer_kwargs_grid)
+    for optimizer_kwargs in optimizer_kwargs_grid:
+        model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
+        result = cross_validate_model(model, train_h5_files, model_name,
+                                      batch_size, epochs, patience, verbose, read_into_RAM)
+        results.append({'optimizer_kwargs' : optimizer_kwargs,
+                        'results' : result})
+    return results        
