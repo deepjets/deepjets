@@ -11,6 +11,7 @@ def load_images(image_h5_file, n_images=-1, aux_vars=[], shuffle=False):
     
     Optionally choose number of images to load and whether to shuffle on loading.
     TODO: test support for additional fields.
+    TODO: add support for multiple classes
     """
     with h5py.File(image_h5_file, 'r') as h5file:
         images = h5file['images']['image']

@@ -18,6 +18,7 @@ def prepare_datasets(sig_h5_file, bkd_h5_file, dataset_name='dataset',
     
     Returns dict with 'test' filename and list of 'train' filenames for each k-fold.
     TODO: test support for additional fields.
+    TODO: add support for multiple classes
     """
     # Load images
     sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, aux_vars, shuffle)
@@ -209,13 +210,17 @@ def test_model(model, test_h5_file, batch_size=32, verbose=3):
             'accuracy' : float(accuracy) / len(Y_test), 'ROC curve' : inv_curve}
 
 
-def train_test_star(args):
-    i, train_h5_file, model_name, batch_size, epochs, patience, verbose, read_into_RAM = args
+def train_test_star(kwargs):
+    i = kwargs['i']
+    train_h5_file = kwargs['train_h5_file']
+    model_name = kwargs['model_name']
+    train_kwargs = kwargs['train_kwargs']
+    
     model = load_model(model_name + '_base')
     model_name_i = model_name +'_kf{0}'.format(i)
-    model = train_model(model, train_h5_file, model_name_i,
-                        batch_size, epochs, patience, verbose, read_into_RAM)
-    return test_model(model, train_h5_file, batch_size, verbose)
+    train_model(model, train_h5_file, model_name_i, **train_kwargs)
+    model = load_model(model_name_i)
+    return test_model(model, train_h5_file, train_kwargs['batch_size'], train_kwargs['verbose'])
 
 
 def cross_validate_model(model, train_h5_files, model_name='model',
@@ -229,11 +234,15 @@ def cross_validate_model(model, train_h5_files, model_name='model',
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
     n_folds = len(train_h5_files)
-    args = [(i, train_h5_files[i], model_name, batch_size, epochs, patience, verbose, read_into_RAM)
-            for i in xrange(n_folds)]
+    kf_kwargs = [{'i' : i, 'train_h5_file' : train_h5_files[i], 'model_name' : model_name,
+                  'train_kwargs' : {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
+                                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}}
+                 for i in xrange(n_folds)]
+    save_model(model, model_name + '_base')
+    
     if max_jobs > 1:
         pool = Pool(max_jobs)
-        results = pool.map(train_test_star, args)
+        results = pool.map(train_test_star, kf_kwargs)
         pool.close()
         pool.join()
         scores = [r['score'] for r in results]
@@ -243,29 +252,96 @@ def cross_validate_model(model, train_h5_files, model_name='model',
         scores = []
         AUCs = []
         accuracies = []
-        for arg in args:
-            result = train_test_star(arg)
+        for kwargs in kf_kwargs:
+            result = train_test_star(kwargs)
             scores.append(result['score'])
             AUCs.append(result['AUC'])
             accuracies.append(result['accuracy'])
     return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
 
 
+def cross_validate_star(kwargs):
+    """Cross validates model using k-folded datasets in train_h5_files. Returns lists of scores.
+    """
+    get_model = kwargs['get_model']
+    get_model_args = kwargs['get_model_args']
+    optimizer = kwargs['optimizer']
+    optimizer_kwargs = kwargs['optimizer_kwargs']
+    train_h5_files = kwargs['train_h5_files']
+    model_name = kwargs['model_name']
+    train_kwargs = kwargs['train_kwargs']
+    max_jobs = kwargs['max_jobs']
+    
+    model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
+    if train_kwargs['verbose'] >= 1:
+        print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
+        sys.stdout.flush()
+    return {'optimizer_params' : optimizer_kwargs,
+            'results' : cross_validate_model(model, train_h5_files, model_name, max_jobs=max_jobs, **train_kwargs)}
+    """
+    n_folds = len(train_h5_files)
+    kf_kwargs = [{'i' : i, 'train_h5_file' : train_h5_files[i], 'model_name' : model_name,
+                  'train_kwargs' : train_kwargs}
+                 for i in xrange(n_folds)]
+    model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
+    save_model(model, model_name + '_base')
+    
+    if train_kwargs['verbose'] >= 1:
+        print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
+        sys.stdout.flush()
+    if max_jobs > 1:
+        pool = Pool(max_jobs)
+        results = pool.map(train_test_star, kf_kwargs)
+        pool.close()
+        pool.join()
+        scores = [r['score'] for r in results]
+        AUCs = [r['AUC'] for r in results]
+        accuracies = [r['accuracy'] for r in results]
+    else:
+        scores = []
+        AUCs = []
+        accuracies = []
+        for kwargs in kf_kwargs:
+            result = train_test_star(kwargs)
+            scores.append(result['score'])
+            AUCs.append(result['AUC'])
+            accuracies.append(result['accuracy'])
+    return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
+    """
+
+
 def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs_grid,
                           train_h5_files, model_name='model',
                           batch_size=32, epochs=100, patience=10, verbose=2,
                           read_into_RAM=False, max_jobs=1):
-    """Performs optimizer_kwargs_grid grid search. Cross validates at each point, returns lists of scores.
+    """Performs grid search on optimizer kwargs. Cross validates at each point, returns lists of scores.
     """
-    results = []
+    if max_jobs != 1:
+        verbose = 1
+    if max_jobs < 1:
+        max_jobs = cpu_count()
+    max_jobs = min(max_jobs, cpu_count())
     optimizer_kwargs_grid = ParameterGrid(optimizer_kwargs_grid)
+    train_kwargs = {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
+                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}
+    cv_kwargs = []
+    i = 0
     for optimizer_kwargs in optimizer_kwargs_grid:
-        if verbose >= 1:
-            print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
-            sys.stdout.flush()
-        model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
-        result = cross_validate_model(model, train_h5_files, model_name,
-                                      batch_size, epochs, patience, verbose, read_into_RAM)
-        results.append({'optimizer_kwargs' : optimizer_kwargs,
-                        'results' : result})
-    return results        
+        cv_kwargs.append({'get_model' : get_model, 'get_model_args' : get_model_args,
+                          'optimizer' : optimizer, 'optimizer_kwargs' : optimizer_kwargs,
+                          'train_h5_files' : train_h5_files,
+                          'model_name' : model_name +'_gp{0}'.format(i),
+                          'train_kwargs' : train_kwargs, 'max_jobs' : max_jobs})
+        i += 1
+    
+    if max_jobs > 1:
+        pool = Pool(max_jobs)
+        results = pool.map(cross_validate_star, cv_kwargs)
+        pool.close()
+        pool.join()
+    else:
+        results = []
+        for kwargs in cv_kwargs:
+            result = cross_validate_star(kwargs)
+            results.append(result)
+    return results
