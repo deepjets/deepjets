@@ -5,6 +5,7 @@ import numpy as np
 import sys
 from .models import load_model, save_model
 from .utils import load_images
+from itertools import izip
 from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
@@ -166,7 +167,7 @@ def train_model(model, train_h5_file, model_name='model',
     return model
 
 
-def test_model(model, test_h5_file, batch_size=32, verbose=3):
+def test_model(model, test_h5_file, batch_size=32, verbose=2, show_ROC_curve=True):
     """Test model using dataset in train_test_file. Display ROC curve.
     """
     with h5py.File(test_h5_file, 'r') as h5file:
@@ -199,28 +200,31 @@ def test_model(model, test_h5_file, batch_size=32, verbose=3):
         sys.stdout.flush()
     else:
         print("\n")
-    if verbose >= 3:
+    if show_ROC_curve:
         plt.figure()
         plt.plot(inv_curve[:, 0], inv_curve[:, 1])
         plt.xlabel("signal efficiency")
         plt.ylabel("(backgroud efficiency)$^{-1}$")
         plt.title("Receiver operating characteristic")
         plt.show()
-    return {'score' : objective_score, 'AUC' : final_auc,
-            'accuracy' : float(accuracy) / len(Y_test), 'ROC curve' : inv_curve}
+        return {'score' : objective_score, 'AUC' : final_auc,
+                'accuracy' : float(accuracy) / len(Y_test), 'ROC curve' : inv_curve}
+    else:
+        return {'score' : objective_score, 'AUC' : final_auc,
+                'accuracy' : float(accuracy) / len(Y_test)}
 
 
-def train_test_star(kwargs):
-    i = kwargs['i']
+def train_test_star_cv(kwargs):
+    ikf = kwargs['ikf']
     train_h5_file = kwargs['train_h5_file']
     model_name = kwargs['model_name']
     train_kwargs = kwargs['train_kwargs']
     
     model = load_model(model_name + '_base')
-    model_name_i = model_name +'_kf{0}'.format(i)
-    train_model(model, train_h5_file, model_name_i, **train_kwargs)
-    model = load_model(model_name_i)
-    return test_model(model, train_h5_file, train_kwargs['batch_size'], train_kwargs['verbose'])
+    model_name_ikf = model_name +'_kf{0}'.format(ikf)
+    train_model(model, train_h5_file, model_name_ikf, **train_kwargs)
+    model = load_model(model_name_ikf)
+    return test_model(model, train_h5_file, train_kwargs['batch_size'], train_kwargs['verbose'], False)
 
 
 def cross_validate_model(model, train_h5_files, model_name='model',
@@ -234,15 +238,15 @@ def cross_validate_model(model, train_h5_files, model_name='model',
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
     n_folds = len(train_h5_files)
-    kf_kwargs = [{'i' : i, 'train_h5_file' : train_h5_files[i], 'model_name' : model_name,
+    kf_kwargs = [{'ikf' : ikf, 'train_h5_file' : train_h5_files[ikf], 'model_name' : model_name,
                   'train_kwargs' : {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
                                     'verbose' : verbose, 'read_into_RAM' : read_into_RAM}}
-                 for i in xrange(n_folds)]
+                 for ikf in xrange(n_folds)]
     save_model(model, model_name + '_base')
     
     if max_jobs > 1:
         pool = Pool(max_jobs)
-        results = pool.map(train_test_star, kf_kwargs)
+        results = pool.map(train_test_star_cv, kf_kwargs)
         pool.close()
         pool.join()
         scores = [r['score'] for r in results]
@@ -253,61 +257,42 @@ def cross_validate_model(model, train_h5_files, model_name='model',
         AUCs = []
         accuracies = []
         for kwargs in kf_kwargs:
-            result = train_test_star(kwargs)
+            result = train_test_star_cv(kwargs)
             scores.append(result['score'])
             AUCs.append(result['AUC'])
             accuracies.append(result['accuracy'])
-    return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
+    return {'score' : scores, 'AUC' : AUCs, 'accuracy' : accuracies}
 
 
-def cross_validate_star(kwargs):
-    """Cross validates model using k-folded datasets in train_h5_files. Returns lists of scores.
-    """
+def compile_model_star_gs(kwargs):
+    model_name_igp = kwargs['model_name_igp']
     get_model = kwargs['get_model']
     get_model_args = kwargs['get_model_args']
     optimizer = kwargs['optimizer']
     optimizer_kwargs = kwargs['optimizer_kwargs']
-    train_h5_files = kwargs['train_h5_files']
-    model_name = kwargs['model_name']
+    
+    model_igp = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
+    save_model(model_igp, model_name_igp + '_base')
+
+
+def train_test_star_gs(kwargs):
+    igp = kwargs['igp']
+    ikf = kwargs['ikf']
+    optimizer_kwargs = kwargs['optimizer_kwargs']
+    train_h5_file = kwargs['train_h5_file']
+    model_name_igp = kwargs['model_name_igp']
     train_kwargs = kwargs['train_kwargs']
-    max_jobs = kwargs['max_jobs']
-    
-    model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
-    if train_kwargs['verbose'] >= 1:
-        print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
-        sys.stdout.flush()
-    return {'optimizer_params' : optimizer_kwargs,
-            'results' : cross_validate_model(model, train_h5_files, model_name, max_jobs=max_jobs, **train_kwargs)}
-    """
-    n_folds = len(train_h5_files)
-    kf_kwargs = [{'i' : i, 'train_h5_file' : train_h5_files[i], 'model_name' : model_name,
-                  'train_kwargs' : train_kwargs}
-                 for i in xrange(n_folds)]
-    model = get_model(*get_model_args, optimizer=optimizer, optimizer_kwargs=optimizer_kwargs)
-    save_model(model, model_name + '_base')
     
     if train_kwargs['verbose'] >= 1:
-        print("Optimizer parameters = {0}\n".format(optimizer_kwargs))
+        print("Optimizer parameters = {0}, k-fold = {1}".format(optimizer_kwargs, ikf))
         sys.stdout.flush()
-    if max_jobs > 1:
-        pool = Pool(max_jobs)
-        results = pool.map(train_test_star, kf_kwargs)
-        pool.close()
-        pool.join()
-        scores = [r['score'] for r in results]
-        AUCs = [r['AUC'] for r in results]
-        accuracies = [r['accuracy'] for r in results]
-    else:
-        scores = []
-        AUCs = []
-        accuracies = []
-        for kwargs in kf_kwargs:
-            result = train_test_star(kwargs)
-            scores.append(result['score'])
-            AUCs.append(result['AUC'])
-            accuracies.append(result['accuracy'])
-    return {'scores' : scores, 'AUCs' : AUCs, 'accuracies' : accuracies}
-    """
+    model = load_model(model_name_igp + '_base')
+    model_name_igp_ikf = model_name_igp +'_kf{0}'.format(ikf)
+    train_model(model, train_h5_file, model_name_igp_ikf, **train_kwargs)
+    model = load_model(model_name_igp_ikf)
+    results = test_model(model, train_h5_file, train_kwargs['batch_size'],
+                         train_kwargs['verbose'], False)
+    return {'igp' : igp, 'ikf' : ikf, 'parameters' : optimizer_kwargs, 'results' : results}
 
 
 def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs_grid,
@@ -321,27 +306,68 @@ def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs
     if max_jobs < 1:
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
+    # Compile models
     optimizer_kwargs_grid = ParameterGrid(optimizer_kwargs_grid)
-    train_kwargs = {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
-                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}
-    cv_kwargs = []
-    i = 0
+    model_kwargs = []
+    igp = 0
     for optimizer_kwargs in optimizer_kwargs_grid:
-        cv_kwargs.append({'get_model' : get_model, 'get_model_args' : get_model_args,
-                          'optimizer' : optimizer, 'optimizer_kwargs' : optimizer_kwargs,
-                          'train_h5_files' : train_h5_files,
-                          'model_name' : model_name +'_gp{0}'.format(i),
-                          'train_kwargs' : train_kwargs, 'max_jobs' : max_jobs})
-        i += 1
-    
+        model_kwargs.append({'model_name_igp' : model_name +'_gp{0}'.format(igp),
+                             'get_model' : get_model, 'get_model_args' : get_model_args,
+                             'optimizer' : optimizer, 'optimizer_kwargs' : optimizer_kwargs})
+        igp += 1
+    if verbose >= 1:
+        print("Compiling models...\n")
+        sys.stdout.flush()
     if max_jobs > 1:
         pool = Pool(max_jobs)
-        results = pool.map(cross_validate_star, cv_kwargs)
+        pool.map(compile_model_star_gs, model_kwargs)
+        pool.close()
+    else:
+        for kwargs in model_kwargs:
+            compile_model_star_gs(kwargs)
+    # Cross-validate models
+    train_kwargs = {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
+                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}
+    gp_kwargs = []
+    igp = 0
+    for optimizer_kwargs in optimizer_kwargs_grid:
+        model_name_igp = model_name +'_gp{0}'.format(igp)
+        ikf = 0
+        for train_h5_file in train_h5_files:
+            gp_kwargs.append({'igp' : igp, 'ikf' : ikf, 'optimizer_kwargs' : optimizer_kwargs,
+                              'train_h5_file' : train_h5_file, 'model_name_igp' : model_name_igp,
+                              'train_kwargs' : train_kwargs})
+            ikf += 1
+        igp += 1
+    if verbose >= 1:
+        print("Initialising cross-validation...\n")
+        sys.stdout.flush()
+    if max_jobs > 1:
+        pool = Pool(max_jobs)
+        results = pool.map(train_test_star_gs, gp_kwargs)
         pool.close()
         pool.join()
     else:
-        results = []
-        for kwargs in cv_kwargs:
-            result = cross_validate_star(kwargs)
-            results.append(result)
-    return results
+        results = [train_test_star_gs(kwargs) for kwargs in gp_kwargs]
+    # Restructure results
+    new_results = [{'parameters' : {},
+                    'results' : {'score' : np.zeros(ikf),
+                                 'AUC' : np.zeros(ikf),
+                                 'accuracy' : np.zeros(ikf)}} for i in xrange(igp)]
+    for r in results:
+        new_results[r['igp']]['parameters'] = r['parameters']
+        new_results[r['igp']]['results']['score'][r['ikf']] = r['results']['score']
+        new_results[r['igp']]['results']['AUC'][r['ikf']] = r['results']['AUC']
+        new_results[r['igp']]['results']['accuracy'][r['ikf']] = r['results']['accuracy']
+    return new_results
+
+
+def select_best_model(grid_search_results, metric='AUC', get_max=True):
+    """Returns parameter values giving best value for metric.
+    """
+    results_list = [(r['parameters'], np.mean(r['results'][metric])) for r in grid_search_results]
+    results_list.sort(key=lambda x: x[1])
+    if get_max:
+        return {'parameters' : results_list[-1][0], metric : results_list[-1][1]}
+    else:
+        return {'parameters' : results_list[0][0], metric : results_list[0][1]}
