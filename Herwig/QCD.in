@@ -1,0 +1,50 @@
+######  Input file for QCD Background  ######
+
+cd /Herwig/Generators
+set LHCGenerator:NumberOfEvents 1000
+set LHCGenerator:RandomNumberGenerator:Seed 31183001
+set LHCGenerator:PrintEvent 10
+set LHCGenerator:MaxErrors 10000
+set LHCGenerator:EventHandler:LuminosityFunction:Energy 13000.0
+
+##  p p -> Z0 j
+
+cd /Herwig/MatrixElements/
+insert SimpleQCD:MatrixElements[0] MEZJet
+set MEZJet:ZDecay 4              #decays to neutrinos only
+set MEZJet:GammaZ 2              #includes only Z
+#set MEZJet:Process 1 2 3        #1 for qqbar->Zg ;   2 for qg->Zq ;  3 for qbarg->Zqbar
+
+##  Jet pT Cuts
+
+set /Herwig/Cuts/JetKtCut:MinKT 20.*GeV     #Min Jet pT
+set /Herwig/Cuts/JetKtCut:MaxKT 300.*GeV    #Max Jet pT
+
+##  Parton Showers
+
+cd /Herwig/EventHandlers
+#set LHCHandler:CascadeHandler        NULL    # Switch off parton shower
+#set LHCHandler:CascadeHandler /Herwig/DipoleShower/DipoleShowerHandler  #Dipole Shower
+#set LHCHandler:CascadeHandler /Herwig/Shower/ShowerHandler              #Angular-Ordered Shower 
+
+##  Hadronization
+
+#set LHCHandler:HadronizationHandler  NULL     # Switch off hadronization
+
+##  Underlying Event
+
+#set /Herwig/Shower/ShowerHandler:MPIHandler   NULL   #Switch off underlying event?
+
+##  HepMC Output
+
+cd /Herwig/Generators
+#insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/Plot
+insert /Herwig/Generators/LHCGenerator:AnalysisHandlers[0] /Herwig/Analysis/HepMCFile
+set /Herwig/Analysis/HepMCFile:PrintEvent 100
+set /Herwig/Analysis/HepMCFile:Format GenEvent
+set /Herwig/Analysis/HepMCFile:Units GeV_mm
+set /Herwig/Analysis/HepMCFile:Filename QCD.hepmc
+
+cd /Herwig/Generators
+saverun QCD LHCGenerator
+
