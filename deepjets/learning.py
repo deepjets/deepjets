@@ -5,7 +5,6 @@ import numpy as np
 import sys
 from .models import load_model, save_model
 from .utils import load_images
-from itertools import izip
 from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
@@ -19,7 +18,7 @@ def prepare_datasets(sig_h5_file, bkd_h5_file, dataset_name='dataset',
     
     Returns dict with 'test' filename and list of 'train' filenames for each k-fold.
     TODO: test support for additional fields.
-    TODO: add support for multiple classes
+    TODO: add support for multiple classes.
     """
     # Load images
     sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, aux_vars, shuffle)
@@ -93,21 +92,26 @@ def prepare_datasets(sig_h5_file, bkd_h5_file, dataset_name='dataset',
 
 
 def train_model(model, train_h5_file, model_name='model',
-                batch_size=32, epochs=100, patience=10, verbose=2, read_into_RAM=False):
+                batch_size=32, epochs=100, patience=10, verbose=2, make_log_file=False,
+                read_into_RAM=False):
     """Train model using datasets in train_h5_file. Save model with best AUC using name.
     
     Passes datasets to Keras directly from train_h5_file each epoch unless read_into_RAM=True.
     """
     save_model(model, model_name)
+    if make_log_file:
+        log_file = open(model_name + '_log.txt', 'w')
+    else:
+        log_file = sys.stdout
     epoch = 0
     best_auc = 0.
     stop_cdn = 0
     stuck_cdn = 0
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1:
-        print(("Training on {0} samples, validating on {1} samples.\n"
-               "Datasets from {2}.").format(
-               len(h5file['X_train']), len(h5file['X_val']), train_h5_file))
+        print("Training on {0} samples, validating on {1} samples.".format(
+              len(h5file['X_train']), len(h5file['X_val'])), file=log_file)
+        print("Datasets from {0}.".format(train_h5_file), file=log_file)
         sys.stdout.flush()
     if read_into_RAM:
         X_train = h5file['X_train'][:]
@@ -141,19 +145,24 @@ def train_model(model, train_h5_file, model_name='model',
             save_model(model, model_name)
         else:
             stop_cdn += 1
-        if verbose >= 2:
+        if make_log_file:
+            print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
+                  epoch + 1, epochs, stop_cdn, current_auc), file=log_file)
+        elif verbose >= 2:
             print("\rEpoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
-                  epoch + 1, epochs, stop_cdn, current_auc) + 20 * ' ', end='')
+                  epoch + 1, epochs, stop_cdn, current_auc) + 20*' ', end='')
             sys.stdout.flush()
         if stop_cdn >= patience:
-            if verbose >= 1:
+            if make_log_file:
+                print("Patience tolerance reached.", file=log_file)
+            elif verbose >= 2:
                 print("\nPatience tolerance reached.")
                 sys.stdout.flush()
             break
         # Reset model if AUC calculation fails three times
         if stuck_cdn > 2:
             if verbose >= 1:
-                print("Training stuck, rolling back to best AUC.")
+                print("Training stuck, rolling back to best AUC.", file=log_file)
                 sys.stdout.flush()
             model = load_model(model_name)
             stuck_cdn = 0
@@ -161,19 +170,29 @@ def train_model(model, train_h5_file, model_name='model',
             continue
         epoch += 1
     h5file.close()
-    if verbose >= 1:
-        print("Training complete. Best AUC = {0}\n".format(best_auc))
+    if verbose >= 2:
+        print("Training complete. Best AUC = {0}".format(best_auc), file=log_file)
         sys.stdout.flush()
+    if log_file is not sys.stdout:
+        log_file.close()
     return model
 
 
-def test_model(model, test_h5_file, batch_size=32, verbose=2, show_ROC_curve=True):
+def test_model(model, test_h5_file, model_name='model',
+               batch_size=32, verbose=2, show_ROC_curve=True, make_log_file=False):
     """Test model using dataset in train_test_file. Display ROC curve.
     """
+    if make_log_file:
+        try:
+            log_file = open(model_name + '_log.txt', 'a')
+        except IOError:
+            log_file = open(model_name + '_log.txt', 'w')
+    else:
+        log_file = sys.stdout
     with h5py.File(test_h5_file, 'r') as h5file:
         if verbose >= 1:
             print(("Testing on {0} samples.\n"
-                   "Dataset from {1}.").format(len(h5file['X_test']), test_h5_file))
+                   "Dataset from {1}.").format(len(h5file['X_test']), test_h5_file), file=log_file)
             sys.stdout.flush()
         # Score from model loss function
         objective_score = model.evaluate(h5file['X_test'], h5file['Y_test'],
@@ -193,13 +212,13 @@ def test_model(model, test_h5_file, batch_size=32, verbose=2, show_ROC_curve=Tru
     accuracy = sum([1 for i in range(len(Y_test)) if Y_test[i, Y_pred[i]] == 1.0])
     # Print results
     if verbose >= 2:
-        print("Score    = {0}".format(objective_score))
-        print("AUC      = {0}".format(final_auc))
+        print("Score    = {0}".format(objective_score), file=log_file)
+        print("AUC      = {0}".format(final_auc), file=log_file)
         print("Accuracy = {0}/{1} = {2}\n".format(
-            accuracy, len(Y_test), float(accuracy) / len(Y_test) ))
+            accuracy, len(Y_test), float(accuracy) / len(Y_test) ), file=log_file)
         sys.stdout.flush()
-    else:
-        print("\n")
+    if log_file is not sys.stdout:
+        log_file.close()
     if show_ROC_curve:
         plt.figure()
         plt.plot(inv_curve[:, 0], inv_curve[:, 1])
@@ -224,23 +243,28 @@ def train_test_star_cv(kwargs):
     model_name_ikf = model_name +'_kf{0}'.format(ikf)
     train_model(model, train_h5_file, model_name_ikf, **train_kwargs)
     model = load_model(model_name_ikf)
-    return test_model(model, train_h5_file, train_kwargs['batch_size'], train_kwargs['verbose'], False)
+    return test_model(model, train_h5_file, model_name_ikf,
+                      batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],
+                      show_ROC_curve=False, make_log_file=train_kwargs['make_log_file'])
 
 
 def cross_validate_model(model, train_h5_files, model_name='model',
                          batch_size=32, epochs=100, patience=10, verbose=2,
-                         read_into_RAM=False, max_jobs=1):
+                         make_log_file=False, read_into_RAM=False, max_jobs=1):
     """Cross validates model using k-folded datasets in train_h5_files. Returns lists of scores.
     """
-    if max_jobs != 1:
-        verbose = 1
     if max_jobs < 1:
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
+    if max_jobs > 1:
+        verbose = min(verbose, 1)
+    if make_log_file:
+        verbose = 2
     n_folds = len(train_h5_files)
     kf_kwargs = [{'ikf' : ikf, 'train_h5_file' : train_h5_files[ikf], 'model_name' : model_name,
                   'train_kwargs' : {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
-                                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}}
+                                    'verbose' : verbose, 'make_log_file' : make_log_file,
+                                    'read_into_RAM' : read_into_RAM}}
                  for ikf in xrange(n_folds)]
     save_model(model, model_name + '_base')
     
@@ -283,29 +307,32 @@ def train_test_star_gs(kwargs):
     model_name_igp = kwargs['model_name_igp']
     train_kwargs = kwargs['train_kwargs']
     
-    if train_kwargs['verbose'] >= 1:
+    if train_kwargs['verbose'] >= 2 and not(train_kwargs['make_log_file']):
         print("Optimizer parameters = {0}, k-fold = {1}".format(optimizer_kwargs, ikf))
         sys.stdout.flush()
     model = load_model(model_name_igp + '_base')
     model_name_igp_ikf = model_name_igp +'_kf{0}'.format(ikf)
     train_model(model, train_h5_file, model_name_igp_ikf, **train_kwargs)
     model = load_model(model_name_igp_ikf)
-    results = test_model(model, train_h5_file, train_kwargs['batch_size'],
-                         train_kwargs['verbose'], False)
+    results = test_model(model, train_h5_file, model_name_igp_ikf,
+                         batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],
+                         show_ROC_curve=False, make_log_file=train_kwargs['make_log_file'])
     return {'igp' : igp, 'ikf' : ikf, 'parameters' : optimizer_kwargs, 'results' : results}
 
 
 def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs_grid,
                           train_h5_files, model_name='model',
                           batch_size=32, epochs=100, patience=10, verbose=2,
-                          read_into_RAM=False, max_jobs=1):
+                          make_log_file=False, read_into_RAM=False, max_jobs=1):
     """Performs grid search on optimizer kwargs. Cross validates at each point, returns lists of scores.
     """
-    if max_jobs != 1:
-        verbose = 1
     if max_jobs < 1:
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
+    if max_jobs > 1:
+        verbose = min(verbose, 1)
+    if make_log_file:
+        verbose = 2
     # Compile models
     optimizer_kwargs_grid = ParameterGrid(optimizer_kwargs_grid)
     model_kwargs = []
@@ -327,7 +354,8 @@ def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs
             compile_model_star_gs(kwargs)
     # Cross-validate models
     train_kwargs = {'batch_size' : batch_size, 'epochs' : epochs, 'patience' : patience,
-                    'verbose' : verbose, 'read_into_RAM' : read_into_RAM}
+                    'verbose' : verbose, 'make_log_file' : make_log_file,
+                    'read_into_RAM' : read_into_RAM}
     gp_kwargs = []
     igp = 0
     for optimizer_kwargs in optimizer_kwargs_grid:
@@ -340,7 +368,7 @@ def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs
             ikf += 1
         igp += 1
     if verbose >= 1:
-        print("Initialising cross-validation...\n")
+        print("Cross-validating models...\n")
         sys.stdout.flush()
     if max_jobs > 1:
         pool = Pool(max_jobs)
@@ -362,12 +390,12 @@ def optimizer_grid_search(get_model, get_model_args, optimizer, optimizer_kwargs
     return new_results
 
 
-def select_best_model(grid_search_results, metric='AUC', get_max=True):
+def select_best_model(grid_search_results, metric='AUC', max_is_best=True):
     """Returns parameter values giving best value for metric.
     """
     results_list = [(r['parameters'], np.mean(r['results'][metric])) for r in grid_search_results]
     results_list.sort(key=lambda x: x[1])
-    if get_max:
+    if max_is_best:
         return {'parameters' : results_list[-1][0], metric : results_list[-1][1]}
     else:
         return {'parameters' : results_list[0][0], metric : results_list[0][1]}
