@@ -1,5 +1,6 @@
 from keras.layers.core import Dense, MaxoutDense, Dropout, Activation
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers.convolutional import (Convolution2D, MaxPooling2D,
+                                        ZeroPadding2D)
 # https://groups.google.com/forum/#!topic/keras-users/8Ncd0dpuPNE
 # BatchNormalization is preferred over LRN
 from keras.layers.normalization import BatchNormalization
@@ -11,7 +12,8 @@ from keras.regularizers import l2
 def draw_model(model, model_name):
     # Plot the network (requires pydot and graphviz)
     from keras.utils.visualize_util import to_graph
-    open('model.svg', 'w').write(to_graph(model).create(prog='dot', format='svg'))
+    open('model.svg', 'w').write(
+        to_graph(model).create(prog='dot', format='svg'))
 
 
 def save_model(model, model_name, overwrite=True):
@@ -26,7 +28,9 @@ def load_model(model_name):
     return model
 
 
-def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam, optimizer_kwargs={}):
+def get_maxout(
+        size, loss='categorical_crossentropy', optimizer=Adam,
+        optimizer_kwargs={}):
     # MaxOut network
     model = Sequential()
     model.add(MaxoutDense(256, input_shape=(size,), nb_feature=5,
@@ -45,7 +49,8 @@ def get_maxout(size, loss='categorical_crossentropy', optimizer=Adam, optimizer_
 
 def get_convnet():
     # ConvNet architecture
-    # [Dropout -> Conv -> ReLU -> MaxPool] * 3 -> LRN -> [Dropout -> FC -> ReLU] -> Dropout -> Sigmoid
+    # [Dropout -> Conv -> ReLU -> MaxPool] * 3 -> LRN ->
+    # [Dropout -> FC -> ReLU] -> Dropout -> Sigmoid
     model = Sequential()
     model.add(ZeroPadding2D())
     # [Dropout -> Conv -> ReLU -> MaxPool] * 3
