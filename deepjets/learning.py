@@ -43,12 +43,12 @@ def prepare_datasets(
         n_images, n_iter=1, test_size=test_frac, random_state=shuffle_seed)
     for trn, tst in rs:
         train, test = trn, tst
-    out_file = dataset_name + '_test.h5'
+    out_file = dataset_name+'_test.h5'
     with h5py.File(out_file, 'w') as h5file:
         h5file.create_dataset('X_test', data=images[test])
         h5file.create_dataset('Y_test', data=classes[test])
         for var in aux_vars:
-            h5file.create_dataset(var + '_test', data=aux_data[var][test])
+            h5file.create_dataset(var+'_test', data=aux_data[var][test])
     file_dict = {'test' : out_file}
     
     # K-fold train-val-test splits
@@ -58,7 +58,7 @@ def prepare_datasets(
         i = 0
         kf_files = []
         for ktrain, ktest in kf:
-            out_file = dataset_name + '_train_kf{0}.h5'.format(i)
+            out_file = dataset_name+'_train_kf{0}.h5'.format(i)
             # Shuffle to make sure validation set contains both classes
             np.random.shuffle(ktrain)
             with h5py.File(out_file, 'w') as h5file:
@@ -87,7 +87,7 @@ def prepare_datasets(
             i += 1
         file_dict['train'] = kf_files
     else:
-        out_file = dataset_name + '_train.h5'
+        out_file = dataset_name+'_train.h5'
         # Shuffle to make sure validation set contains both classes
         np.random.shuffle(train)
         with h5py.File(out_file, 'w') as h5file:
@@ -130,23 +130,31 @@ def train_model(
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
         sys.stdout.flush()
     if read_into_RAM:
+        shuffle = False
         X_train = h5file['X_train'][:]
         Y_train = h5file['Y_train'][:]
         X_val = h5file['X_val'][:]
-    Y_val = h5file['Y_val'][:]
+        try:
+            sample_weights = h5file['weights_train'][:]
+        except KeyError:
+            sample_weights = None
+    else:
+        shuffle = 'batch'
+        X_train = h5file['X_train']
+        Y_train = h5file['Y_train']
+        X_val = h5file['X_val']
+        try:
+            sample_weights = h5file['weights_train']
+        except KeyError:
+            sample_weights = None
+    Y_val = h5file['Y_val']
     while epoch < epochs:
         # Fitting and validation
-        if read_into_RAM:
-            model.fit(
-                X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0)
-            Y_prob = model.predict_proba(
-                X_val, batch_size=batch_size, verbose=0)
-        else:
-            model.fit(
-                h5file['X_train'], h5file['Y_train'], batch_size=batch_size,
-                nb_epoch=1, shuffle='batch', verbose=0)
-            Y_prob = model.predict_proba(
-                h5file['X_val'], batch_size=batch_size, verbose=0)
+        model.fit(
+            X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0,
+            sample_weight=sample_weights, shuffle=shuffle)
+        Y_prob = model.predict_proba(
+            X_val, batch_size=batch_size, verbose=0)
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         # Calculate AUC for custom early stopping
         fpr, tpr, _ = roc_curve(Y_val[:, 0], Y_prob[:, 0])
@@ -288,6 +296,9 @@ def cross_validate_model(
     """Cross validate model using k-folded datasets in train_h5_files.
     Returns lists of scores.
     """
+    if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
+        print("Number of k-folds must be > 1.")
+        return 0
     if max_jobs < 1:
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
@@ -378,6 +389,10 @@ def optimizer_grid_search(
     """Perform grid search on optimizer kwargs. Cross validate at each point.
     Returns lists of scores.
     """
+    if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
+        print("Number of k-folds must be > 1.")
+        print("train_h5_files = {0}".format(train_h5_files))
+        return 0
     if max_jobs < 1:
         max_jobs = cpu_count()
     max_jobs = min(max_jobs, cpu_count())
