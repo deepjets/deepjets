@@ -10,9 +10,12 @@ parser.add_argument('--output', '-o', default=None)
 parser.add_argument('--jet-size', type=float, default=1.2)
 parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
 parser.add_argument('--shrink', default=False, action='store_true')
+parser.add_argument('--shrink-mass', default='jet')
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
-parser.add_argument('--pt-min', type=float, default=-1)
-parser.add_argument('--pt-max', type=float, default=-1)
+parser.add_argument('--pdgid-pt-min', type=float, default=-1)
+parser.add_argument('--pdgid-pt-max', type=float, default=-1)
+parser.add_argument('--trimmed-pt-min', type=float, default=10.)
+parser.add_argument('--trimmed-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
 parser.add_argument('config')
 args = parser.parse_args()
@@ -23,33 +26,70 @@ if args.output is None:
 if args.params is not None:
     args.params = dict([token.split('=') for token in args.params.split(';')])
 
+if args.shrink_mass == 'jet':
+    # shrink with jet mass
+    args.shrink_mass = -1
+else:
+    args.shrink_mass = float(args.shrink_mass)
+
 from deepjets.generate import generate
+from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
 
-f = h5py.File(args.output, 'w')
-dt_jet = h5py.special_dtype(vlen=np.dtype([('pT', np.double), ('eta', np.double), ('phi', np.double)]))
-dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', np.double), ('eta', np.double), ('phi', np.double)]))
+DTYPE = np.double
 
-dset_jets = f.create_dataset('jets', (args.events,), dtype=dt_jet)
+f = h5py.File(args.output, 'w')
+dt_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
+dt_jets = h5py.special_dtype(vlen=dt_jet)
+dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
+
+dset_jet = f.create_dataset('jet', (args.events,), dtype=dt_jet)
+dset_trimmed_jet = f.create_dataset('trimmed_jet', (args.events,), dtype=dt_jet)
+dset_subjets = f.create_dataset('subjets', (args.events,), dtype=dt_jets)
 dset_constit = f.create_dataset('constituents', (args.events,), dtype=dt_constit)
 dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), dtype=dt_constit)
-dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=np.double)
+dset_shrinkage = f.create_dataset('shrinkage', (args.events,), dtype=DTYPE)
+dset_dr_subjets = f.create_dataset('dR_subjets', (args.events,), dtype=DTYPE)
+dset_tau_1 = f.create_dataset('tau_1', (args.events,), dtype=DTYPE)
+dset_tau_2 = f.create_dataset('tau_2', (args.events,), dtype=DTYPE)
+dset_tau_3 = f.create_dataset('tau_3', (args.events,), dtype=DTYPE)
+
+# config dsets
+dset_jet_size = f.create_dataset('jet_size', (1,), dtype=DTYPE)
+dset_subjet_size_fraction = f.create_dataset('subjet_size_fraction', (1,), dtype=DTYPE)
+
+dset_jet_size[0] = args.jet_size
+dset_subjet_size_fraction[0] = args.subjet_size_fraction
 
 i = 0
 for event in generate(args.config, args.events,
                       random_seed=args.seed,
                       jet_size=args.jet_size,
                       subjet_size_fraction=args.subjet_size_fraction,
+                      trimmed_pt_min=args.trimmed_pt_min,
+                      trimmed_pt_max=args.trimmed_pt_max,
                       shrink=args.shrink,
+                      shrink_mass=args.shrink_mass,
                       cut_on_pdgid=args.cut_on_pdgid,
-                      pt_min=args.pt_min, pt_max=args.pt_max,
-                      params_dict=args.params):
-    jets, constit, trimmed_constit, shrinkage = event
-    dset_jets[i] = jets
-    dset_constit = constit
+                      pdgid_pt_min=args.pdgid_pt_min,
+                      pdgid_pt_max=args.pdgid_pt_max,
+                      params_dict=args.params,
+                      compute_auxvars=True):
+
+    jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
+    
+    dset_jet[i] = jets[0]
+    dset_trimmed_jet[i] = jets[1]
+    dset_subjets[i] = subjets
+    dset_constit[i] = constit
     dset_trimmed_constit[i] = trimmed_constit
     dset_shrinkage[i] = shrinkage
+    dset_dr_subjets[i] = auxvars['subjet_dr']
+    dset_tau_1[i] = auxvars['tau_1']
+    dset_tau_2[i] = auxvars['tau_2']
+    dset_tau_3[i] = auxvars['tau_3']
+        
     i += 1
 
 f.close()

@@ -13,3 +13,4 @@ build
 *.svg
 *.gif
 *.h5
+*.nfs*

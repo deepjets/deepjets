@@ -1,0 +1,34 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from deepjets.samples import get_sample
+from deepjets.utils import plot_jet_image
+
+images, pt, weights = get_sample('w.config', 1000,
+                                 pt_min=200, pt_max=500, pt_bins=10,
+                                 shrink=True, shrink_mass=80.385,
+                                 subjet_dr_min=0.3) # 3 pixels
+
+# plot unweighted and weighted pT
+fig = plt.figure(figsize=(5, 5))
+ax  = fig.add_subplot(111)
+ax.hist(pt, bins=np.linspace(200, 500, 41),
+        histtype='stepfilled', facecolor='none', edgecolor='blue')
+ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
+fig.tight_layout()
+plt.savefig('pt.png')
+
+fig = plt.figure(figsize=(5, 5))
+ax  = fig.add_subplot(111)
+ax.hist(pt, bins=np.linspace(200, 500, 41), weights=weights,
+        histtype='stepfilled', facecolor='none', edgecolor='blue')
+ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
+fig.tight_layout()
+plt.savefig('pt_weighted.png')
+
+# plot images
+fig = plt.figure(figsize=(6, 5))
+ax = fig.add_subplot(111)
+avg_image = np.average(images, axis=0, weights=weights)
+plot_jet_image(ax, avg_image, vmax=1e-2)
+fig.tight_layout()
+fig.savefig('images_weighted.png')

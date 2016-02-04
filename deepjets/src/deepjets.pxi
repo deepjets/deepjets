@@ -2,9 +2,14 @@
 cdef extern from "deepjets.h":
     cppclass Result:
         PseudoJet jet
+        PseudoJet trimmed_jet
         vector[PseudoJet] subjets
         double shrinkage
+        double subjet_dr
+        double tau_1
+        double tau_2
+        double tau_3
 
     bool keep_event(Event&, int, double, double)
-    void jets_to_arrays(Result&, double*, double*, double*)
-    Result* get_jets(Event&, double, double, double, double, double, bool)
+    void result_to_arrays(Result&, double*, double*, double*, double*)
+    Result* get_jets(Event&, double, double, double, double, double, double, double, bool, double, bool)
