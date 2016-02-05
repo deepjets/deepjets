@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+
+def plot(signal, background):
+    import numpy as np
+    from matplotlib import pyplot as plt
+    import h5py
+    
+    signal_h5file_events = h5py.File(signal, 'r')
+    signal_dset_jet = signal_h5file_events['jet']
+    signal_dset_trimmed_jet = signal_h5file_events['trimmed_jet']
+    signal_dset_dr_subjets = signal_h5file_events['dR_subjets']
+    signal_dset_tau_1 = signal_h5file_events['tau_1']
+    signal_dset_tau_2 = signal_h5file_events['tau_2']
+    
+    background_h5file_events = h5py.File(background, 'r')
+    background_dset_jet = background_h5file_events['jet']
+    background_dset_trimmed_jet = background_h5file_events['trimmed_jet']
+    background_dset_dr_subjets = background_h5file_events['dR_subjets']
+    background_dset_tau_1 = background_h5file_events['tau_1']
+    background_dset_tau_2 = background_h5file_events['tau_2']
+    
+    signal_selection = (signal_dset_jet['mass'] > 65) & (signal_dset_jet['mass'] < 95)
+    background_selection = (background_dset_jet['mass'] > 65) & (background_dset_jet['mass'] < 95)
+
+
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    vals1, _, _ = ax[0].hist(signal_dset_jet['mass'], bins=np.linspace(65, 95, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
+               label=r'$W\rightarrow qq\prime$')
+    vals2, _, _ = ax[0].hist(background_dset_jet['mass'], bins=np.linspace(65, 95, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
+               label='QCD jets')
+    ax[0].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
+    ax[0].set_ylabel('Normalized to Unity')
+    ax[0].set_xlabel(r'Jet Mass [GeV]', fontsize=12)
+    ax[0].legend()
+    ax[0].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
+
+    vals1, _, _ = ax[1].hist(np.true_divide(signal_dset_tau_2[:], signal_dset_tau_1[:])[signal_selection], bins=np.linspace(0, 1, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
+               label=r'$W\rightarrow qq\prime$')
+    vals2, _, _ = ax[1].hist(np.true_divide(background_dset_tau_2[:], background_dset_tau_1[:])[background_selection], bins=np.linspace(0, 1, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
+               label='QCD jets')
+    ax[1].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2))))
+    ax[1].set_ylabel('Normalized to Unity')
+    ax[1].set_xlabel(r'Jet $\tau_{21}$', fontsize=12)
+    ax[1].legend()
+    ax[1].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
+
+    vals1, _, _ = ax[2].hist(signal_dset_dr_subjets[signal_selection], bins=np.linspace(0, 1, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
+               label=r'$W\rightarrow qq\prime$')
+    vals2, _, _ = ax[2].hist(background_dset_dr_subjets[background_selection], bins=np.linspace(0, 1, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
+               label='QCD jets')
+    ax[2].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2))))
+    ax[2].set_ylabel('Normalized to Unity')
+    ax[2].set_xlabel(r'$\Delta R$ between subjets', fontsize=12)
+    ax[2].legend()
+    ax[2].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
+
+    fig.tight_layout()
+    plt.savefig('paper_plots.png')
+    
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('signal')
+    parser.add_argument('background')
+    args = parser.parse_args()
+
+    plot(args.signal, args.background)

@@ -23,6 +23,11 @@ if [ ! -d pythia8212 ]; then
     tar xfz pythia8212.tgz
 fi
 
+if [ ! -d HepMC-2.06.09 ]; then
+    wget http://lcgapp.cern.ch/project/simu/HepMC/download/HepMC-2.06.09.tar.gz
+    tar xfz HepMC-2.06.09.tar.gz
+fi
+
 cd fastjet-3.1.3
 make clean
 ./configure --prefix=$PREFIX --enable-cgal
@@ -44,4 +49,11 @@ make clean
 make -j2
 make install
 chmod +x $PREFIX/bin/pythia8-config
+cd ..
+
+cd HepMC-2.06.09
+make clean
+./configure --prefix=$PREFIX --with-momentum=GEV --with-length=MM
+make -j2
+make install
 cd ..
