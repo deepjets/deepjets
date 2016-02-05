@@ -13,7 +13,7 @@ from sklearn.metrics import auc, roc_curve
 
 def prepare_datasets(
         sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
-        test_frac=0.1, val_frac=0.1, n_folds=2, aux_vars=[], shuffle=False,
+        test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
         shuffle_seed=1):
     """Combine signal, background images; k-fold into training, validation,
     test sets.
@@ -23,17 +23,15 @@ def prepare_datasets(
     TODO: add support for multiple classes.
     """
     # Load images
-    sig_images, sig_aux_data = load_images(
-        sig_h5_file, n_sig, aux_vars, shuffle)
-    bkd_images, bkd_aux_data = load_images(
-        bkd_h5_file, n_bkd, aux_vars, shuffle)
+    sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, auxvars)
+    bkd_images, bkd_aux_data = load_images(bkd_h5_file, n_bkd, auxvars)
     n_sig = len(sig_images)
     n_bkd = len(bkd_images)
     n_images = n_sig + n_bkd
     images = np.concatenate((sig_images, bkd_images))
     images = images.reshape(-1, images.shape[1] * images.shape[2])
     aux_data = {var : np.concatenate((sig_aux_data[var], bkd_aux_data[var]))
-                for var in aux_vars}
+                for var in auxvars}
     # True classes
     classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
                               np.repeat([[0, 1]], n_bkd, axis=0)])
@@ -47,7 +45,7 @@ def prepare_datasets(
     with h5py.File(out_file, 'w') as h5file:
         h5file.create_dataset('X_test', data=images[test])
         h5file.create_dataset('Y_test', data=classes[test])
-        for var in aux_vars:
+        for var in auxvars:
             h5file.create_dataset(var+'_test', data=aux_data[var][test])
     file_dict = {'test' : out_file}
     
@@ -64,7 +62,7 @@ def prepare_datasets(
             with h5py.File(out_file, 'w') as h5file:
                 h5file.create_dataset('X_test', data=images[train][ktest])
                 h5file.create_dataset('Y_test', data=classes[train][ktest])
-                for var in aux_vars:
+                for var in auxvars:
                     h5file.create_dataset(
                         var+'_test', data=aux_data[var][train][ktest])
                 n_val = int(val_frac * len(ktrain))
@@ -72,14 +70,14 @@ def prepare_datasets(
                     'X_val', data=images[train][ktrain][:n_val])
                 h5file.create_dataset(
                     'Y_val', data=classes[train][ktrain][:n_val])
-                for var in aux_vars:
+                for var in auxvars:
                     h5file.create_dataset(
                         var+'_val', data=aux_data[var][train][ktrain][:n_val])
                 h5file.create_dataset(
                     'X_train', data=images[train][ktrain][n_val:])
                 h5file.create_dataset(
                     'Y_train', data=classes[train][ktrain][n_val:])
-                for var in aux_vars:
+                for var in auxvars:
                     h5file.create_dataset(
                         var+'_train',
                         data=aux_data[var][train][ktrain][n_val:])
@@ -94,12 +92,12 @@ def prepare_datasets(
             n_val = int(val_frac * len(train))
             h5file.create_dataset('X_val', data=images[train][:n_val])
             h5file.create_dataset('Y_val', data=classes[train][:n_val])
-            for var in aux_vars:
+            for var in auxvars:
                 h5file.create_dataset(
                     var+'_val', data=aux_data[var][train][:n_val])
             h5file.create_dataset('X_train', data=images[train][n_val:])
             h5file.create_dataset('Y_train', data=classes[train][n_val:])
-            for var in aux_vars:
+            for var in auxvars:
                 h5file.create_dataset(
                     var+'_train', data=aux_data[var][train][n_val:])
         file_dict['train'] = out_file
@@ -134,19 +132,15 @@ def train_model(
         X_train = h5file['X_train'][:]
         Y_train = h5file['Y_train'][:]
         X_val = h5file['X_val'][:]
-        try:
-            sample_weights = h5file['weights_train'][:]
-        except KeyError:
-            sample_weights = None
     else:
         shuffle = 'batch'
         X_train = h5file['X_train']
         Y_train = h5file['Y_train']
         X_val = h5file['X_val']
-        try:
-            sample_weights = h5file['weights_train']
-        except KeyError:
-            sample_weights = None
+    try:
+        sample_weights = h5file['weights_train'][:]
+    except KeyError:
+        sample_weights = None
     Y_val = h5file['Y_val']
     while epoch < epochs:
         # Fitting and validation
@@ -202,7 +196,7 @@ def train_model(
     h5file.close()
     if verbose >= 2:
         print(
-            "Training complete. Best AUC = {0}".format(best_auc),
+            "Training complete. Best validation AUC = {0}".format(best_auc),
             file=log_file)
         sys.stdout.flush()
     if log_file is not sys.stdout:
@@ -257,12 +251,15 @@ def test_model(
     if log_file is not sys.stdout:
         log_file.close()
     if show_ROC_curve:
-        plt.figure()
-        plt.plot(inv_curve[:, 0], inv_curve[:, 1])
-        plt.xlabel("signal efficiency")
-        plt.ylabel("(backgroud efficiency)$^{-1}$")
-        plt.title("Receiver operating characteristic")
-        plt.show()
+        fig = plt.figure(figsize=(6, 5))
+        ax = fig.add_subplot(111)
+        ax.plot(inv_curve[:, 0], inv_curve[:, 1])
+        ax.set_xlabel("signal efficiency", fontsize=16)
+        ax.set_ylabel("1 / backgroud efficiency", fontsize=16)
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        ax.set_title("Receiver operating characteristic", fontsize=16)
+        fig.tight_layout()
+        fig.show()
         return {'score' : objective_score,
                 'AUC' : final_auc,
                 'accuracy' : float(accuracy)/len(Y_test),

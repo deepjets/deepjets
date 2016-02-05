@@ -5,40 +5,47 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from sklearn import cross_validation
 
 
-def load_images(image_h5_file, n_images=-1, aux_vars=[], shuffle=False):
+def load_images(image_h5_file, n_images=-1, auxvars=[]):
     """Load images from h5 file.
     
-    Optionally choose number of images and whether to shuffle on loading.
+    Optionally choose number of randomly selected images.
     TODO: test support for additional fields.
     TODO: add support for multiple classes.
     """
     with h5py.File(image_h5_file, 'r') as h5file:
-        images = h5file['images']['image']
-        aux_data = {var : h5file['aux_vars'][var] for var in aux_vars}
-    if shuffle:
-        np.random.shuffle(images)
-    if n_images < 0:
-        n_images = len(images)
-    elif n_images > len(images):
-        print(
-            "Cannot load {0} images from {1}, only {2} images present.".format(
-            n_images, image_h5_file, len(images)))
-        n_images = len(images)
-    images = images[:n_images]
-    return (images, aux_data)
+        images = h5file['images']
+        auxvars_data = h5file['auxvars']
+        if n_images < 0:
+            n_images = len(images)
+        elif n_images > len(images):
+            print("Cannot load {0} images. Only {1} images in {2}".format(
+                n_images, len(images), image_h5_file))
+            n_images = len(images)
+        if n_images < len(images):
+            rs = cross_validation.ShuffleSplit(
+                len(images), n_iter=1, test_size=n_images)
+            for train, test in rs:
+                keep = test
+            images = np.take(images, keep, axis=0)
+            auxvars_data = np.take(auxvars_data, keep, axis=0)
+            aux_data = {var : auxvars_data[var] for var in auxvars}
+        else:
+            images = h5file['images'][:]
+            aux_data = {var : auxvars_data[var][:] for var in auxvars}
+        return (images, aux_data)
     
 
 def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     """Display jet image."""
     width, height = image.T.shape
     dw, dh = 1./width, 1./height
-    p = ax.imshow(image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh),
-                  origin='low',
-                  interpolation='nearest',
-                  norm=LogNorm(vmin=vmin, vmax=vmax),
-                  cmap='jet')
+    p = ax.imshow(
+        image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+        interpolation='nearest', norm=LogNorm(vmin=vmin, vmax=vmax),
+        cmap='jet')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(
@@ -46,8 +53,10 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
         ticks=np.logspace(
             np.log10(vmin), np.log10(vmax), 1+np.log10(vmax)-np.log10(vmin)))
     cbar.set_label(r'Intensity', rotation=90, fontsize=18)
+    cbar.ax.tick_params(labelsize=12)
     ax.set_xlabel(r'$x_1$', fontsize=18)
     ax.set_ylabel(r'$x_2$', fontsize=18)
+    ax.tick_params(axis='both', which='major', labelsize=12)
 
 
 def tot_mom(jet_csts):
