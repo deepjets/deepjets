@@ -14,3 +14,4 @@ build
 *.gif
 *.h5
 *.nfs*
+*.DS_Store
