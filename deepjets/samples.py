@@ -1,10 +1,10 @@
 from joblib import Parallel, delayed
+import h5py
+import numpy as np
 
 from .generate import generate
 from .preprocessing import preprocess, pixel_edges
 from .utils import pT, tot_mom
-
-import numpy as np
 
 
 def get_images(config, nevents, pt_min, pt_max,
@@ -71,3 +71,18 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
     image_weights = np.true_divide(image_weights, image_weights.mean())
 
     return images, pt, image_weights
+
+
+def dataset_append(filename, datasetname, data):
+    with h5py.File(filename, 'a') as h5file:
+        if datasetname not in h5file:
+            dset = h5file.create_dataset(
+                datasetname, data.shape,
+                maxshape=[None,] + list(data.shape)[1:],
+                dtype=data.dtype)
+            prev_size = 0
+        else:
+            dset = h5file[datasetname]
+            prev_size = dset.shape[0]
+            dset.resize(prev_size + data.shape[0], axis=0)
+        dset[prev_size:] = data
