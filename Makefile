@@ -51,3 +51,12 @@ events:
 		echo "$(setup) ./generate qcd.config --jet-size 1 --events 100000 --output $(output)/qcd_shrink_wmass_1p0_$${pthatmin}.h5 --shrink --shrink-mass $(WMASS) --seed $${pthatmin} --params \"PhaseSpace:pTHatMin = $${pthatmin}\"" | qsub -e $(output)/log -o $(output)/log -N qcd_shrink_wmass_1p0_$${pthatmin}; \
 		echo "$(setup) ./generate w.config --jet-size 1 --events 100000 --output $(output)/w_shrink_wmass_1p0_$${pthatmin}.h5 --shrink --shrink-mass $(WMASS) --seed $${pthatmin} --params \"PhaseSpace:pTHatMin = $${pthatmin}\"" | qsub -e $(output)/log -o $(output)/log -N w_shrink_wmass_1p0_$${pthatmin}; \
 	done
+
+images:
+	mkdir -p $(output)/log
+	for chunk in $$(seq 1 1 10); do \
+		echo "$(setup) ./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 5" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=5; \
+	done
+	for chunk in $$(seq 1 1 10); do \
+		echo "$(setup) ./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 5" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=5; \
+	done
