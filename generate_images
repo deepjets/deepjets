@@ -22,6 +22,6 @@ images, pt, weights = get_sample(
 
 auxvars = np.core.records.fromarrays([pt, weights], names='pt,weights')
 
-with lock(args.output, external=True, lock_path=os.getcwd()): # InterProcessLock
+with lock(args.output, external=True, lock_path=os.path.dirname(args.output)): # InterProcessLock
     dataset_append(args.output, 'images', images)
     dataset_append(args.output, 'auxvars', auxvars)
