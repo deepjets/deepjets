@@ -55,8 +55,20 @@ events:
 images:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 5" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=5; \
+		echo "$(setup) ./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 4" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=4; \
 	done
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 5" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=5; \
+		echo "$(setup) ./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 4" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=4; \
+	done
+
+w-images-no-batch:
+	mkdir -p $(output)/log
+	for chunk in $$(seq 1 1 10); do \
+		./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 10; \
+	done
+
+qcd-images-no-batch:
+	mkdir -p $(output)/log
+	for chunk in $$(seq 1 1 10); do \
+		./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 10; \
 	done
