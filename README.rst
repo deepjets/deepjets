@@ -29,7 +29,8 @@ installation path at the top of the file. Then run::
    source setup.sh
 
 Install `PYTHIA <http://home.thep.lu.se/Pythia/>`_ and
-`FastJet <http://fastjet.fr/>`_ with the ``install.sh`` script::
+`FastJet <http://fastjet.fr/>`_ and `HepMC <http://lcgapp.cern.ch/project/simu/HepMC/>`_
+with the ``install.sh`` script::
 
    ./install.sh
 
