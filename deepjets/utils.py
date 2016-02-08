@@ -59,6 +59,33 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     ax.tick_params(axis='both', which='major', labelsize=12)
 
 
+def plot_roc_curve(roc_data, label=None):
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
+    handle, = ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
+    ax.set_xlabel("signal efficiency", fontsize=16)
+    ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    #ax.set_title("Receiver operating characteristic", fontsize=16)
+    plt.legend(handles=[handle], fontsize=16)
+    fig.show()
+
+
+def plot_roc_curves(roc_data, labels):
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
+    handles = []
+    for dat, label in zip(roc_data, labels):
+        handle, = ax.plot(dat[:, 0], dat[:, 1], label=label)
+        handles.append(handle)
+    ax.set_xlabel("signal efficiency", fontsize=16)
+    ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    #ax.set_title("Receiver operating characteristic", fontsize=16)
+    plt.legend(handles=handles, fontsize=16)
+    fig.show()
+
+
 def tot_mom(jet_csts):
     E_tot  = np.sum(jet_csts['ET'] * np.cosh(jet_csts['eta']))
     px_tot = np.sum(jet_csts['ET'] * np.cos(jet_csts['phi']))

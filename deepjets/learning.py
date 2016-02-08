@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 from .models import load_model, save_model
-from .utils import load_images
+from .utils import load_images, plot_roc_curve
 from multiprocessing import Pool, cpu_count
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
@@ -253,11 +253,7 @@ def test_model(
     if show_ROC_curve:
         fig = plt.figure(figsize=(6, 5))
         ax = fig.add_subplot(111)
-        ax.plot(inv_curve[:, 0], inv_curve[:, 1])
-        ax.set_xlabel("signal efficiency", fontsize=16)
-        ax.set_ylabel("1 / backgroud efficiency", fontsize=16)
-        ax.tick_params(axis='both', which='major', labelsize=12)
-        ax.set_title("Receiver operating characteristic", fontsize=16)
+        plot_roc_curve(ax, inv_curve)
         fig.tight_layout()
         fig.show()
         return {'score' : objective_score,
