@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument('--jobs', type=int, default=1)
 parser.add_argument('--events', type=int, default=100)
+parser.add_argument('--random-state', type=int, default=None)
 parser.add_argument('config')
 parser.add_argument('output')
 args = parser.parse_args()
@@ -13,15 +14,15 @@ from oslo_concurrency.lockutils import lock
 import numpy as np
 import os
 
-images, pt, weights = get_sample(
+images, auxvars = get_sample(
     args.config, args.events,
     pt_min=200, pt_max=500, pt_bins=10,
     shrink=True, shrink_mass=80.385,
     subjet_dr_min=0.3, # 3 pixels
-    n_jobs=args.jobs)
+    n_jobs=args.jobs,
+    random_state=args.random_state)
 
-auxvars = np.core.records.fromarrays([pt, weights], names='pt,weights')
-
-with lock(args.output, external=True, lock_path=os.path.dirname(args.output)): # InterProcessLock
+with lock(args.output, external=True,
+          lock_path=os.path.dirname(os.path.abspath(args.output))): # InterProcessLock
     dataset_append(args.output, 'images', images)
     dataset_append(args.output, 'auxvars', auxvars)
