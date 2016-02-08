@@ -263,7 +263,7 @@ def test_model(
         return {'score' : objective_score,
                 'AUC' : final_auc,
                 'accuracy' : float(accuracy)/len(Y_test),
-                'ROC curve' : inv_curve}
+                'ROC_curve' : inv_curve}
     else:
         return {'score' : objective_score,
                 'AUC' : final_auc,
