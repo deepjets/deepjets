@@ -6,7 +6,7 @@ ctypedef np.float64_t DTYPE_t
 @cython.wraparound(False)
 def generate_pythia(string config, string xmldoc,
                     int n_events,
-                    int random_seed=0,
+                    int random_state=0,
                     float beam_ecm=13000.,
                     float eta_max=5.,
                     float jet_size=0.6,
@@ -37,7 +37,7 @@ def generate_pythia(string config, string xmldoc,
     pythia.readFile(config)  # read user config after options above
     pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
     pythia.readString('Random:setSeed = on')
-    pythia.readString('Random:seed = {0}'.format(random_seed))
+    pythia.readString('Random:seed = {0}'.format(random_state))
     if params_dict is not None:
         for param, value in params_dict.items():
             pythia.readString('{0} = {1}'.format(param, value))

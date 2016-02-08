@@ -64,7 +64,7 @@ dset_subjet_size_fraction[0] = args.subjet_size_fraction
 
 i = 0
 for event in generate(args.config, args.events,
-                      random_seed=args.seed,
+                      random_state=args.seed,
                       jet_size=args.jet_size,
                       subjet_size_fraction=args.subjet_size_fraction,
                       trimmed_pt_min=args.trimmed_pt_min,

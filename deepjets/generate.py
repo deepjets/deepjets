@@ -2,7 +2,7 @@ from ._libdeepjets import generate_pythia as _generate
 import os
 
 def generate(config, nevents,
-             random_seed=0,
+             random_state=None,
              beam_ecm=13000.,
              eta_max=5.,
              jet_size=1.2, subjet_size_fraction=0.5,
@@ -13,10 +13,13 @@ def generate(config, nevents,
              cut_on_pdgid=0, pdgid_pt_min=-1, pdgid_pt_max=-1,
              params_dict=None,
              compute_auxvars=False):
+    if random_state is None:
+        # Pythia will use time
+        random_state = 0
     xmldoc = os.path.join(os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
                           'share/Pythia8/xmldoc')
     for event in _generate(config, xmldoc, nevents,
-                           random_seed=random_seed,
+                           random_state=random_state,
                            beam_ecm=beam_ecm,
                            eta_max=eta_max,
                            jet_size=jet_size,

@@ -3,10 +3,13 @@ import matplotlib.pyplot as plt
 from deepjets.samples import get_sample
 from deepjets.utils import plot_jet_image
 
-images, pt, weights = get_sample('w.config', 1000,
-                                 pt_min=200, pt_max=500, pt_bins=10,
-                                 shrink=True, shrink_mass=80.385,
-                                 subjet_dr_min=0.3) # 3 pixels
+images, auxvars = get_sample('w.config', 1000,
+                             pt_min=200, pt_max=500, pt_bins=10,
+                             shrink=True, shrink_mass=80.385,
+                             subjet_dr_min=0.3) # 3 pixels
+
+pt = auxvars['pt_trimmed']
+weights = auxvars['weights']
 
 # plot unweighted and weighted pT
 fig = plt.figure(figsize=(5, 5))
