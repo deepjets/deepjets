@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+from deepjets.generate import generate
+from deepjets.preprocessing import *
+from deepjets.utils import plot_jet_image
+
+# generate one event
+event = list(generate('w.config', 1, jet_size=1.0, shrink=True,
+    shrink_mass=80.385, subjet_dr_min=0.3,
+    trimmed_pt_min=200, trimmed_pt_max=500,
+    params_dict={'PhaseSpace:pTHatMin': 250,
+        'PhaseSpace:pTHatMax': 300}))[0]
+
+jets, subjets, constit, trimmed_constit, shrinkage = event
+
+edges = pixel_edges(
+        jet_size=1.0,
+        subjet_size_fraction=0.5,
+        pix_size=(0.1, 0.1))
+eta_edges, phi_edges = edges
+
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(14, 7))
+
+axes = [
+plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
+plt.subplot2grid((2,4), (0, 2)),
+plt.subplot2grid((2,4), (0, 3)),
+plt.subplot2grid((2,4), (1, 2)),
+plt.subplot2grid((2,4), (1, 3)),
+]
+
+def simple_axes(ax):
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
+    ax.axes.get_xaxis().set_ticks([])
+    ax.axes.get_yaxis().set_ticks([])
+    #ax.set_aspect('equal')
+
+for ax in axes:
+    simple_axes(ax)
+
+
+translate(trimmed_constit, subjets)
+axes[0].scatter(trimmed_constit['eta'], trimmed_constit['phi'],
+        marker='o', s=trimmed_constit['ET'] * 5)
+axes[0].grid(True)
+axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
+      fontsize=18, fontweight='bold', va='top')
+
+image = pixelize(trimmed_constit, edges)
+
+width, height = image.T.shape
+dw, dh = 1./width, 1./height
+p = axes[1].imshow(
+    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+    interpolation='nearest', cmap='jet')
+axes[1].text(0.05, 0.95, "Pixelize", transform=axes[1].transAxes,
+      color='white', fontsize=18, fontweight='bold', va='top')
+
+image = rotate_image(image, subjets)
+p = axes[2].imshow(
+    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+    interpolation='nearest', cmap='jet')
+axes[2].text(0.05, 0.95, "Rotate", transform=axes[2].transAxes,
+      color='white', fontsize=18, fontweight='bold', va='top')
+
+image = reflect_image(image, subjets)
+p = axes[3].imshow(
+    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+    interpolation='nearest', cmap='jet')
+axes[3].text(0.05, 0.95, "Reflect", transform=axes[3].transAxes,
+      color='white', fontsize=18, fontweight='bold', va='top')
+
+image = zoom_image(image, 1. / shrinkage, 25)
+p = axes[4].imshow(
+    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+    interpolation='nearest', cmap='jet')
+axes[4].text(0.05, 0.95, "Zoom", transform=axes[4].transAxes,
+      color='white', fontsize=18, fontweight='bold', va='top')
+
+from matplotlib.patches import FancyArrowPatch
+tr = fig.transFigure
+
+arrows = [
+FancyArrowPatch(posA=(0.45, 0.75), posB=(0.55, 0.75),
+                arrowstyle='simple', mutation_scale=50,
+      transform=tr, facecolor='white', edgecolor='none'),
+
+FancyArrowPatch(posA=(0.7, 0.75), posB=(0.8, 0.75),
+                arrowstyle='simple', mutation_scale=50,
+      transform=tr, facecolor='white', edgecolor='none'),
+
+FancyArrowPatch(posA=(0.8, 0.6), posB=(0.7, 0.4),
+                arrowstyle='simple', mutation_scale=50,
+      transform=tr, facecolor='white', edgecolor='none'),
+
+FancyArrowPatch(posA=(0.7, 0.25), posB=(0.8, 0.25),
+                arrowstyle='simple', mutation_scale=50,
+      transform=tr, facecolor='white', edgecolor='none'),
+]
+fig.patches.extend(arrows) 
+
+fig.tight_layout()
+plt.savefig('show_preprocessing.png')
