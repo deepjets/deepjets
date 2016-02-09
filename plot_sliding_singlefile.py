@@ -32,6 +32,8 @@ def animate(iframe):
     avg_image = np.average(images_in_window, axis=0, weights=weights_in_window)
     print "total of {0} images selected".format(len(images_in_window))
     plot_jet_image(ax, avg_image)
+    # add label
+    ax.set_title(r'${0} < p_T \leq {1}$ GeV'.format(min_pt, max_pt))
 
 
 anim = animation.FuncAnimation(fig, animate, frames=25)
