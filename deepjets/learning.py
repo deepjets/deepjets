@@ -12,10 +12,27 @@ from sklearn.metrics import auc, roc_curve
 def train_model(
         model, train_h5_file, model_name='model', batch_size=32, epochs=100,
         patience=10, verbose=2, log_to_file=False, read_into_RAM=False):
-    """Train model using datasets in train_h5_file. Save model with best AUC.
+    """Train model. Save model with best AUC.
     
-    Passes datasets to Keras directly from train_h5_file each epoch unless
-    read_into_RAM=True.
+    Train model using area under ROC curve as measure of success (not
+    explcitiy implemented as loss function).
+    
+    Args:
+        model: keras model to train.
+        train_h5_file: name of h5 file containing 'X_train', 'Y_train',
+                       'X_val', 'Y_val', 'weights_train' (optional) datasets.
+        model_name: base filename to use for saving models.
+        batch_size, epochs: integers to pass to keras.
+        patience: number of epochs to run without improvement.
+        verbose: 0 suppresses all progress updates.
+                 1 provides minimal progress updates.
+                 2 provides full progress updates.
+        log_to_file: if True full progress updates are written to
+                     model_name_log.txt.
+        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+                       passed directly to keras.
+    Returns:
+        model: model at final point in training (usually not the best model).
     """
     save_model(model, model_name)
     if log_to_file:
@@ -111,9 +128,25 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        show_ROC_curve=True, log_to_file=False, X_dataset='X_test',
+        log_to_file=False, show_ROC_curve=True, X_dataset='X_test',
         Y_dataset='Y_test'):
-    """Test model using dataset in train_test_file. Display ROC curve.
+    """Test model. Display ROC curve.
+    
+    Args:
+        model: keras model to test.
+        test_h5_file: name of h5 file containing test datasets.
+        model_name: base filename to use for saving models.
+        batch_size: integer to pass to keras.
+        verbose: 0 suppresses all progress updates.
+                 1 provides minimal progress updates.
+                 2 provides full progress updates.
+        log_to_file: if True full progress updates are written to
+                     model_name_log.txt.
+        show_ROC_curve: if True plot, display and output ROC curve.
+        X_dataset: name of X_test dataset.
+        Y_dataset: name of Y_test dataset.
+    Returns:
+        dict of scores and optionally ROC curve data.
     """
     if log_to_file:
         try:
@@ -169,6 +202,9 @@ def test_model(
 
 
 def train_test_star_cv(kwargs):
+    """Helper function for cross validating in parallel.
+    
+    Train and test model on k-fold. Return test results."""
     ikf = kwargs['ikf']
     train_h5_file = kwargs['train_h5_file']
     model_name = kwargs['model_name']
@@ -188,8 +224,26 @@ def cross_validate_model(
         model, train_h5_files, model_name='model', batch_size=32, epochs=100,
         patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
         max_jobs=1):
-    """Cross validate model using k-folded datasets in train_h5_files.
-    Returns lists of scores.
+    """Cross validate model using k-folded datasets.
+    
+    Args:
+        model: keras model to train.
+        train_h5_files: list of h5 files containing k-folds to train on. Each
+                        file contains 'X_train', 'Y_train', 'X_val', 'Y_val',
+                        'weights_train' (optional) datasets.
+        model_name: base filename to use for saving models.
+        batch_size, epochs: integers to pass to keras.
+        patience: number of epochs to run without improvement.
+        verbose: 0 suppresses all progress updates.
+                 1 provides minimal progress updates.
+                 2 provides full progress updates.
+        log_to_file: if True full progress updates are written to
+                     model_name_log.txt.
+        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+                       passed directly to keras.
+        max_jobs: number of processors to utilise.
+    Returns:
+        dict of test results listed by k-fold. 
     """
     if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
         print("Number of k-folds must be > 1.")
@@ -238,6 +292,9 @@ def cross_validate_model(
 
 
 def compile_model_star_gs(kwargs):
+    """Helper function for grid searching in parallel.
+    
+    Compiles and saves models for all values of optimizer parameters."""
     model_name_igp = kwargs['model_name_igp']
     get_model = kwargs['get_model']
     get_model_args = kwargs['get_model_args']
@@ -251,6 +308,10 @@ def compile_model_star_gs(kwargs):
 
 
 def train_test_star_gs(kwargs):
+    """Helper function for grid searching in parallel.
+    
+    Train and test model on grid point, k-fold. Return test results,
+    grid point and k-fold indices."""
     igp = kwargs['igp']
     ikf = kwargs['ikf']
     optimizer_kwargs = kwargs['optimizer_kwargs']
@@ -281,8 +342,30 @@ def optimizer_grid_search(
         train_h5_files, model_name='model', batch_size=32, epochs=100,
         patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
         max_jobs=1):
-    """Perform grid search on optimizer kwargs. Cross validate at each point.
-    Returns lists of scores.
+    """Perform cross-validated grid search on optimizer kwargs.
+    
+    Args:
+        get_model: function to generate keras models.
+        get_model_args: list of arguments to pass to get_model.
+        optimizer: keras optimizer to use in training model.
+        optimizer_kwargs_grid: dict defining ranges for optimizer parametes to
+                               be varied.
+        train_h5_files: list of h5 files containing k-folds to train on. Each
+                        file contains 'X_train', 'Y_train', 'X_val', 'Y_val',
+                        'weights_train' (optional) datasets.
+        model_name: base filename to use for saving models.
+        batch_size, epochs: integers to pass to keras.
+        patience: number of epochs to run without improvement.
+        verbose: 0 suppresses all progress updates.
+                 1 provides minimal progress updates.
+                 2 provides full progress updates.
+        log_to_file: if True full progress updates are written to
+                     model_name_log.txt.
+        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+                       passed directly to keras.
+        max_jobs: number of processors to utilise.
+    Returns:
+        list of dicts of goptimizer parameters, test results listed by k-fold. 
     """
     if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
         print("Number of k-folds must be > 1.")
@@ -367,7 +450,14 @@ def optimizer_grid_search(
 
 
 def select_best_model(grid_search_results, metric='AUC', max_is_best=True):
-    """Returns parameter values giving best value for metric.
+    """Select parameter values giving best value for metric.
+    
+    Args:
+        grid_search_results: results from optimizer_grid_search function.
+        metric: name of metric to order results by.
+        max_is_best: if True try and maximize metric, else minimize.
+    Return:
+        dict containing parameter and metric values for best grid point.
     """
     results_list = [
         (r['parameters'], np.mean(r['results'][metric]))

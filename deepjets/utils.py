@@ -9,9 +9,15 @@ from sklearn import cross_validation
 
 
 def load_images(image_h5_file, n_images=-1, auxvars=[]):
-    """Load images from h5 file.
+    """Load images and auxiliary data from h5 file.
     
-    Optionally choose number of randomly selected images.
+    Args:
+        image_h5_file: location of h5 file containing images.
+        n_images: number of images to load, -1 loads all.
+        auxvars: list of auxvar field names to load.
+    Returns:
+        images: array of image arrays.
+        aux_data: dict of auxvar arrays.
     TODO: add support for multiple classes.
     """
     with h5py.File(image_h5_file, 'r') as h5file:
@@ -41,10 +47,25 @@ def prepare_datasets(
         sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
         test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
         shuffle_seed=1):
-    """Combine signal, background images; k-fold into training, validation,
-    test sets.
+    """Prepare datasets for network training.
     
-    Returns dict with names of 'test' file and 'train' files for k-folds.
+    Combine signal and background images; k-fold into training, validation,
+    test sets. Save to files.
+    
+    Args:
+        sig_h5_file, bkd_h5_file: location of h5 files containing signal,
+                                  background images.
+        dataset_name: base filename to use for saving datasets.
+        n_sig, n_bkd: number of signal, background images to load.
+        test_frac, val_frac: proportion of images to save for testing,
+                             validation
+        n_folds: number of k-folds.
+        auxvars: list of auxvar field names to load.
+        shuffle: if True shuffle images before k-folding.
+        shuffle_seed: seed for shuffling.
+    Returns:
+        file_dict: dict containing list of filenames containing train, test
+                   datasets.
     TODO: add support for multiple classes.
     """
     # Load images
@@ -130,7 +151,13 @@ def prepare_datasets(
     
 
 def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
-    """Display jet image."""
+    """Display jet image.
+    
+    Args:
+        ax: matplotlib axes to plot on.
+        image: array representing image to plot.
+        vmin, vmax: min, max intensity values to plot.
+    """
     width, height = image.T.shape
     dw, dh = 1./width, 1./height
     p = ax.imshow(
@@ -151,6 +178,12 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
 
 
 def plot_roc_curve(roc_data, label=None):
+    """Display ROC curve.
+    
+    Args:
+        roc_data: array containing ROC curve to plot.
+        label: label to include in legend.
+    """
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     handle, = ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
@@ -163,6 +196,12 @@ def plot_roc_curve(roc_data, label=None):
 
 
 def plot_roc_curves(roc_data, labels):
+    """Display ROC curve.
+    
+    Args:
+        roc_data: array containing list of ROC curves to plot.
+        label: labels to include in legend.
+    """
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     handles = []

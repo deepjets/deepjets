@@ -17,12 +17,14 @@ def draw_model(model, model_name):
 
 
 def save_model(model, model_name, overwrite=True):
+    """Save model architecture and weights."""
     json_string = model.to_json()
     open('{0}_arch.json'.format(model_name), 'w').write(json_string)
     model.save_weights('{0}_weights.h5'.format(model_name), overwrite)
 
 
 def load_model(model_name):
+    """Load model architecture and weights."""
     model = model_from_json(open('{0}_arch.json'.format(model_name)).read())
     model.load_weights('{0}_weights.h5'.format(model_name))
     return model
