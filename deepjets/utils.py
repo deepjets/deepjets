@@ -12,7 +12,6 @@ def load_images(image_h5_file, n_images=-1, auxvars=[]):
     """Load images from h5 file.
     
     Optionally choose number of randomly selected images.
-    TODO: test support for additional fields.
     TODO: add support for multiple classes.
     """
     with h5py.File(image_h5_file, 'r') as h5file:
@@ -36,6 +35,98 @@ def load_images(image_h5_file, n_images=-1, auxvars=[]):
             images = h5file['images'][:]
             aux_data = {var : auxvars_data[var][:] for var in auxvars}
         return (images, aux_data)
+
+
+def prepare_datasets(
+        sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
+        test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
+        shuffle_seed=1):
+    """Combine signal, background images; k-fold into training, validation,
+    test sets.
+    
+    Returns dict with names of 'test' file and 'train' files for k-folds.
+    TODO: add support for multiple classes.
+    """
+    # Load images
+    sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, auxvars)
+    bkd_images, bkd_aux_data = load_images(bkd_h5_file, n_bkd, auxvars)
+    n_sig = len(sig_images)
+    n_bkd = len(bkd_images)
+    n_images = n_sig + n_bkd
+    images = np.concatenate((sig_images, bkd_images))
+    images = images.reshape(-1, images.shape[1] * images.shape[2])
+    aux_data = {var : np.concatenate((sig_aux_data[var], bkd_aux_data[var]))
+                for var in auxvars}
+    # True classes
+    classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
+                              np.repeat([[0, 1]], n_bkd, axis=0)])
+    
+    # Top level train-test split
+    rs = cross_validation.ShuffleSplit(
+        n_images, n_iter=1, test_size=test_frac, random_state=shuffle_seed)
+    for trn, tst in rs:
+        train, test = trn, tst
+    out_file = dataset_name+'_test.h5'
+    with h5py.File(out_file, 'w') as h5file:
+        h5file.create_dataset('X_test', data=images[test])
+        h5file.create_dataset('Y_test', data=classes[test])
+        for var in auxvars:
+            h5file.create_dataset(var+'_test', data=aux_data[var][test])
+    file_dict = {'test' : out_file}
+    
+    # K-fold train-val-test splits
+    if n_folds > 1:
+        kf = cross_validation.KFold(
+            len(train), n_folds, shuffle=True, random_state=shuffle_seed)
+        i = 0
+        kf_files = []
+        for ktrain, ktest in kf:
+            out_file = dataset_name+'_train_kf{0}.h5'.format(i)
+            # Shuffle to make sure validation set contains both classes
+            np.random.shuffle(ktrain)
+            with h5py.File(out_file, 'w') as h5file:
+                h5file.create_dataset('X_test', data=images[train][ktest])
+                h5file.create_dataset('Y_test', data=classes[train][ktest])
+                for var in auxvars:
+                    h5file.create_dataset(
+                        var+'_test', data=aux_data[var][train][ktest])
+                n_val = int(val_frac * len(ktrain))
+                h5file.create_dataset(
+                    'X_val', data=images[train][ktrain][:n_val])
+                h5file.create_dataset(
+                    'Y_val', data=classes[train][ktrain][:n_val])
+                for var in auxvars:
+                    h5file.create_dataset(
+                        var+'_val', data=aux_data[var][train][ktrain][:n_val])
+                h5file.create_dataset(
+                    'X_train', data=images[train][ktrain][n_val:])
+                h5file.create_dataset(
+                    'Y_train', data=classes[train][ktrain][n_val:])
+                for var in auxvars:
+                    h5file.create_dataset(
+                        var+'_train',
+                        data=aux_data[var][train][ktrain][n_val:])
+            kf_files.append(out_file)
+            i += 1
+        file_dict['train'] = kf_files
+    else:
+        out_file = dataset_name+'_train.h5'
+        # Shuffle to make sure validation set contains both classes
+        np.random.shuffle(train)
+        with h5py.File(out_file, 'w') as h5file:
+            n_val = int(val_frac * len(train))
+            h5file.create_dataset('X_val', data=images[train][:n_val])
+            h5file.create_dataset('Y_val', data=classes[train][:n_val])
+            for var in auxvars:
+                h5file.create_dataset(
+                    var+'_val', data=aux_data[var][train][:n_val])
+            h5file.create_dataset('X_train', data=images[train][n_val:])
+            h5file.create_dataset('Y_train', data=classes[train][n_val:])
+            for var in auxvars:
+                h5file.create_dataset(
+                    var+'_train', data=aux_data[var][train][n_val:])
+        file_dict['train'] = out_file
+    return file_dict
     
 
 def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):

@@ -1,107 +1,12 @@
 from __future__ import print_function
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 import sys
 from .models import load_model, save_model
-from .utils import load_images, plot_roc_curve
+from .utils import plot_roc_curve
 from multiprocessing import Pool, cpu_count
-from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
-
-
-def prepare_datasets(
-        sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
-        test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
-        shuffle_seed=1):
-    """Combine signal, background images; k-fold into training, validation,
-    test sets.
-    
-    Returns dict with names of 'test' file and 'train' files for k-folds.
-    TODO: test support for additional fields.
-    TODO: add support for multiple classes.
-    """
-    # Load images
-    sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, auxvars)
-    bkd_images, bkd_aux_data = load_images(bkd_h5_file, n_bkd, auxvars)
-    n_sig = len(sig_images)
-    n_bkd = len(bkd_images)
-    n_images = n_sig + n_bkd
-    images = np.concatenate((sig_images, bkd_images))
-    images = images.reshape(-1, images.shape[1] * images.shape[2])
-    aux_data = {var : np.concatenate((sig_aux_data[var], bkd_aux_data[var]))
-                for var in auxvars}
-    # True classes
-    classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
-                              np.repeat([[0, 1]], n_bkd, axis=0)])
-    
-    # Top level train-test split
-    rs = cross_validation.ShuffleSplit(
-        n_images, n_iter=1, test_size=test_frac, random_state=shuffle_seed)
-    for trn, tst in rs:
-        train, test = trn, tst
-    out_file = dataset_name+'_test.h5'
-    with h5py.File(out_file, 'w') as h5file:
-        h5file.create_dataset('X_test', data=images[test])
-        h5file.create_dataset('Y_test', data=classes[test])
-        for var in auxvars:
-            h5file.create_dataset(var+'_test', data=aux_data[var][test])
-    file_dict = {'test' : out_file}
-    
-    # K-fold train-val-test splits
-    if n_folds > 1:
-        kf = cross_validation.KFold(
-            len(train), n_folds, shuffle=True, random_state=shuffle_seed)
-        i = 0
-        kf_files = []
-        for ktrain, ktest in kf:
-            out_file = dataset_name+'_train_kf{0}.h5'.format(i)
-            # Shuffle to make sure validation set contains both classes
-            np.random.shuffle(ktrain)
-            with h5py.File(out_file, 'w') as h5file:
-                h5file.create_dataset('X_test', data=images[train][ktest])
-                h5file.create_dataset('Y_test', data=classes[train][ktest])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_test', data=aux_data[var][train][ktest])
-                n_val = int(val_frac * len(ktrain))
-                h5file.create_dataset(
-                    'X_val', data=images[train][ktrain][:n_val])
-                h5file.create_dataset(
-                    'Y_val', data=classes[train][ktrain][:n_val])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_val', data=aux_data[var][train][ktrain][:n_val])
-                h5file.create_dataset(
-                    'X_train', data=images[train][ktrain][n_val:])
-                h5file.create_dataset(
-                    'Y_train', data=classes[train][ktrain][n_val:])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_train',
-                        data=aux_data[var][train][ktrain][n_val:])
-            kf_files.append(out_file)
-            i += 1
-        file_dict['train'] = kf_files
-    else:
-        out_file = dataset_name+'_train.h5'
-        # Shuffle to make sure validation set contains both classes
-        np.random.shuffle(train)
-        with h5py.File(out_file, 'w') as h5file:
-            n_val = int(val_frac * len(train))
-            h5file.create_dataset('X_val', data=images[train][:n_val])
-            h5file.create_dataset('Y_val', data=classes[train][:n_val])
-            for var in auxvars:
-                h5file.create_dataset(
-                    var+'_val', data=aux_data[var][train][:n_val])
-            h5file.create_dataset('X_train', data=images[train][n_val:])
-            h5file.create_dataset('Y_train', data=classes[train][n_val:])
-            for var in auxvars:
-                h5file.create_dataset(
-                    var+'_train', data=aux_data[var][train][n_val:])
-        file_dict['train'] = out_file
-    return file_dict
 
 
 def train_model(
@@ -206,7 +111,8 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        show_ROC_curve=True, log_to_file=False):
+        show_ROC_curve=True, log_to_file=False, X_dataset='X_test',
+        Y_dataset='Y_test'):
     """Test model using dataset in train_test_file. Display ROC curve.
     """
     if log_to_file:
@@ -219,18 +125,18 @@ def test_model(
     with h5py.File(test_h5_file, 'r') as h5file:
         if verbose >= 1:
             print("Testing on {0} samples.\nDataset from {1}.".format(
-                len(h5file['X_test']), test_h5_file), file=log_file)
+                len(h5file[X_dataset]), test_h5_file), file=log_file)
             sys.stdout.flush()
         # Score from model loss function
         objective_score = model.evaluate(
-            h5file['X_test'], h5file['Y_test'], batch_size=batch_size,
+            h5file[X_dataset], h5file[Y_dataset], batch_size=batch_size,
             verbose=0)
-        Y_test = h5file['Y_test'][:]
+        Y_test = h5file[Y_dataset][:]
         Y_prob = model.predict_proba(
-            h5file['X_test'], batch_size=batch_size, verbose=0)
+            h5file[X_dataset], batch_size=batch_size, verbose=0)
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
-            h5file['X_test'], batch_size=batch_size, verbose=0)
+            h5file[X_dataset], batch_size=batch_size, verbose=0)
     fpr, tpr, thresholds = roc_curve(Y_test[:, 0], Y_prob[:, 0])
     res = 1./len(Y_test)
     inv_curve = np.array(
@@ -251,11 +157,7 @@ def test_model(
     if log_file is not sys.stdout:
         log_file.close()
     if show_ROC_curve:
-        fig = plt.figure(figsize=(6, 5))
-        ax = fig.add_subplot(111)
-        plot_roc_curve(ax, inv_curve)
-        fig.tight_layout()
-        fig.show()
+        plot_roc_curve(inv_curve)
         return {'score' : objective_score,
                 'AUC' : final_auc,
                 'accuracy' : float(accuracy)/len(Y_test),
