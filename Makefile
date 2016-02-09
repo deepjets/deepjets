@@ -2,7 +2,7 @@
 
 PYTHON := $(shell which python)
 output := /data/edawe/public/deepjets/events
-setup := cd /home/edawe/workspace/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
+setup := cd /data/edawe/private/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
 WMASS := 80.385
 
 .PHONY: events
@@ -55,10 +55,10 @@ events:
 images:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 4 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=4; \
+		echo "$(setup) ./generate_images w.config $(output)/w_images.h5 --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=2; \
 	done
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 4 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=4; \
+		echo "$(setup) ./generate_images qcd.config $(output)/qcd_images.h5 --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=2; \
 	done
 
 w-images-no-batch:
