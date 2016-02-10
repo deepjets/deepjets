@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn import cross_validation
+from sklearn.metrics import auc, roc_curve
 
 
 def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
@@ -82,7 +83,15 @@ def prepare_datasets(
     # True classes
     classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
                               np.repeat([[0, 1]], n_bkd, axis=0)])
-    
+    # Test images only
+    if test_frac >= 1:
+        out_file = dataset_name+'_test.h5'
+        with h5py.File(out_file, 'w') as h5file:
+            h5file.create_dataset('X_test', data=images)
+            h5file.create_dataset('Y_test', data=classes)
+            for var in auxvars:
+                h5file.create_dataset(var+'_test', data=aux_data[var])
+        return {'test' : out_file}
     # Top level train-test split
     rs = cross_validation.ShuffleSplit(
         n_images, n_iter=1, test_size=test_frac, random_state=shuffle_seed)
@@ -95,7 +104,6 @@ def prepare_datasets(
         for var in auxvars:
             h5file.create_dataset(var+'_test', data=aux_data[var][test])
     file_dict = {'test' : out_file}
-    
     # K-fold train-val-test splits
     if n_folds > 1:
         kf = cross_validation.KFold(
@@ -103,9 +111,9 @@ def prepare_datasets(
         i = 0
         kf_files = []
         for ktrain, ktest in kf:
-            out_file = dataset_name+'_train_kf{0}.h5'.format(i)
             # Shuffle to make sure validation set contains both classes
             np.random.shuffle(ktrain)
+            out_file = dataset_name+'_train_kf{0}.h5'.format(i)
             with h5py.File(out_file, 'w') as h5file:
                 h5file.create_dataset('X_test', data=images[train][ktest])
                 h5file.create_dataset('Y_test', data=classes[train][ktest])
@@ -132,9 +140,9 @@ def prepare_datasets(
             i += 1
         file_dict['train'] = kf_files
     else:
-        out_file = dataset_name+'_train.h5'
         # Shuffle to make sure validation set contains both classes
         np.random.shuffle(train)
+        out_file = dataset_name+'_train.h5'
         with h5py.File(out_file, 'w') as h5file:
             n_val = int(val_frac * len(train))
             h5file.create_dataset('X_val', data=images[train][:n_val])
@@ -176,6 +184,107 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     ax.set_xlabel(r'$x_1$', fontsize=18)
     ax.set_ylabel(r'$x_2$', fontsize=18)
     ax.tick_params(axis='both', which='major', labelsize=12)
+    
+    
+def plot_sig_bkd_dists(
+        model, test_h5_file, batch_size=32, X_dataset='X_test',
+        Y_dataset='Y_test', legend_loc=2):
+    """Test model. Display signal and background distributions.
+    
+    Args:
+        model: keras model to test.
+        test_h5_file: name of h5 file containing test datasets.
+        batch_size: integer to pass to keras.
+        X_dataset: name of X_test dataset.
+        Y_dataset: name of Y_test dataset.
+        legend_loc: int for matplotlib legend location.
+    """
+    with h5py.File(test_h5_file, 'r') as h5file:
+        Y_test = h5file[Y_dataset][:]
+        Y_prob = model.predict_proba(
+            h5file[X_dataset], batch_size=batch_size, verbose=0)
+    Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
+    sig_prob = np.array([p[0] for p, y in zip(Y_prob, Y_test) if y[0] == 1])
+    bkd_prob = np.array([p[0] for p, y in zip(Y_prob, Y_test) if y[0] == 0])
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
+    bins = np.linspace(0, 1, 20)
+    ax.hist(
+        sig_prob, bins=bins, histtype='stepfilled', normed=True, color='b',
+        alpha=0.5, label='signal')
+    ax.hist(
+        bkd_prob, bins=bins, histtype='stepfilled', normed=True, color='r',
+        alpha=0.5, label='background')
+    ax.set_xlabel("network output", fontsize=16)
+    ax.set_ylabel("frequency", fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    plt.legend(fontsize=16, loc=legend_loc)
+    fig.show()
+
+
+def plot_gen_dists(
+        model, test_h5_files, labels, batch_size=32, X_datasets=None,
+        Y_datasets=None, legend_loc=2):
+    """Test model. Display signal and background distributions.
+    
+    Args:
+        model: keras model to test.
+        test_h5_files: name of h5 files containing test datasets.
+        labels: labels for each dataset.
+        batch_size: integer to pass to keras.
+        X_datasets: name of X_test datasets.
+        Y_datasets: name of Y_test datasets.
+        legend_loc: int for matplotlib legend location.
+    """
+    if X_datasets is None:
+        X_datasets = ['X_train'] * len(test_h5_files)
+    if Y_datasets is None:
+        Y_datasets = ['Y_train'] * len(test_h5_files)
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
+    bins = np.linspace(0, 1, 20)
+    for test_h5_file, label, X_dataset, Y_dataset in zip(
+            test_h5_files, labels, X_datasets, Y_datasets):
+        with h5py.File(test_h5_file, 'r') as h5file:
+            Y_test = h5file[Y_dataset][:]
+            Y_prob = model.predict_proba(
+                h5file[X_dataset], batch_size=batch_size, verbose=0)
+            Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
+            sig_prob = np.array([p[0] for p, y in zip(Y_prob, Y_test)
+                                 if y[0] == 1])
+            ax.hist(
+                sig_prob, bins=bins, histtype='stepfilled', normed=True,
+                alpha=0.5, label=label)
+    ax.set_xlabel("network output", fontsize=16)
+    ax.set_ylabel("frequency", fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    plt.legend(fontsize=16, loc=legend_loc)
+    fig.show()
+
+
+def auxvar_roc_curve(
+        test_h5_file, auxvar, Y_dataset='Y_test'):
+    """Calculate ROC curve associated with auxvar.
+    
+    Args:
+        test_h5_file: name of h5 file containing test datasets.
+        auxvar: name of auxiliary variable to get curve for.
+        Y_dataset: name of Y_test dataset.
+    Returns:
+        Array of ROC curve data.
+    """
+    with h5py.File(test_h5_file, 'r') as h5file:
+        Y_test = h5file[Y_dataset][:]
+        var = h5file[auxvar][:]
+    fpr, tpr, thresholds = roc_curve(Y_test[:, 0], var)
+    res = 1./len(Y_test)
+    inv_curve = np.array(
+        [[tp, 1./max(fp, res)]
+        for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
+    # AUC score
+    final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
+    print("AUC = {0}".format(final_auc))
+    return inv_curve
 
 
 def plot_roc_curve(roc_data, label=None):
@@ -187,12 +296,12 @@ def plot_roc_curve(roc_data, label=None):
     """
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    handle, = ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
+    ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
     ax.set_xlabel("signal efficiency", fontsize=16)
     ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
-    plt.legend(handles=[handle], fontsize=16)
+    plt.legend(fontsize=16)
     fig.show()
 
 
@@ -205,15 +314,13 @@ def plot_roc_curves(roc_data, labels):
     """
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    handles = []
     for dat, label in zip(roc_data, labels):
-        handle, = ax.plot(dat[:, 0], dat[:, 1], label=label)
-        handles.append(handle)
+        ax.plot(dat[:, 0], dat[:, 1], label=label)
     ax.set_xlabel("signal efficiency", fontsize=16)
     ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
-    plt.legend(handles=handles, fontsize=16)
+    plt.legend(fontsize=16)
     fig.show()
 
 

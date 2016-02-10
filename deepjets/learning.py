@@ -205,14 +205,10 @@ def test_model(
         log_file.close()
     if show_ROC_curve:
         plot_roc_curve(inv_curve)
-        return {'score' : objective_score,
-                'AUC' : final_auc,
-                'accuracy' : float(accuracy)/len(Y_test),
-                'ROC_curve' : inv_curve}
-    else:
-        return {'score' : objective_score,
-                'AUC' : final_auc,
-                'accuracy' : float(accuracy)/len(Y_test)}
+    return {'score' : objective_score,
+            'AUC' : final_auc,
+            'accuracy' : float(accuracy)/len(Y_test),
+            'ROC_curve' : inv_curve}
 
 
 def train_test_star_cv(kwargs):
