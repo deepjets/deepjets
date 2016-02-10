@@ -3,6 +3,7 @@
 from deepjets.generate import generate
 from deepjets.preprocessing import *
 from deepjets.utils import plot_jet_image
+import numpy as np
 
 # generate one event
 event = list(generate('w.config', 1, jet_size=1.0, shrink=True,
@@ -45,7 +46,6 @@ for ax in axes:
 translate(trimmed_constit, subjets)
 axes[0].scatter(trimmed_constit['eta'], trimmed_constit['phi'],
         marker='o', s=trimmed_constit['ET'] * 5)
-axes[0].grid(True)
 axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
       fontsize=18, fontweight='bold', va='top')
 
@@ -53,28 +53,28 @@ image = pixelize(trimmed_constit, edges)
 
 width, height = image.T.shape
 dw, dh = 1./width, 1./height
-p = axes[1].imshow(
+axes[1].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[1].text(0.05, 0.95, "Pixelize", transform=axes[1].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
 image = rotate_image(image, subjets)
-p = axes[2].imshow(
+axes[2].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[2].text(0.05, 0.95, "Rotate", transform=axes[2].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
 image = reflect_image(image, subjets)
-p = axes[3].imshow(
+axes[3].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[3].text(0.05, 0.95, "Reflect", transform=axes[3].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
 image = zoom_image(image, 1. / shrinkage, 25)
-p = axes[4].imshow(
+axes[4].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[4].text(0.05, 0.95, "Zoom", transform=axes[4].transAxes,
@@ -104,3 +104,58 @@ fig.patches.extend(arrows)
 
 fig.tight_layout()
 plt.savefig('show_preprocessing.png')
+
+# animated plot showing building up of average jet image
+
+from matplotlib import animation
+fig = plt.figure(figsize=(14, 7))
+
+nevents = 1000
+
+events = list(generate('w.config', nevents, jet_size=1.0, shrink=True,
+    shrink_mass=80.385, subjet_dr_min=0.3,
+    trimmed_pt_min=200, trimmed_pt_max=500,
+    params_dict={'PhaseSpace:pTHatMin': 250,
+        'PhaseSpace:pTHatMax': 300}))
+
+images = []
+
+
+def animate(iframe):
+    print "plotting frame {0}".format(iframe)
+    plt.clf()
+
+    axes = [
+    plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
+    plt.subplot2grid((2,4), (0, 2), colspan=2, rowspan=2),
+    ]
+
+    for ax in axes:
+        simple_axes(ax)
+    fig.tight_layout()
+
+    
+    jets, subjets, constit, trimmed_constit, shrinkage = events[iframe]
+
+    translate(trimmed_constit, subjets)
+    axes[0].scatter(trimmed_constit['eta'], trimmed_constit['phi'],
+            marker='o', s=trimmed_constit['ET'] * 5)
+    axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
+        fontsize=18, fontweight='bold', va='top')
+    
+    image = preprocess(subjets, trimmed_constit, edges,
+                       zoom=1. / shrinkage,
+                       normalize=True,
+                       out_width=25)
+    images.append(image)
+    avgimage = np.sum(images, axis=0) / len(images) 
+
+    axes[1].imshow(
+        avgimage.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+        interpolation='nearest', cmap='jet')
+    axes[1].text(0.05, 0.95, "Reflect", transform=axes[1].transAxes,
+        color='white', fontsize=18, fontweight='bold', va='top')
+
+
+anim = animation.FuncAnimation(fig, animate, frames=nevents)
+anim.save('animate_average_image.gif', writer='imagemagick', fps=20)

@@ -30,7 +30,7 @@ fi
 
 cd fastjet-3.1.3
 make clean
-./configure --prefix=$PREFIX --enable-cgal
+./configure --prefix=$PREFIX --enable-cgal --enable-allcxxplugins
 make -j2
 make install
 cd ..
@@ -57,3 +57,6 @@ make clean
 make -j2
 make install
 cd ..
+
+curl -O https://herwig.hepforge.org/hg/bootstrap/raw-file/published/herwig-bootstrap
+./herwig-bootstrap --with-fastjet $PREFIX --with-hepmc $PREFIX $PREFIX
