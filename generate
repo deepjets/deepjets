@@ -41,8 +41,7 @@ from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
 
-from progressbar import (Bar, BouncingBar, RotatingMarker,
-                         ETA, Percentage, ProgressBar)
+from progressbar import Bar, ETA, Percentage, ProgressBar
 
 DTYPE = np.double
 
@@ -82,7 +81,7 @@ if args.config_or_hepmc.endswith('.hepmc'):
         shrink=args.shrink,
         shrink_mass=args.shrink_mass,
         compute_auxvars=True)
-    widgets = [Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', ETA()]
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
     pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
 else:
     generator = generate(
