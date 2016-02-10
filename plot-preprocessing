@@ -81,6 +81,7 @@ axes[4].text(0.05, 0.95, "Zoom", transform=axes[4].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
 from matplotlib.patches import FancyArrowPatch
+
 tr = fig.transFigure
 
 arrows = [
@@ -108,9 +109,11 @@ plt.savefig('show_preprocessing.png')
 # animated plot showing building up of average jet image
 
 from matplotlib import animation
+from matplotlib.colors import LogNorm
+
 fig = plt.figure(figsize=(14, 7))
 
-nevents = 1000
+nevents = 80
 
 events = list(generate('w.config', nevents, jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
@@ -148,14 +151,14 @@ def animate(iframe):
                        normalize=True,
                        out_width=25)
     images.append(image)
-    avgimage = np.sum(images, axis=0) / len(images) 
-
+    avgimage = np.sum(images, axis=0) / len(images)
     axes[1].imshow(
         avgimage.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-        interpolation='nearest', cmap='jet')
-    axes[1].text(0.05, 0.95, "Reflect", transform=axes[1].transAxes,
-        color='white', fontsize=18, fontweight='bold', va='top')
+        interpolation='nearest', norm=LogNorm(vmin=1e-9, vmax=1e-2),
+        cmap='jet')
+    axes[1].text(0.05, 0.95, "Average Jet Image", transform=axes[1].transAxes,
+        color='red', fontsize=18, fontweight='bold', va='top')
 
 
 anim = animation.FuncAnimation(fig, animate, frames=nevents)
-anim.save('animate_average_image.gif', writer='imagemagick', fps=20)
+anim.save('animate_average_image.gif', writer='imagemagick', fps=5)
