@@ -60,7 +60,7 @@ libdeepjets = Extension(
         '/usr/local/lib',
         os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
-    libraries='pythia8 fastjet fastjetcontribfragile CGAL gmp'.split(),
+    libraries='pythia8 fastjet fastjetcontribfragile CGAL gmp HepMC'.split(),
     extra_compile_args=[
         '-Wno-unused-function',
         '-Wno-write-strings',

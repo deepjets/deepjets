@@ -6,7 +6,53 @@
 #include <cmath>
 #include <algorithm>
 
+#include "HepMC/IO_GenEvent.h"
+#include "HepMC/GenEvent.h"
+#include <math.h>
+#include <algorithm>
+#include <vector>
+
 using namespace Pythia8;
+
+class IsStateFinal {
+public:
+  bool operator()( const HepMC::GenParticle* p ) {
+    if ( !p->end_vertex() && p->status()==1 ) return 1;
+    return 0;
+  }
+};
+
+
+HepMC::IO_GenEvent* get_hepmc_reader(std::string filename) {
+  HepMC::IO_GenEvent* ascii_in = new HepMC::IO_GenEvent(filename, std::ios::in);
+  return ascii_in;
+}
+
+
+void hepmc_to_pseudojet(HepMC::GenEvent& evt, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+  IsStateFinal isfinal;
+  HepMC::FourVector fourvect;
+  for ( HepMC::GenEvent::particle_iterator p = evt.particles_begin(); p != evt.particles_end(); ++p ) if (isfinal(*p)) {
+    // add visibility test
+    fourvect = (*p)->momentum();
+    if (abs(fourvect.pseudoRapidity()) > eta_max) continue;
+    fastjet::PseudoJet particleTemp(fourvect.px(), fourvect.py(), fourvect.pz(), fourvect.e());
+    output.push_back(particleTemp);
+  }
+}
+
+
+void pythia_to_pseudojet(Pythia8::Event& event, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+  for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
+    // Require visible particles inside detector.
+    if (!event[i].isVisible()) continue;
+    if (abs(event[i].eta()) > eta_max) continue;
+    // Create a PseudoJet from the complete Pythia particle.
+    fastjet::PseudoJet particleTemp = event[i];
+    output.push_back(particleTemp);
+  }
+}
+
 
 /*
  * Instead if passing around many arguments, we use a Result struct
@@ -28,7 +74,8 @@ struct Result {
   double tau_3;
 };
 
-bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
+
+bool keep_pythia_event(Pythia8::Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
   if (pt_min < 0 && pt_max < 0) return true;
   bool passes = false;
   double pt;
@@ -46,6 +93,7 @@ bool keep_event(Event& event, int cut_on_pdgid, double pt_min, double pt_max) {
   }
   return passes;
 }
+
 
 void result_to_arrays(Result& result,
                       double* jet_arr, double* subjet_arr,
@@ -89,8 +137,8 @@ void result_to_arrays(Result& result,
   }
 }
 
-Result* get_jets(Event& event,
-                 double eta_max,
+
+Result* get_jets(std::vector<fastjet::PseudoJet>& fjInputs,
                  double jet_size, double subjet_size_fraction,
                  double subjet_pt_min_fraction,
                  double subjet_dr_min,
@@ -98,26 +146,10 @@ Result* get_jets(Event& event,
                  bool shrink, double shrink_mass,
                  bool compute_auxvars) {
   /*
-   * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min, eta_max).
+   * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min).
    * Find subjets by re-cluster jet using kt algorith (params subjet_size_fraction * jet_size, subjet_size_fraction).
    * Return a Result struct
    */
-
-  // Begin FastJet analysis: extract particles from event record
-  std::vector<fastjet::PseudoJet> fjInputs;
-  for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
-    // Require visible particles inside detector.
-    if (!event[i].isVisible()) continue;
-    if (abs(event[i].eta()) > eta_max) continue;
-
-    // Create a PseudoJet from the complete Pythia particle.
-    fastjet::PseudoJet particleTemp = event[i];
-
-    // Store acceptable particles as input to Fastjet.
-    // Conversion to PseudoJet is performed automatically
-    // with the help of the code in FastJet3.h.
-    fjInputs.push_back(particleTemp);
-  }
 
   // Run Fastjet algorithm and sort jets in pT order
   fastjet::JetDefinition jetDef(fastjet::genkt_algorithm, jet_size, -1); // anti-kt

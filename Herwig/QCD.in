@@ -17,7 +17,7 @@ set MEZJet:GammaZ 2              #includes only Z
 
 ##  Jet pT Cuts
 
-set /Herwig/Cuts/JetKtCut:MinKT 20.*GeV     #Min Jet pT
+set /Herwig/Cuts/JetKtCut:MinKT 250.*GeV    #Min Jet pT
 set /Herwig/Cuts/JetKtCut:MaxKT 300.*GeV    #Max Jet pT
 
 ##  Parton Showers

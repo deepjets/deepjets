@@ -53,6 +53,7 @@ def generate_pythia(string config, string xmldoc,
     cdef np.ndarray subjet_constit_arr  # contains trimmed jet constituents
 
     cdef Result* result
+    cdef vector[PseudoJet] particles
 
     dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
     dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
@@ -64,11 +65,14 @@ def generate_pythia(string config, string xmldoc,
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
             
-            if not keep_event(pythia.event, cut_on_pdgid, pdgid_pt_min, pdgid_pt_max):
+            if not keep_pythia_event(pythia.event, cut_on_pdgid, pdgid_pt_min, pdgid_pt_max):
                 continue
 
-            result = get_jets(pythia.event,
-                              eta_max, jet_size, subjet_size_fraction,
+            particles.clear()
+            pythia_to_pseudojet(pythia.event, particles, eta_max)
+
+            result = get_jets(particles,
+                              jet_size, subjet_size_fraction,
                               subjet_pt_min_fraction,
                               subjet_dr_min,
                               trimmed_pt_min, trimmed_pt_max,
@@ -112,3 +116,101 @@ def generate_pythia(string config, string xmldoc,
         pythia.stat()
     finally:
         del pythia
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def read_hepmc(string filename,
+               int n_events,
+               float eta_max=5.,
+               float jet_size=0.6,
+               float subjet_size_fraction=0.5,
+               float subjet_pt_min_fraction=0.05,
+               float subjet_dr_min=0.,
+               float trimmed_pt_min=10., float trimmed_pt_max=-1., 
+               bool shrink=False, float shrink_mass=-1.,
+               bool compute_auxvars=False):
+    """
+    Read HepMC files and yield jet and constituent arrays
+    """
+    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
+        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+
+    cdef int ievent;
+
+    cdef int num_jet_constit = 0
+    cdef int num_subjets = 0
+    cdef int num_subjets_constit = 0
+
+    cdef np.ndarray jet_arr  # contains jet and trimmed jet
+    cdef np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
+    cdef np.ndarray jet_constit_arr  # contains original jet constituents
+    cdef np.ndarray subjet_constit_arr  # contains trimmed jet constituents
+
+    cdef Result* result
+
+    cdef IO_GenEvent* hepmc_reader
+    cdef GenEvent* event
+    cdef vector[PseudoJet] particles
+
+    hepmc_reader = get_hepmc_reader(filename)
+
+    dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
+    dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
+
+    try:
+        ievent = 0
+        while ievent < n_events:
+            # get next event
+            event = hepmc_reader.read_next_event()
+            if event == NULL:
+                break
+
+            particles.clear()
+            hepmc_to_pseudojet(event[0], particles, eta_max)
+
+            result = get_jets(particles,
+                              jet_size, subjet_size_fraction,
+                              subjet_pt_min_fraction,
+                              subjet_dr_min,
+                              trimmed_pt_min, trimmed_pt_max,
+                              shrink, shrink_mass,
+                              compute_auxvars)
+
+            if result == NULL:
+                # didn't find any jets passing cuts in this event
+                continue
+
+            num_jet_constit = result.jet.constituents().size()
+            num_subjets = result.subjets.size()
+            num_subjets_constit = 0
+            for isubjet in range(result.subjets.size()):
+                num_subjets_constit += result.subjets[isubjet].constituents().size()
+            
+            jet_arr = np.empty((2,), dtype=dtype_jet)
+            subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
+            jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
+            subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
+
+            result_to_arrays(result[0],
+                             <DTYPE_t*> jet_arr.data,
+                             <DTYPE_t*> subjet_arr.data,
+                             <DTYPE_t*> jet_constit_arr.data,
+                             <DTYPE_t*> subjet_constit_arr.data)
+            
+            if compute_auxvars:
+                auxdict = {
+                    'subjet_dr': result.subjet_dr,
+                    'tau_1': result.tau_1,
+                    'tau_2': result.tau_2,
+                    'tau_3': result.tau_3,
+                    }
+                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage, auxdict
+            else:
+                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
+
+            del result
+            ievent += 1
+    finally:
+        del hepmc_reader
+        del event
