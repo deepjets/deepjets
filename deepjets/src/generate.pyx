@@ -160,7 +160,7 @@ def read_hepmc(string filename,
 
     try:
         ievent = 0
-        while ievent < n_events:
+        while n_events < 0 or ievent < n_events:
             # get next event
             event = hepmc_reader.read_next_event()
             if event == NULL:

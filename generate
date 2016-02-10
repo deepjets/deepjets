@@ -7,21 +7,22 @@ parser = ArgumentParser()
 parser.add_argument('--events', type=int, default=1000)
 parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--output', '-o', default=None)
-parser.add_argument('--jet-size', type=float, default=1.2)
+parser.add_argument('--jet-size', type=float, default=1.0)
 parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
 parser.add_argument('--shrink', default=False, action='store_true')
-parser.add_argument('--shrink-mass', default='jet')
+parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--trimmed-pt-min', type=float, default=10.)
 parser.add_argument('--trimmed-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
-parser.add_argument('config')
+parser.add_argument('config_or_hepmc')
 args = parser.parse_args()
 
 if args.output is None:
-    args.output = os.path.splitext(args.config)[0] + '.h5'
+    args.output = os.path.splitext(args.config_or_hepmc)[0] + '.h5'
 
 if args.params is not None:
     args.params = dict([token.split('=') for token in args.params.split(';')])
@@ -29,10 +30,13 @@ if args.params is not None:
 if args.shrink_mass == 'jet':
     # shrink with jet mass
     args.shrink_mass = -1
+elif args.shrink_mass == 'wmass':
+    args.shrink_mass = 80.385
 else:
-    args.shrink_mass = float(args.shrink_mass)
+    raise ValueError("this should not happen")
 
 from deepjets.generate import generate
+from deepjets.hepmc import read_hepmc
 from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
@@ -62,20 +66,37 @@ dset_subjet_size_fraction = f.create_dataset('subjet_size_fraction', (1,), dtype
 dset_jet_size[0] = args.jet_size
 dset_subjet_size_fraction[0] = args.subjet_size_fraction
 
+
+if args.config_or_hepmc.endswith('.hepmc'):
+    generator = read_hepmc(
+        args.config_or_hepmc, args.events,
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_pt_min=args.trimmed_pt_min,
+        trimmed_pt_max=args.trimmed_pt_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass,
+        compute_auxvars=True)
+else:
+    generator = generate(
+        args.config_or_hepmc, args.events,
+        random_state=args.seed,
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_pt_min=args.trimmed_pt_min,
+        trimmed_pt_max=args.trimmed_pt_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass,
+        cut_on_pdgid=args.cut_on_pdgid,
+        pdgid_pt_min=args.pdgid_pt_min,
+        pdgid_pt_max=args.pdgid_pt_max,
+        params_dict=args.params,
+        compute_auxvars=True) 
+
 i = 0
-for event in generate(args.config, args.events,
-                      random_state=args.seed,
-                      jet_size=args.jet_size,
-                      subjet_size_fraction=args.subjet_size_fraction,
-                      trimmed_pt_min=args.trimmed_pt_min,
-                      trimmed_pt_max=args.trimmed_pt_max,
-                      shrink=args.shrink,
-                      shrink_mass=args.shrink_mass,
-                      cut_on_pdgid=args.cut_on_pdgid,
-                      pdgid_pt_min=args.pdgid_pt_min,
-                      pdgid_pt_max=args.pdgid_pt_max,
-                      params_dict=args.params,
-                      compute_auxvars=True):
+for event in generator:
 
     jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
     
