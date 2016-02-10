@@ -41,6 +41,9 @@ from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
 
+from progressbar import (Bar, BouncingBar, RotatingMarker,
+                         ETA, Percentage, ProgressBar)
+
 DTYPE = np.double
 
 f = h5py.File(args.output, 'w')
@@ -66,8 +69,9 @@ dset_subjet_size_fraction = f.create_dataset('subjet_size_fraction', (1,), dtype
 dset_jet_size[0] = args.jet_size
 dset_subjet_size_fraction[0] = args.subjet_size_fraction
 
-
+hepmc = False
 if args.config_or_hepmc.endswith('.hepmc'):
+    hepmc = True
     generator = read_hepmc(
         args.config_or_hepmc, args.events,
         jet_size=args.jet_size,
@@ -78,6 +82,8 @@ if args.config_or_hepmc.endswith('.hepmc'):
         shrink=args.shrink,
         shrink_mass=args.shrink_mass,
         compute_auxvars=True)
+    widgets = [Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
 else:
     generator = generate(
         args.config_or_hepmc, args.events,
@@ -110,7 +116,13 @@ for event in generator:
     dset_tau_1[i] = auxvars['tau_1']
     dset_tau_2[i] = auxvars['tau_2']
     dset_tau_3[i] = auxvars['tau_3']
-        
+    
     i += 1
+
+    if hepmc:
+        pbar.update(i)
+
+if hepmc:
+    pbar.finish()
 
 f.close()

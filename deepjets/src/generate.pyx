@@ -168,6 +168,7 @@ def read_hepmc(string filename,
 
             particles.clear()
             hepmc_to_pseudojet(event[0], particles, eta_max)
+            del event
 
             result = get_jets(particles,
                               jet_size, subjet_size_fraction,
@@ -213,4 +214,3 @@ def read_hepmc(string filename,
             ievent += 1
     finally:
         del hepmc_reader
-        del event

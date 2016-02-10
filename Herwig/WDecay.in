@@ -1,7 +1,7 @@
 ######  Input file for W Decay  ######
 
 cd /Herwig/Generators
-set LHCGenerator:NumberOfEvents 1000
+set LHCGenerator:NumberOfEvents 100000
 set LHCGenerator:RandomNumberGenerator:Seed 31122001
 set LHCGenerator:PrintEvent 10
 set LHCGenerator:MaxErrors 10000
@@ -55,7 +55,7 @@ cd /Herwig/EventHandlers
 cd /Herwig/Generators
 #insert LHCGenerator:AnalysisHandlers 0 /Herwig/Analysis/Plot
 insert /Herwig/Generators/LHCGenerator:AnalysisHandlers[0] /Herwig/Analysis/HepMCFile
-set /Herwig/Analysis/HepMCFile:PrintEvent 100
+set /Herwig/Analysis/HepMCFile:PrintEvent 100000
 set /Herwig/Analysis/HepMCFile:Format GenEvent
 set /Herwig/Analysis/HepMCFile:Units GeV_mm
 set /Herwig/Analysis/HepMCFile:Filename WDecay.hepmc
