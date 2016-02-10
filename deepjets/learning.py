@@ -49,6 +49,8 @@ def train_model(
               len(h5file['X_train']), len(h5file['X_val'])), file=log_file)
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
         sys.stdout.flush()
+    if log_file is not sys.stdout:
+        log_file.close()
     if read_into_RAM:
         shuffle = False
         X_train = h5file['X_train'][:]
@@ -90,8 +92,10 @@ def train_model(
         else:
             stop_cdn += 1
         if log_to_file:
+            log_file = open(model_name+'_log.txt', 'a')
             print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
                 epoch+1, epochs, stop_cdn, current_auc), file=log_file)
+            log_file.close()
         elif verbose >= 2:
             print("\r", end='')
             print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
@@ -99,16 +103,22 @@ def train_model(
             sys.stdout.flush()
         if stop_cdn >= patience:
             if log_to_file:
+                log_file = open(model_name+'_log.txt', 'a')
                 print("Patience tolerance reached.", file=log_file)
+                log_file.close()
             elif verbose >= 2:
                 print("\nPatience tolerance reached.")
                 sys.stdout.flush()
             break
         # Reset model if AUC calculation fails three times
         if stuck_cdn > 2:
-            if verbose >= 1:
+            if log_to_file:
+                log_file = open(model_name+'_log.txt', 'a')
                 print("Training stuck, rolling back to best AUC.",
                       file=log_file)
+                log_file.close()
+            elif verbose >= 1:
+                print("Training stuck, rolling back to best AUC.")
                 sys.stdout.flush()
             model = load_model(model_name)
             stuck_cdn = 0
@@ -116,13 +126,17 @@ def train_model(
             continue
         epoch += 1
     h5file.close()
-    if verbose >= 2:
+    if log_to_file:
+        log_file = open(model_name+'_log.txt', 'a')
+        print(
+            "Training complete. Best validation AUC = {0}".format(best_auc),
+            file=log_file)
+        log_file.close()
+    elif verbose >= 2:
         print(
             "Training complete. Best validation AUC = {0}".format(best_auc),
             file=log_file)
         sys.stdout.flush()
-    if log_file is not sys.stdout:
-        log_file.close()
     return model
 
 

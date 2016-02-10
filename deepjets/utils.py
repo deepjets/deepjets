@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn import cross_validation
 
 
-def load_images(image_h5_file, n_images=-1, auxvars=[]):
+def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
     """Load images and auxiliary data from h5 file.
     
     Args:
@@ -31,7 +31,8 @@ def load_images(image_h5_file, n_images=-1, auxvars=[]):
             n_images = len(images)
         if n_images < len(images):
             rs = cross_validation.ShuffleSplit(
-                len(images), n_iter=1, test_size=n_images)
+                len(images), n_iter=1, test_size=n_images,
+                random_state=shuffle_seed)
             for train, test in rs:
                 keep = test
             images = np.take(images, keep, axis=0)
