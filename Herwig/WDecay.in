@@ -1,7 +1,7 @@
 ######  Input file for W Decay  ######
 
 cd /Herwig/Generators
-set LHCGenerator:NumberOfEvents 100000
+set LHCGenerator:NumberOfEvents 1000
 set LHCGenerator:RandomNumberGenerator:Seed 31122001
 set LHCGenerator:PrintEvent 10
 set LHCGenerator:MaxErrors 10000
@@ -31,8 +31,8 @@ do /Herwig/Particles/Z0:PrintDecayModes
 
 ##  Jet pT Cuts
 
-set /Herwig/Cuts/JetKtCut:MinKT 250.*GeV    #Min Jet pT
-set /Herwig/Cuts/JetKtCut:MaxKT 300.*GeV    #Max Jet pT
+set /Herwig/Cuts/WBosonKtCut:MinKT 250.*GeV    #Min W pT
+set /Herwig/Cuts/WBosonKtCut:MaxKT 300.*GeV    #Max W pT
 
 
 ##  Parton Showers
