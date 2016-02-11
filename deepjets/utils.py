@@ -208,15 +208,15 @@ def plot_sig_bkd_dists(
     bkd_prob = np.array([p[0] for p, y in zip(Y_prob, Y_test) if y[0] == 0])
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    bins = np.linspace(0, 1, 20)
+    bins = np.linspace(0, 1, 50)
     ax.hist(
         sig_prob, bins=bins, histtype='stepfilled', normed=True, color='b',
         alpha=0.5, label='signal')
     ax.hist(
         bkd_prob, bins=bins, histtype='stepfilled', normed=True, color='r',
         alpha=0.5, label='background')
-    ax.set_xlabel("network output", fontsize=16)
-    ax.set_ylabel("frequency", fontsize=16)
+    ax.set_xlabel('network output', fontsize=16)
+    ax.set_ylabel('frequency', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     plt.legend(fontsize=16, loc=legend_loc)
     fig.show()
@@ -242,7 +242,7 @@ def plot_gen_dists(
         Y_datasets = ['Y_train'] * len(test_h5_files)
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    bins = np.linspace(0, 1, 20)
+    bins = np.linspace(0, 1, 50)
     for test_h5_file, label, X_dataset, Y_dataset in zip(
             test_h5_files, labels, X_datasets, Y_datasets):
         with h5py.File(test_h5_file, 'r') as h5file:
@@ -255,8 +255,8 @@ def plot_gen_dists(
             ax.hist(
                 sig_prob, bins=bins, histtype='stepfilled', normed=True,
                 alpha=0.5, label=label)
-    ax.set_xlabel("network output", fontsize=16)
-    ax.set_ylabel("frequency", fontsize=16)
+    ax.set_xlabel('network output', fontsize=16)
+    ax.set_ylabel('frequency', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     plt.legend(fontsize=16, loc=legend_loc)
     fig.show()
@@ -276,11 +276,11 @@ def auxvar_roc_curve(
     with h5py.File(test_h5_file, 'r') as h5file:
         Y_test = h5file[Y_dataset][:]
         var = h5file[auxvar][:]
-    fpr, tpr, thresholds = roc_curve(Y_test[:, 0], var)
+    fpr, tpr, _ = roc_curve(Y_test[:, 0], var)
     res = 1./len(Y_test)
     inv_curve = np.array(
         [[tp, 1./max(fp, res)]
-        for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
+         for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
     # AUC score
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     print("AUC = {0}".format(final_auc))
@@ -297,8 +297,8 @@ def plot_roc_curve(roc_data, label=None):
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
-    ax.set_xlabel("signal efficiency", fontsize=16)
-    ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
+    ax.set_xlabel('signal efficiency', fontsize=16)
+    ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
     plt.legend(fontsize=16)
@@ -316,8 +316,8 @@ def plot_roc_curves(roc_data, labels):
     ax = fig.add_subplot(111)
     for dat, label in zip(roc_data, labels):
         ax.plot(dat[:, 0], dat[:, 1], label=label)
-    ax.set_xlabel("signal efficiency", fontsize=16)
-    ax.set_ylabel("1 / [backgroud efficiency]", fontsize=16)
+    ax.set_xlabel('signal efficiency', fontsize=16)
+    ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
     plt.legend(fontsize=16)

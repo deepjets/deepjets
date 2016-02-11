@@ -184,11 +184,11 @@ def test_model(
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
-    fpr, tpr, thresholds = roc_curve(Y_test[:, 0], Y_prob[:, 0])
+    fpr, tpr, _ = roc_curve(Y_test[:, 0], Y_prob[:, 0])
     res = 1./len(Y_test)
     inv_curve = np.array(
         [[tp, 1./max(fp, res)]
-        for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
+         for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
     # AUC score
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     # Number of correct classifications

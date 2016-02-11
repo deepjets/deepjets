@@ -103,7 +103,7 @@ def zoom_image_fixed_size(image, zoom):
     Expansion interpolates with cubic spline.
     """
     if zoom < 1:
-        raise ValueError("zoom scale factor must be at least 1")
+        raise ValueError("Zoom scale factor must be at least 1.")
     elif zoom == 1:
         # copy
         return np.array(image)
@@ -126,7 +126,7 @@ def zoom_image(image, zoom, out_width=25):
     Expansion interpolates with cubic spline.
     """
     if zoom < 1:
-        raise ValueError("zoom scale factor must be at least 1")
+        raise ValueError("Zoom scale factor must be at least 1.")
 
     width, height = image.shape
     out_height = int(np.rint(float(out_width*height)/width))
