@@ -1,7 +1,7 @@
 ######  Input file for W Decay  ######
 
 cd /Herwig/Generators
-set LHCGenerator:NumberOfEvents 1000
+set LHCGenerator:NumberOfEvents 100000
 set LHCGenerator:RandomNumberGenerator:Seed 31122001
 set LHCGenerator:PrintEvent 10
 set LHCGenerator:MaxErrors 10000
