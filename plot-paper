@@ -24,7 +24,7 @@ def plot(signal, background):
     background_selection = (background_dset_jet['mass'] > 65) & (background_dset_jet['mass'] < 95)
 
 
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5))
     vals1, _, _ = ax[0].hist(signal_dset_jet['mass'], bins=np.linspace(65, 95, 100),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
                label=r'$W\rightarrow qq\prime$')
@@ -60,6 +60,18 @@ def plot(signal, background):
     ax[2].set_xlabel(r'$\Delta R$ between subjets', fontsize=12)
     ax[2].legend()
     ax[2].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
+    
+    vals1, _, _ = ax[3].hist(signal_dset_jet['pT'], bins=np.linspace(0, 500, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
+               label=r'$W\rightarrow qq\prime$')
+    vals2, _, _ = ax[3].hist(background_dset_jet['pT'], bins=np.linspace(0, 500, 100),
+               histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
+               label='QCD jets')
+    ax[3].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
+    ax[3].set_ylabel('Normalized to Unity')
+    ax[3].set_xlabel(r'Jet $p_T$ [GeV]', fontsize=12)
+    ax[3].legend()
+    ax[3].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
 
     fig.tight_layout()
     plt.savefig('paper_plots.png')

@@ -30,10 +30,13 @@ HepMC::IO_GenEvent* get_hepmc_reader(std::string filename) {
 
 
 void hepmc_to_pseudojet(HepMC::GenEvent& evt, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+  int pdgid;
   IsStateFinal isfinal;
   HepMC::FourVector fourvect;
-  for ( HepMC::GenEvent::particle_iterator p = evt.particles_begin(); p != evt.particles_end(); ++p ) if (isfinal(*p)) {
-    // add visibility test
+  for (HepMC::GenEvent::particle_iterator p = evt.particles_begin(); p != evt.particles_end(); ++p) if (isfinal(*p)) {
+    // visibility test
+    pdgid = abs((*p)->pdg_id());
+    if ((pdgid == 12) || (pdgid == 14) || (pdgid == 16)) continue; // neutrino
     fourvect = (*p)->momentum();
     if (abs(fourvect.pseudoRapidity()) > eta_max) continue;
     fastjet::PseudoJet particleTemp(fourvect.px(), fourvect.py(), fourvect.pz(), fourvect.e());

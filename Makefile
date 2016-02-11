@@ -52,6 +52,10 @@ events:
 		echo "$(setup) ./generate w.config --jet-size 1 --events 100000 --output $(output)/w_shrink_wmass_1p0_$${pthatmin}.h5 --shrink --shrink-mass $(WMASS) --seed $${pthatmin} --params \"PhaseSpace:pTHatMin = $${pthatmin}\"" | qsub -e $(output)/log -o $(output)/log -N w_shrink_wmass_1p0_$${pthatmin}; \
 	done
 
+test-events:
+	echo "$(setup) ./generate w.config --events 100000 --output $(output)/w_test.h5 --params \"PhaseSpace:pTHatMin = 250;PhaseSpace:pTHatMax = 300\" --shrink " | qsub -e $(output)/log -o $(output)/log -N w_test
+	echo "$(setup) ./generate qcd.config --events 100000 --output $(output)/qcd_test.h5 --params \"PhaseSpace:pTHatMin = 250;PhaseSpace:pTHatMax = 300\" --shrink " | qsub -e $(output)/log -o $(output)/log -N qcd_test
+
 images:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
