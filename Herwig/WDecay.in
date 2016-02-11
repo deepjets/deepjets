@@ -29,10 +29,10 @@ insert ZPowhegDecayer:DefaultInit
 do /Herwig/Particles/Z0:SelectDecayModes Z0->nu_e,nu_ebar; Z0->nu_mu,nu_mubar; Z0->nu_tau,nu_taubar;
 do /Herwig/Particles/Z0:PrintDecayModes
 
-##  Jet pT Cuts
+##  pT Cuts
 
-set /Herwig/Cuts/WBosonKtCut:MinKT 250.*GeV    #Min W pT
-set /Herwig/Cuts/WBosonKtCut:MaxKT 300.*GeV    #Max W pT
+set /Herwig/Cuts/ZBosonKtCut:MinKT 250.*GeV    #Min pT
+set /Herwig/Cuts/ZBosonKtCut:MaxKT 300.*GeV    #Max pT
 
 
 ##  Parton Showers

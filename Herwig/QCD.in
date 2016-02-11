@@ -15,10 +15,10 @@ set MEZJet:ZDecay 4              #decays to neutrinos only
 set MEZJet:GammaZ 2              #includes only Z
 #set MEZJet:Process 1 2 3        #1 for qqbar->Zg ;   2 for qg->Zq ;  3 for qbarg->Zqbar
 
-##  Jet pT Cuts
+##  pT Cuts
 
-set /Herwig/Cuts/JetKtCut:MinKT 250.*GeV    #Min Jet pT
-set /Herwig/Cuts/JetKtCut:MaxKT 300.*GeV    #Max Jet pT
+set /Herwig/Cuts/ZBosonKtCut:MinKT 250.*GeV    #Min pT
+set /Herwig/Cuts/ZBosonKtCut:MaxKT 300.*GeV    #Max pT
 
 ##  Parton Showers
 
