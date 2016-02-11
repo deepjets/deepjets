@@ -123,5 +123,18 @@ for event in generator:
 
 if hepmc:
     pbar.finish()
+    # The number of events passing cuts may have been less than the requested
+    # number of events. Shrink datasets to remove empty rows
+    if i < args.events:
+        dset_jet.resize((i,))
+        dset_trimmed_jet.resize((i,))
+        dset_subjets.resize((i,))
+        dset_constit.resize((i,))
+        dset_trimmed_constit.resize((i,))
+        dset_shrinkage.resize((i,))
+        dset_dr_subjets.resize((i,))
+        dset_tau_1.resize((i,))
+        dset_tau_2.resize((i,))
+        dset_tau_3.resize((i,))
 
 f.close()

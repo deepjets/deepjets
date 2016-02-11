@@ -61,10 +61,10 @@ def plot(signal, background):
     ax[2].legend()
     ax[2].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
     
-    vals1, _, _ = ax[3].hist(signal_dset_jet['pT'], bins=np.linspace(0, 500, 100),
+    vals1, _, _ = ax[3].hist(signal_dset_jet['pT'][signal_selection], bins=np.linspace(0, 500, 100),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
                label=r'$W\rightarrow qq\prime$')
-    vals2, _, _ = ax[3].hist(background_dset_jet['pT'], bins=np.linspace(0, 500, 100),
+    vals2, _, _ = ax[3].hist(background_dset_jet['pT'][background_selection], bins=np.linspace(0, 500, 100),
                histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
                label='QCD jets')
     ax[3].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
