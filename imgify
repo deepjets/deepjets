@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-def imgify(input, normalize, pix_size, image_size):
+def imgify(filename, normalize, pix_size, image_size):
     import os
     import numpy as np
     from deepjets.preprocessing import preprocess, pixel_edges
@@ -8,12 +8,16 @@ def imgify(input, normalize, pix_size, image_size):
     import h5py
     
     # read from the events file
-    h5_input = h5py.File(input, 'r')
+    h5_input = h5py.File(filename, 'r')
     dset_jet = h5_input['jet']
+    dset_trimmed_jet = h5_input['trimmed_jet']
     dset_subjets = h5_input['subjets']
     dset_trimmed_constit = h5_input['trimmed_constituents']
     dset_shrinkage = h5_input['shrinkage']
     dset_dr_subjets = h5_input['dR_subjets']
+    dset_tau_1 = h5_input['tau_1']
+    dset_tau_2 = h5_input['tau_2']
+    dset_tau_3 = h5_input['tau_3']
 
     jet_size = h5_input['jet_size'][0]
     subjet_size_fraction = h5_input['subjet_size_fraction'][0]
@@ -29,10 +33,18 @@ def imgify(input, normalize, pix_size, image_size):
     eta_edges, phi_edges = edges
 
     # create the output file
-    output = os.path.splitext(input)[0] + '_images.h5'
+    output = os.path.splitext(filename)[0] + '_images.h5'
     h5_output = h5py.File(output, 'w')
     dset_images = h5_output.create_dataset(
         'images', (len(dset_subjets), image_size, image_size), dtype=np.double)
+    
+    auxvars = np.core.records.fromarrays(
+        [dset_jet['pT'], dset_trimmed_jet['pT'],
+         dset_jet['mass'], dset_trimmed_jet['mass'],
+         dset_dr_subjets[:], dset_tau_1[:], dset_tau_2[:], dset_tau_3[:]],
+        names='pt,pt_trimmed,mass,mass_trimmed,subjet_dr,tau_1,tau_2,tau_3')
+    dset_auxvars = h5_output.create_dataset('auxvars', auxvars.shape, auxvars.dtype)
+    dset_auxvars[:] = auxvars
 
     dset_eta_edges = h5_output.create_dataset(
         'eta_edges', (1, 2), dtype=np.double)
@@ -42,7 +54,7 @@ def imgify(input, normalize, pix_size, image_size):
     dset_eta_edges[0] = (eta_edges[0], eta_edges[-1])
     dset_phi_edges[0] = (phi_edges[0], phi_edges[-1])
 
-    print("imgify({0}) -> {1} ...".format(input, output))
+    print("imgify({0}) -> {1} ...".format(filename, output))
 
     for event in xrange(len(dset_subjets)):
         subjets = dset_subjets[event]
