@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 import sys
 from .models import load_model, save_model
-from .utils import plot_roc_curve
+from .utils import default_roc_curve, custom_roc_curve, plot_roc_curve
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
@@ -142,8 +142,8 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        log_to_file=False, show_ROC_curve=True, X_dataset='X_test',
-        Y_dataset='Y_test'):
+        log_to_file=False, show_ROC_curve=True, use_custom_roc_curve=False,
+        X_dataset='X_test', Y_dataset='Y_test'):
     """Test model. Display ROC curve.
     
     Args:
@@ -184,11 +184,10 @@ def test_model(
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
-    fpr, tpr, _ = roc_curve(Y_test[:, 0], Y_prob[:, 0])
-    res = 1./len(Y_test)
-    inv_curve = np.array(
-        [[tp, 1./max(fp, res)]
-         for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
+    if use_custom_roc_curve:
+        inv_curve = custom_roc_curve(Y_test, Y_prob[:, 0])
+    else:
+        inv_curve = default_roc_curve(Y_test, Y_prob[:, 0])
     # AUC score
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     # Number of correct classifications

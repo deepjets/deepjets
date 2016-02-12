@@ -262,8 +262,37 @@ def plot_gen_dists(
     fig.show()
 
 
+def default_roc_curve(Y_test, var):
+    fpr, tpr, _ = roc_curve(Y_test[:, 0], var)
+    res = 1./len(Y_test)
+    return np.array([[tp, 1./max(fp, res)]
+                     for tp,fp in zip(tpr,fpr)
+                     if (0.2 <= tp <= 0.8 and fp > 0.)])
+                     
+                     
+def custom_roc_curve(Y_test, var, n_bins=1000):
+    var_s = var[Y_test[:, 0] == 1]
+    var_b = var[Y_test[:, 0] == 0]
+    var_b.sort()
+    n_per_bin = len(var_b) / n_bins
+    bins = np.array([var_b[i] for i in
+                     xrange(0, len(var_b), n_per_bin)] + [var_b[-1]])
+    bins[0] = min(bins[0], var_s.min())
+    bins[-1] = max(bins[-1], var_s.max())
+    lklhd_rat, _ = np.histogram(var_s, bins)
+    score_s = lklhd_rat[np.searchsorted(bins[1:], var_s)]
+    score_b = lklhd_rat[np.searchsorted(bins[1:], var_b)]
+    fpr, tpr, _ = roc_curve(
+        np.concatenate((np.ones(len(score_s)), np.zeros(len(score_b)))),
+        np.concatenate((score_s, score_b)))
+    res = 1./len(Y_test)
+    return np.array([[tp, 1./max(fp, res)]
+                     for tp,fp in zip(tpr,fpr)
+                     if (0.2 <= tp <= 0.8 and fp > 0.)])
+
+
 def auxvar_roc_curve(
-        test_h5_file, auxvar, Y_dataset='Y_test'):
+        test_h5_file, auxvar, Y_dataset='Y_test', invert_score=False):
     """Calculate ROC curve associated with auxvar.
     
     Args:
@@ -276,6 +305,10 @@ def auxvar_roc_curve(
     with h5py.File(test_h5_file, 'r') as h5file:
         Y_test = h5file[Y_dataset][:]
         var = h5file[auxvar][:]
+    if invert_score:
+        var -= var.min()
+        var /= var.max()
+        var = 1. - var
     fpr, tpr, _ = roc_curve(Y_test[:, 0], var)
     res = 1./len(Y_test)
     inv_curve = np.array(
