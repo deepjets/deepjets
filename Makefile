@@ -85,3 +85,12 @@ qcd-images-no-batch:
 	for chunk in $$(seq 1 1 10); do \
 		./generate_images qcd.config $(output)/qcd_images_noshrink2.h5 --events 10000 --jobs 10 --random-state $${chunk}; \
 	done
+
+sherwig:
+	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/QCD_Angular.hepmc --output /data/edawe/public/deepjets/events/herwig/QCD_Angular.h5 &
+	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/QCD_Dipole.hepmc --output /data/edawe/public/deepjets/events/herwig/QCD_Dipole.h5 &
+	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/WDecay_Angular.hepmc --output /data/edawe/public/deepjets/events/herwig/WDecay_Angular.h5 &
+	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/WDecay_Dipole.hepmc --output /data/edawe/public/deepjets/events/herwig/WDecay_Dipole.h5 &
+	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/JZ/jZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/jZ_Events.h5 &
+	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/WZ/WZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/WZ_Events.h5 &
+
