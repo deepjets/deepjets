@@ -13,4 +13,4 @@ h5_files = utils.prepare_datasets(
     sig_file, bkd_file, dataset_name, n_sig=n_images, n_bkd=n_images, test_frac=test_frac,
     val_frac=val_frac, n_folds=n_folds, auxvars=['weights'], shuffle=True, shuffle_seed=1)
 model = models.get_maxout(25**2)
-learning.train_model(model, h5_files['train'], model_name)
+learning.train_model(model, h5_files['train'], model_name, log_to_file=True)
