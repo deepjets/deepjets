@@ -4,8 +4,8 @@ n_images = 200000
 n_folds = 1
 test_frac = 0.5
 val_frac = 0.2
-sig_file = 'w_images.h5'
-bkd_file = 'qcd_images.h5'
+sig_file = '/data/edawe/public/deepjets/events/w_images_noshrink2.h5'
+bkd_file = '/data/edawe/public/deepjets/events/qcd_images_noshrink2.h5'
 dataset_name = 'w_noshrink'
 model_name = 'maxout_w_noshrink'
 
