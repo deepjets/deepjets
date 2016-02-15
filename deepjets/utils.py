@@ -157,7 +157,35 @@ def prepare_datasets(
                     var+'_train', data=aux_data[var][train][n_val:])
         file_dict['train'] = out_file
     return file_dict
-    
+
+
+def get_weights(pt, pt_min, pt_max, pt_bins):
+    # Compute weights such that pT distribution is flat
+    pt_hist, edges = np.histogram(
+        pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1))
+    # Normalize
+    pt_hist = np.true_divide(pt_hist, pt_hist.sum())
+    image_weights = np.true_divide(
+        1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
+    image_weights = np.true_divide(image_weights, image_weights.mean())
+    return image_weights
+
+
+def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
+    """ Crop and weight a dataset such that pt is within pt_min and pt_max
+    and the pt distribution is approximately flat. Return the images and
+    weights.
+    """
+    with h5py.File(filename, 'r') as h5file:
+        images = h5file['images']
+        auxvars = h5file['auxvars']
+        jet_pt_accept = ((auxvars['pt_trimmed'] >= pt_min) &
+                         (auxvars['pt_trimmed'] < pt_max))
+        images = np.take(images, np.where(jet_pt_accept), axis=0)
+        jet_pt = auxvars['pt_trimmed'][jet_pt_accept]
+    weights = get_weights(jet_pt, pt_min, pt_max, pt_bins)
+    return images, weights
+
 
 def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     """Display jet image.
@@ -262,8 +290,8 @@ def plot_gen_dists(
     fig.show()
 
 
-def default_roc_curve(Y_test, var):
-    fpr, tpr, _ = roc_curve(Y_test[:, 0], var)
+def default_roc_curve(Y_test, var, sample_weight=None):
+    fpr, tpr, _ = roc_curve(Y_test[:, 0], var, sample_weight=sample_weight)
     res = 1./len(Y_test)
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)

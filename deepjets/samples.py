@@ -72,7 +72,7 @@ def _generate_one_bin(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
 
 def get_weights(pt, pt_min, pt_max, pt_bins):
     # Compute weights such that pT distribution is flat
-    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1)
+    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1))
     # Normalize
     pt_hist = np.true_divide(pt_hist, pt_hist.sum())
     image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
