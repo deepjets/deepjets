@@ -40,6 +40,7 @@ from deepjets.hepmc import read_hepmc
 from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
+from fnmatch import fnmatch
 
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
@@ -69,7 +70,7 @@ dset_jet_size[0] = args.jet_size
 dset_subjet_size_fraction[0] = args.subjet_size_fraction
 
 hepmc = False
-if args.config_or_hepmc.endswith('.hepmc'):
+if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
     hepmc = True
     generator = read_hepmc(
         args.config_or_hepmc, args.events,

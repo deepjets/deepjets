@@ -70,6 +70,16 @@ def _generate_one_bin(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
                       **kwargs)
 
 
+def get_weights(pt, pt_min, pt_max, pt_bins):
+    # Compute weights such that pT distribution is flat
+    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1)
+    # Normalize
+    pt_hist = np.true_divide(pt_hist, pt_hist.sum())
+    image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
+    image_weights = np.true_divide(image_weights, image_weights.mean())
+    return image_weights
+
+
 def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
                pt_bins=10, n_jobs=-1, **kwargs):
     """
@@ -87,12 +97,7 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
     auxvars = np.concatenate([x[1] for x in out])
     pt = auxvars['pt_trimmed']
 
-    # Compute weights such that pT distribution is flat
-    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, (pt_bins * 4) + 1))
-    # Normalize
-    pt_hist = np.true_divide(pt_hist, pt_hist.sum())
-    image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
-    image_weights = np.true_divide(image_weights, image_weights.mean())
+    image_weights = get_weights(pt, pt_min, pt_max, pt_bins * 4)
 
     # add weights column to auxvars
     auxvars = append_fields(auxvars, 'weights', data=image_weights)
@@ -106,7 +111,23 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
     return images, auxvars
 
 
+def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
+    """ Crop and weight a dataset such that pt is within pt_min and pt_max
+    and the pt distribution is approximately flat. Return the images and weights
+    """
+    with h5py.File(filename, 'r') as hfile:
+        images = hfile['images']
+        auxvars = hfile['auxvars']
+        jet_pt_accept = (auxvars['pt_trimmed'] >= pt_min) & (auxvars['pt_trimmed'] < pt_max)
+        images = np.take(images, jet_pt_accept, axis=0)
+        jet_pt = auxvars['pt_trimmed'][jet_pt_accept]
+    weights = get_weights(jet_pt, pt_min, pt_max, pt_bins)
+    return images, weights
+
+
 def dataset_append(filename, datasetname, data):
+    """ Append an array to an HDF5 dataset
+    """
     with h5py.File(filename, 'a') as h5file:
         if datasetname not in h5file:
             dset = h5file.create_dataset(
