@@ -292,7 +292,7 @@ def custom_roc_curve(Y_test, var, n_bins=1000):
 
 
 def auxvar_roc_curve(
-        test_h5_file, auxvar, Y_dataset='Y_test', invert_score=False):
+        test_h5_file, auxvar, Y_dataset='Y_test', use_custom_roc_curve=True):
     """Calculate ROC curve associated with auxvar.
     
     Args:
@@ -305,22 +305,12 @@ def auxvar_roc_curve(
     with h5py.File(test_h5_file, 'r') as h5file:
         Y_test = h5file[Y_dataset][:]
         var = h5file[auxvar][:]
-    if invert_score:
-        var -= var.min()
-        var /= var.max()
-        var = 1. - var
-    fpr, tpr, _ = roc_curve(Y_test[:, 0], var)
-    res = 1./len(Y_test)
-    inv_curve = np.array(
-        [[tp, 1./max(fp, res)]
-         for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
-    # AUC score
-    final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
-    print("AUC = {0}".format(final_auc))
-    return inv_curve
+    if use_custom_roc_curve:
+        return custom_roc_curve(Y_test, var)
+    else:
+        return default_roc_curve(Y_test, var)
 
-
-def plot_roc_curve(roc_data, label=None):
+def plot_roc_curve(roc_data, label=None, filename=None):
     """Display ROC curve.
     
     Args:
@@ -336,9 +326,11 @@ def plot_roc_curve(roc_data, label=None):
     #ax.set_title("Receiver operating characteristic", fontsize=16)
     plt.legend(fontsize=16)
     fig.show()
+    if filename is not None:
+        fig.savefig(filename, format='pdf')
 
 
-def plot_roc_curves(roc_data, labels):
+def plot_roc_curves(roc_data, labels, filename=None):
     """Display ROC curve.
     
     Args:
@@ -355,6 +347,8 @@ def plot_roc_curves(roc_data, labels):
     #ax.set_title("Receiver operating characteristic", fontsize=16)
     plt.legend(fontsize=16)
     fig.show()
+    if filename is not None:
+        fig.savefig(filename, format='pdf')
 
 
 def tot_mom(jet_csts):
