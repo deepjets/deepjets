@@ -3,7 +3,7 @@ import h5py
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sklearn import cross_validation
 from sklearn.metrics import auc, roc_curve
@@ -11,7 +11,7 @@ from sklearn.metrics import auc, roc_curve
 
 def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
     """Load images and auxiliary data from h5 file.
-    
+
     Args:
         image_h5_file: location of h5 file containing images.
         n_images: number of images to load, -1 loads all.
@@ -50,10 +50,10 @@ def prepare_datasets(
         test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
         shuffle_seed=1):
     """Prepare datasets for network training.
-    
+
     Combine signal and background images; k-fold into training, validation,
     test sets. Save to files.
-    
+
     Args:
         sig_h5_file, bkd_h5_file: location of h5 files containing signal,
                                   background images.
@@ -187,9 +187,79 @@ def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
     return images, weights
 
 
-def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
+
+from numpy import ma
+from  matplotlib import cbook
+
+class MidPointNorm(Normalize):
+    def __init__(self, midpoint=0, vmin=None, vmax=None, clip=False):
+        Normalize.__init__(self,vmin, vmax, clip)
+        self.midpoint = midpoint
+
+    def __call__(self, value, clip=None):
+        if clip is None:
+            clip = self.clip
+
+        result, is_scalar = self.process_value(value)
+
+        self.autoscale_None(result)
+        vmin, vmax, midpoint = self.vmin, self.vmax, self.midpoint
+
+        if not (vmin < midpoint < vmax):
+            raise ValueError("midpoint must be between maxvalue and minvalue.")
+        elif vmin == vmax:
+            result.fill(0) # Or should it be all masked? Or 0.5?
+        elif vmin > vmax:
+            raise ValueError("maxvalue must be bigger than minvalue")
+        else:
+            vmin = float(vmin)
+            vmax = float(vmax)
+            if clip:
+                mask = ma.getmask(result)
+                result = ma.array(np.clip(result.filled(vmax), vmin, vmax),
+                                  mask=mask)
+
+            # ma division is very slow; we can take a shortcut
+            resdat = result.data
+
+            #First scale to -1 to 1 range, than to from 0 to 1.
+            resdat -= midpoint
+            resdat[resdat>0] /= abs(vmax - midpoint)
+            resdat[resdat<0] /= abs(vmin - midpoint)
+
+            resdat /= 2.
+            resdat += 0.5
+            result = ma.array(resdat, mask=result.mask, copy=False)
+
+        if is_scalar:
+            result = result[0]
+        return result
+
+    def inverse(self, value):
+        if not self.scaled():
+            raise ValueError("Not invertible until scaled")
+        vmin, vmax, midpoint = self.vmin, self.vmax, self.midpoint
+
+        if cbook.iterable(value):
+            val = ma.asarray(value)
+            val = 2 * (val-0.5)
+            val[val>0]  *= abs(vmax - midpoint)
+            val[val<0] *= abs(vmin - midpoint)
+            val += midpoint
+            return val
+        else:
+            val = 2 * (val - 0.5)
+            if val < 0:
+                return  val*abs(vmin-midpoint) + midpoint
+            else:
+                return  val*abs(vmax-midpoint) + midpoint
+
+
+
+
+def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet"):
     """Display jet image.
-    
+
     Args:
         ax: matplotlib axes to plot on.
         image: array representing image to plot.
@@ -197,28 +267,35 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2):
     """
     width, height = image.T.shape
     dw, dh = 1./width, 1./height
+    if not (vmin is None) and not (vmax is None):
+        if vmin < 0:
+            norm = MidPointNorm(vmin=vmin, vmax=vmax)
+            ticks = None
+        else:
+            norm = LogNorm(vmin=vmin, vmax=vmax)
+            ticks = np.logspace(
+                np.log10(vmin), np.log10(vmax), 1+np.log10(vmax)-np.log10(vmin))
+    else:
+        norm = None
+        ticks = None
     p = ax.imshow(
         image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-        interpolation='nearest', norm=LogNorm(vmin=vmin, vmax=vmax),
-        cmap='jet')
+        interpolation='nearest', norm=norm, cmap=cmap)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = plt.colorbar(
-        p, cax=cax,
-        ticks=np.logspace(
-            np.log10(vmin), np.log10(vmax), 1+np.log10(vmax)-np.log10(vmin)))
+    cbar = plt.colorbar(p, cax=cax, ticks=ticks)
     cbar.set_label(r'Intensity', rotation=90, fontsize=18)
     cbar.ax.tick_params(labelsize=12)
     ax.set_xlabel(r'$x_1$', fontsize=18)
     ax.set_ylabel(r'$x_2$', fontsize=18)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    
-    
+
+
 def plot_sig_bkd_dists(
         model, test_h5_file, batch_size=32, X_dataset='X_test',
         Y_dataset='Y_test', legend_loc=2):
     """Test model. Display signal and background distributions.
-    
+
     Args:
         model: keras model to test.
         test_h5_file: name of h5 file containing test datasets.
@@ -254,7 +331,7 @@ def plot_gen_dists(
         model, test_h5_files, labels, batch_size=32, X_datasets=None,
         Y_datasets=None, legend_loc=2):
     """Test model. Display signal and background distributions.
-    
+
     Args:
         model: keras model to test.
         test_h5_files: name of h5 files containing test datasets.
@@ -296,8 +373,8 @@ def default_roc_curve(Y_test, var, sample_weight=None):
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
-                     
-                     
+
+
 def custom_roc_curve(Y_test, var, n_bins=1000):
     var_s = var[Y_test[:, 0] == 1]
     var_b = var[Y_test[:, 0] == 0]
@@ -322,7 +399,7 @@ def custom_roc_curve(Y_test, var, n_bins=1000):
 def auxvar_roc_curve(
         test_h5_file, auxvar, Y_dataset='Y_test', use_custom_roc_curve=True):
     """Calculate ROC curve associated with auxvar.
-    
+
     Args:
         test_h5_file: name of h5 file containing test datasets.
         auxvar: name of auxiliary variable to get curve for.
@@ -340,7 +417,7 @@ def auxvar_roc_curve(
 
 def plot_roc_curve(roc_data, label=None, filename=None):
     """Display ROC curve.
-    
+
     Args:
         roc_data: array containing ROC curve to plot.
         label: label to include in legend.
@@ -360,7 +437,7 @@ def plot_roc_curve(roc_data, label=None, filename=None):
 
 def plot_roc_curves(roc_data, labels, filename=None):
     """Display ROC curve.
-    
+
     Args:
         roc_data: array containing list of ROC curves to plot.
         label: labels to include in legend.

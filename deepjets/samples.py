@@ -119,7 +119,7 @@ def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
         images = hfile['images']
         auxvars = hfile['auxvars']
         jet_pt_accept = (auxvars['pt_trimmed'] >= pt_min) & (auxvars['pt_trimmed'] < pt_max)
-        images = np.take(images, jet_pt_accept, axis=0)
+        images = np.take(images, np.where(jet_pt_accept)[0], axis=0)
         jet_pt = auxvars['pt_trimmed'][jet_pt_accept]
     weights = get_weights(jet_pt, pt_min, pt_max, pt_bins)
     return images, weights

@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+from deepjets.samples import make_flat_sample
+from deepjets.utils import plot_jet_image
+import numpy as np
+import matplotlib.pyplot as plt
+
+herwig_path = '/data/edawe/public/deepjets/events/herwig/'
+sherpa_path = '/data/edawe/public/deepjets/events/sherpa/'
+pythia_path = '/data/edawe/public/deepjets/events/'
+
+pt_min, pt_max, pt_bins = 260, 290, 5
+
+herwig_angular = make_flat_sample(herwig_path + 'WDecay_Angular_images.h5', pt_min, pt_max, pt_bins)
+herwig_dipole = make_flat_sample(herwig_path + 'WDecay_Dipole_images.h5', pt_min, pt_max, pt_bins)
+sherpa = make_flat_sample(sherpa_path + 'WZ_Events_images.h5', pt_min, pt_max, pt_bins)
+pythia = make_flat_sample(pythia_path + 'w_test_images.h5', pt_min, pt_max, pt_bins)
+
+
+def plot(image, name, vmin=1e-9, vmax=1e-2, cmap="jet"):
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111)
+    plot_jet_image(ax, image, vmin=vmin, vmax=vmax, cmap=cmap)
+    fig.tight_layout()
+    fig.savefig(name + '.png')
+
+
+def avg_image(images_weights):
+    #print "{0}: plotting {1} images".format(name, images.shape[0])
+    #print "max weight: {0}   min weight: {1}".format(weights.min(), weights.max())
+    images, weights = images_weights
+    return np.average(images, weights=weights, axis=0)
+
+avg_herwig_angular = avg_image(herwig_angular)
+avg_herwig_dipole = avg_image(herwig_dipole)
+avg_sherpa = avg_image(sherpa)
+avg_pythia = avg_image(pythia)
+
+plot(avg_herwig_angular, 'show_herwig_angular_image')
+plot(avg_herwig_dipole, 'show_herwig_dipole_image')
+plot(avg_sherpa, 'show_sherpa_image')
+plot(avg_pythia, 'show_pythia_image')
+
+
+from deepjets.preprocessing import normalize_image
+
+plot(normalize_image(avg_herwig_angular) - normalize_image(avg_pythia), 'show_herwig_angular_difference_image', vmin=-2, vmax=2, cmap="seismic")
+plot(normalize_image(avg_herwig_dipole) - normalize_image(avg_pythia), 'show_herwig_dipole_difference_image', vmin=-2, vmax=2, cmap="seismic")
+plot(normalize_image(avg_sherpa) - normalize_image(avg_pythia), 'show_sherpa_difference_image', vmin=-2, vmax=2, cmap="seismic")
