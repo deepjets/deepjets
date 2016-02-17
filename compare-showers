@@ -12,17 +12,19 @@ pythia_path = '/data/edawe/public/deepjets/events/'
 pt_min, pt_max, pt_bins = 260, 290, 5
 
 herwig_angular = make_flat_sample(herwig_path + 'WDecay_Angular_images.h5', pt_min, pt_max, pt_bins)
-herwig_dipole = make_flat_sample(herwig_path + 'WDecay_Dipole_images.h5', pt_min, pt_max, pt_bins)
+herwig_dipole = make_flat_sample(herwig_path + 'WDecay_Dipole2_images.h5', pt_min, pt_max, pt_bins)
 sherpa = make_flat_sample(sherpa_path + 'WZ_Events_images.h5', pt_min, pt_max, pt_bins)
 pythia = make_flat_sample(pythia_path + 'w_test_images.h5', pt_min, pt_max, pt_bins)
 
 
-def plot(image, name, vmin=1e-9, vmax=1e-2, cmap="jet"):
-    fig = plt.figure(figsize=(6, 5))
+def plot(image, name, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity", simple=False):
+    fig = plt.figure(figsize=(5 if simple else 6, 5))
     ax = fig.add_subplot(111)
-    plot_jet_image(ax, image, vmin=vmin, vmax=vmax, cmap=cmap)
+    plot_jet_image(ax, image, vmin=vmin, vmax=vmax, cmap=cmap, title=title, simple=simple)
     fig.tight_layout()
     fig.savefig(name + '.png')
+
+plot(pythia[0][0], 'single_image', simple=True)
 
 
 def avg_image(images_weights):
@@ -44,6 +46,6 @@ plot(avg_pythia, 'show_pythia_image')
 
 from deepjets.preprocessing import normalize_image
 
-plot(normalize_image(avg_herwig_angular) - normalize_image(avg_pythia), 'show_herwig_angular_difference_image', vmin=-2, vmax=2, cmap="seismic")
-plot(normalize_image(avg_herwig_dipole) - normalize_image(avg_pythia), 'show_herwig_dipole_difference_image', vmin=-2, vmax=2, cmap="seismic")
-plot(normalize_image(avg_sherpa) - normalize_image(avg_pythia), 'show_sherpa_difference_image', vmin=-2, vmax=2, cmap="seismic")
+plot(normalize_image(avg_herwig_angular) - normalize_image(avg_pythia), 'show_herwig_angular_difference_image', vmin=-2, vmax=2, cmap="seismic", title="Normalized Intensity Diff.")
+plot(normalize_image(avg_herwig_dipole) - normalize_image(avg_pythia), 'show_herwig_dipole_difference_image', vmin=-2, vmax=2, cmap="seismic", title="Normalized Intensity Diff.")
+plot(normalize_image(avg_sherpa) - normalize_image(avg_pythia), 'show_sherpa_difference_image', vmin=-2, vmax=2, cmap="seismic", title="Normalized Intensity Diff.")

@@ -90,7 +90,7 @@ sherwig:
 	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/QCD_Angular.hepmc --output /data/edawe/public/deepjets/events/herwig/QCD_Angular.h5 &
 	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/QCD_Dipole.hepmc --output /data/edawe/public/deepjets/events/herwig/QCD_Dipole.h5 &
 	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/WDecay_Angular.hepmc --output /data/edawe/public/deepjets/events/herwig/WDecay_Angular.h5 &
-	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/WDecay_Dipole.hepmc --output /data/edawe/public/deepjets/events/herwig/WDecay_Dipole.h5 &
+	#./generate --events 100000 --shrink /data/edawe/public/deepjets/events/herwig/hepmc/WDecay_Dipole2.hepmc --output /data/edawe/public/deepjets/events/herwig/WDecay_Dipole2.h5 &
 	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/JZ/jZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/jZ_Events.h5 &
 	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/WZ/WZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/WZ_Events.h5 &
 

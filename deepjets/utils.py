@@ -257,7 +257,7 @@ class MidPointNorm(Normalize):
 
 
 
-def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet"):
+def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity", simple=False):
     """Display jet image.
 
     Args:
@@ -281,14 +281,20 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet"):
     p = ax.imshow(
         image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
         interpolation='nearest', norm=norm, cmap=cmap)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = plt.colorbar(p, cax=cax, ticks=ticks)
-    cbar.set_label(r'Intensity', rotation=90, fontsize=18)
-    cbar.ax.tick_params(labelsize=12)
-    ax.set_xlabel(r'$x_1$', fontsize=18)
-    ax.set_ylabel(r'$x_2$', fontsize=18)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    if not simple:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = plt.colorbar(p, cax=cax, ticks=ticks)
+        cbar.set_label(title, rotation=90, fontsize=18)
+        cbar.ax.tick_params(labelsize=12)
+        ax.set_xlabel(r'$x_1$', fontsize=18)
+        ax.set_ylabel(r'$x_2$', fontsize=18)
+        ax.tick_params(axis='both', which='major', labelsize=12)
+    else:
+        ax.axes.get_xaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.axes.get_xaxis().set_ticks([])
+        ax.axes.get_yaxis().set_ticks([])
 
 
 def plot_sig_bkd_dists(
