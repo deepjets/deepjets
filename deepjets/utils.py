@@ -372,6 +372,8 @@ def default_roc_curve(Y_test, var, sample_weight=None):
 
 def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=1000):
     var_s = np.take(var, np.where(Y_true[:, 0] == 1), axis=0)
+    if sample_weight is not None:
+        weights_s = np.take(sample_weight, np.where(Y_true[:, 0] == 1), axis=0)
     var_b = np.take(var, np.where(Y_true[:, 0] == 0), axis=0)
     var_b.sort()
     n_per_bin = len(var_b) / n_bins
@@ -379,7 +381,7 @@ def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=1000):
                      xrange(0, len(var_b), n_per_bin)] + [var_b[-1]])
     bins[0] = min(bins[0], var_s.min())
     bins[-1] = max(bins[-1], var_s.max())
-    lklhd_rat, _ = np.histogram(var_s, bins, weights=sample_weight)
+    lklhd_rat, _ = np.histogram(var_s, bins, weights=weights_s)
     score_s = lklhd_rat[np.searchsorted(bins[1:], var_s)]
     score_b = lklhd_rat[np.searchsorted(bins[1:], var_b)]
     fpr, tpr, _ = roc_curve(
