@@ -86,7 +86,7 @@ def prepare_datasets(
         with h5py.File(out_file, 'w') as h5file:
             h5file.create_dataset('X_test', data=images)
             h5file.create_dataset('Y_test', data=classes)
-            h5file.create_dataset(auxvars+'_test', data=auxvars)
+            h5file.create_dataset('auxvars_test', data=auxvars)
         return {'test' : out_file}
     # Top level train-test split
     rs = cross_validation.ShuffleSplit(
@@ -97,7 +97,7 @@ def prepare_datasets(
     with h5py.File(out_file, 'w') as h5file:
         h5file.create_dataset('X_test', data=images[test])
         h5file.create_dataset('Y_test', data=classes[test])
-        h5file.create_dataset(auxvars+'_test', data=auxvars[test])
+        h5file.create_dataset('auxvars_test', data=auxvars[test])
     file_dict = {'test' : out_file}
     # K-fold train-val-test splits
     if n_folds > 1:
@@ -113,20 +113,20 @@ def prepare_datasets(
                 h5file.create_dataset('X_test', data=images[train][ktest])
                 h5file.create_dataset('Y_test', data=classes[train][ktest])
                 h5file.create_dataset(
-                    auxvars+'_test', data=auxvars[train][ktest])
+                    'auxvars_test', data=auxvars[train][ktest])
                 n_val = int(val_frac * len(ktrain))
                 h5file.create_dataset(
                     'X_val', data=images[train][ktrain][:n_val])
                 h5file.create_dataset(
                     'Y_val', data=classes[train][ktrain][:n_val])
                 h5file.create_dataset(
-                    auxvars+'_val', data=auxvars[train][ktrain][:n_val])
+                    'auxvars_val', data=auxvars[train][ktrain][:n_val])
                 h5file.create_dataset(
                     'X_train', data=images[train][ktrain][n_val:])
                 h5file.create_dataset(
                     'Y_train', data=classes[train][ktrain][n_val:])
                 h5file.create_dataset(
-                    auxvars+'_train', data=auxvars[train][ktrain][n_val:])
+                    'auxvars_train', data=auxvars[train][ktrain][n_val:])
             kf_files.append(out_file)
             i += 1
         file_dict['train'] = kf_files
@@ -139,11 +139,11 @@ def prepare_datasets(
             h5file.create_dataset('X_val', data=images[train][:n_val])
             h5file.create_dataset('Y_val', data=classes[train][:n_val])
             h5file.create_dataset(
-                auxvars+'_val', data=auxvars[train][:n_val])
+                'auxvars_val', data=auxvars[train][:n_val])
             h5file.create_dataset('X_train', data=images[train][n_val:])
             h5file.create_dataset('Y_train', data=classes[train][n_val:])
             h5file.create_dataset(
-                auxvars+'_train', data=auxvars[train][n_val:])
+                'auxvars_train', data=auxvars[train][n_val:])
         file_dict['train'] = out_file
     return file_dict
 
