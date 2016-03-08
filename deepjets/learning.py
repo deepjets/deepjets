@@ -6,7 +6,7 @@ from .models import load_model, save_model
 from .utils import default_roc_curve, custom_roc_curve, plot_roc_curve
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
-from sklearn.metrics import auc, roc_curve
+from sklearn.metrics import auc
 
 
 def train_model(
@@ -62,24 +62,24 @@ def train_model(
         Y_train = h5file['Y_train']
         X_val = h5file['X_val']
     try:
-        sample_weights = h5file['weights_train'][:]
+        weights_train = h5file['auxvars_train']['weights'][:]
     except KeyError:
-        sample_weights = None
+        weights_train = None
+    try:
+        weights_val = h5file['auxvars_val']['weights'][:]
+    except KeyError:
+        weights_val = None
     Y_val = h5file['Y_val']
     while epoch < epochs:
         # Fitting and validation
         model.fit(
             X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0,
-            sample_weight=sample_weights, shuffle=shuffle)
+            sample_weight=weights_train, shuffle=shuffle)
         Y_prob = model.predict_proba(
             X_val, batch_size=batch_size, verbose=0)
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         # Calculate AUC for custom early stopping
-        fpr, tpr, _ = roc_curve(Y_val[:, 0], Y_prob[:, 0])
-        res = 1. / len(Y_val)
-        inv_curve = np.array(
-            [[tp, 1. / max(fp, res)]
-            for tp,fp in zip(tpr,fpr) if (0.2 <= tp <= 0.8 and fp > 0.)])
+        inv_curve = custom_roc_curve(Y_val[:, 0], Y_prob[:, 0], weights_val)
         try:
             current_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
         except IndexError:
@@ -184,10 +184,14 @@ def test_model(
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
+        try:
+            weights_test = h5file['auxvars_test']['weights'][:]
+        except KeyError:
+            weights_test = None
     if use_custom_roc_curve:
-        inv_curve = custom_roc_curve(Y_test, Y_prob[:, 0])
+        inv_curve = custom_roc_curve(Y_test, Y_prob[:, 0], weights_test)
     else:
-        inv_curve = default_roc_curve(Y_test, Y_prob[:, 0])
+        inv_curve = default_roc_curve(Y_test, Y_prob[:, 0], weights_test)
     # AUC score
     final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
     # Number of correct classifications
