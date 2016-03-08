@@ -9,7 +9,7 @@ from sklearn import cross_validation
 from sklearn.metrics import auc, roc_curve
 
 
-def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
+def load_images(image_h5_file, n_images=-1, shuffle_seed=1):
     """Load images and auxiliary data from h5 file.
 
     Args:
@@ -23,7 +23,7 @@ def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
     """
     with h5py.File(image_h5_file, 'r') as h5file:
         images = h5file['images']
-        auxvars_data = h5file['auxvars']
+        auxvars = h5file['auxvars']
         if n_images < 0:
             n_images = len(images)
         elif n_images > len(images):
@@ -37,18 +37,16 @@ def load_images(image_h5_file, n_images=-1, auxvars=[], shuffle_seed=1):
             for train, test in rs:
                 keep = test
             images = np.take(images, keep, axis=0)
-            auxvars_data = np.take(auxvars_data, keep, axis=0)
-            aux_data = {var : auxvars_data[var] for var in auxvars}
+            auxvars = np.take(auxvars, keep, axis=0)
         else:
             images = h5file['images'][:]
-            aux_data = {var : auxvars_data[var][:] for var in auxvars}
-        return (images, aux_data)
+            auxvars = h5file['auxvars'][:]
+        return (images, auxvars)
 
 
 def prepare_datasets(
         sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
-        test_frac=0.1, val_frac=0.1, n_folds=2, auxvars=[], shuffle=True,
-        shuffle_seed=1):
+        test_frac=0.1, val_frac=0.1, n_folds=2, shuffle=True, shuffle_seed=1):
     """Prepare datasets for network training.
 
     Combine signal and background images; k-fold into training, validation,
@@ -71,15 +69,14 @@ def prepare_datasets(
     TODO: add support for multiple classes.
     """
     # Load images
-    sig_images, sig_aux_data = load_images(sig_h5_file, n_sig, auxvars)
-    bkd_images, bkd_aux_data = load_images(bkd_h5_file, n_bkd, auxvars)
+    sig_images, sig_auxvars = load_images(sig_h5_file, n_sig)
+    bkd_images, bkd_auxvars = load_images(bkd_h5_file, n_bkd)
     n_sig = len(sig_images)
     n_bkd = len(bkd_images)
     n_images = n_sig + n_bkd
     images = np.concatenate((sig_images, bkd_images))
     images = images.reshape(-1, images.shape[1] * images.shape[2])
-    aux_data = {var : np.concatenate((sig_aux_data[var], bkd_aux_data[var]))
-                for var in auxvars}
+    auxvars = np.concatenate((sig_auxvars, bkd_auxvars))
     # True classes
     classes = np.concatenate([np.repeat([[1, 0]], n_sig, axis=0),
                               np.repeat([[0, 1]], n_bkd, axis=0)])
@@ -89,8 +86,7 @@ def prepare_datasets(
         with h5py.File(out_file, 'w') as h5file:
             h5file.create_dataset('X_test', data=images)
             h5file.create_dataset('Y_test', data=classes)
-            for var in auxvars:
-                h5file.create_dataset(var+'_test', data=aux_data[var])
+            h5file.create_dataset(auxvars+'_test', data=auxvars)
         return {'test' : out_file}
     # Top level train-test split
     rs = cross_validation.ShuffleSplit(
@@ -101,8 +97,7 @@ def prepare_datasets(
     with h5py.File(out_file, 'w') as h5file:
         h5file.create_dataset('X_test', data=images[test])
         h5file.create_dataset('Y_test', data=classes[test])
-        for var in auxvars:
-            h5file.create_dataset(var+'_test', data=aux_data[var][test])
+        h5file.create_dataset(auxvars+'_test', data=auxvars[test])
     file_dict = {'test' : out_file}
     # K-fold train-val-test splits
     if n_folds > 1:
@@ -117,25 +112,21 @@ def prepare_datasets(
             with h5py.File(out_file, 'w') as h5file:
                 h5file.create_dataset('X_test', data=images[train][ktest])
                 h5file.create_dataset('Y_test', data=classes[train][ktest])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_test', data=aux_data[var][train][ktest])
+                h5file.create_dataset(
+                    auxvars+'_test', data=auxvars[train][ktest])
                 n_val = int(val_frac * len(ktrain))
                 h5file.create_dataset(
                     'X_val', data=images[train][ktrain][:n_val])
                 h5file.create_dataset(
                     'Y_val', data=classes[train][ktrain][:n_val])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_val', data=aux_data[var][train][ktrain][:n_val])
+                h5file.create_dataset(
+                    auxvars+'_val', data=auxvars[train][ktrain][:n_val])
                 h5file.create_dataset(
                     'X_train', data=images[train][ktrain][n_val:])
                 h5file.create_dataset(
                     'Y_train', data=classes[train][ktrain][n_val:])
-                for var in auxvars:
-                    h5file.create_dataset(
-                        var+'_train',
-                        data=aux_data[var][train][ktrain][n_val:])
+                h5file.create_dataset(
+                    auxvars+'_train', data=auxvars[train][ktrain][n_val:])
             kf_files.append(out_file)
             i += 1
         file_dict['train'] = kf_files
@@ -147,14 +138,12 @@ def prepare_datasets(
             n_val = int(val_frac * len(train))
             h5file.create_dataset('X_val', data=images[train][:n_val])
             h5file.create_dataset('Y_val', data=classes[train][:n_val])
-            for var in auxvars:
-                h5file.create_dataset(
-                    var+'_val', data=aux_data[var][train][:n_val])
+            h5file.create_dataset(
+                auxvars+'_val', data=auxvars[train][:n_val])
             h5file.create_dataset('X_train', data=images[train][n_val:])
             h5file.create_dataset('Y_train', data=classes[train][n_val:])
-            for var in auxvars:
-                h5file.create_dataset(
-                    var+'_train', data=aux_data[var][train][n_val:])
+            h5file.create_dataset(
+                auxvars+'_train', data=auxvars[train][n_val:])
         file_dict['train'] = out_file
     return file_dict
 
