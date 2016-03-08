@@ -370,9 +370,9 @@ def default_roc_curve(Y_test, var, sample_weight=None):
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
 
 
-def custom_roc_curve(Y_test, var, sample_weight=None, n_bins=1000):
-    var_s = var[Y_test[:, 0] == 1]
-    var_b = var[Y_test[:, 0] == 0]
+def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=1000):
+    var_s = np.take(var, np.where(Y_true[:, 0] == 1), axis=0)
+    var_b = np.take(var, np.where(Y_true[:, 0] == 0), axis=0)
     var_b.sort()
     n_per_bin = len(var_b) / n_bins
     bins = np.array([var_b[i] for i in
@@ -385,7 +385,7 @@ def custom_roc_curve(Y_test, var, sample_weight=None, n_bins=1000):
     fpr, tpr, _ = roc_curve(
         np.concatenate((np.ones(len(score_s)), np.zeros(len(score_b)))),
         np.concatenate((score_s, score_b)))
-    res = 1./len(Y_test)
+    res = 1./len(Y_true)
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
