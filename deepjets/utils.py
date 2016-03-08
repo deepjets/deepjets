@@ -371,12 +371,12 @@ def default_roc_curve(Y_test, var, sample_weight=None):
 
 
 def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=1000):
-    var_s = np.take(var, np.where(Y_true[:, 0] == 1), axis=0)
+    var_s = var[Y_true[:, 0] == 1]
     if sample_weight is not None:
-        weights_s = np.take(sample_weight, np.where(Y_true[:, 0] == 1), axis=0)
-    var_b = np.take(var, np.where(Y_true[:, 0] == 0), axis=0)
+        weights_s = sample_weight[Y_true[:, 0] == 1]
+    var_b = var[Y_true[:, 0] == 0]
     var_b.sort()
-    n_per_bin = len(var_b) / n_bins
+    n_per_bin = max(len(var_b) / n_bins, 1)
     bins = np.array([var_b[i] for i in
                      xrange(0, len(var_b), n_per_bin)] + [var_b[-1]])
     bins[0] = min(bins[0], var_s.min())

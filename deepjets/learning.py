@@ -11,7 +11,8 @@ from sklearn.metrics import auc
 
 def train_model(
         model, train_h5_file, model_name='model', batch_size=32, epochs=100,
-        patience=10, verbose=2, log_to_file=False, read_into_RAM=False):
+        patience=10, verbose=2, use_custom_roc_curve=True, log_to_file=False,
+        read_into_RAM=False):
     """Train model. Save model with best AUC.
     
     Train model using area under ROC curve as measure of success (not
@@ -79,7 +80,10 @@ def train_model(
             X_val, batch_size=batch_size, verbose=0)
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         # Calculate AUC for custom early stopping
-        inv_curve = custom_roc_curve(Y_val[:, 0], Y_prob[:, 0], weights_val)
+        if use_custom_roc_curve:
+            inv_curve = custom_roc_curve(Y_val, Y_prob[:, 0], weights_val)
+        else:
+            inv_curve = default_roc_curve(Y_val, Y_prob[:, 0], weights_val)
         try:
             current_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
         except IndexError:
@@ -142,7 +146,7 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        log_to_file=False, show_ROC_curve=True, use_custom_roc_curve=False,
+        use_custom_roc_curve=True, log_to_file=False, show_ROC_curve=True,
         X_dataset='X_test', Y_dataset='Y_test'):
     """Test model. Display ROC curve.
     
