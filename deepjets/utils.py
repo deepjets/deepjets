@@ -374,6 +374,8 @@ def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=1000):
     var_s = var[Y_true[:, 0] == 1]
     if sample_weight is not None:
         weights_s = sample_weight[Y_true[:, 0] == 1]
+    else:
+        weights_s = None
     var_b = var[Y_true[:, 0] == 0]
     var_b.sort()
     n_per_bin = max(len(var_b) / n_bins, 1)
