@@ -3,10 +3,12 @@ import h5py
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cbook
 from matplotlib.colors import LogNorm, Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy import ma
 from sklearn import cross_validation
-from sklearn.metrics import auc, roc_curve
+from sklearn.metrics import roc_curve
 
 
 def load_images(image_h5_file, n_images=-1, shuffle_seed=1):
@@ -132,7 +134,8 @@ def prepare_datasets(
         file_dict['train'] = kf_files
     else:
         # Shuffle to make sure validation set contains both classes
-        np.random.shuffle(train)
+        rs = np.random.RandomState(shuffle_seed)
+        rs.shuffle(train)
         out_file = dataset_name+'_train.h5'
         with h5py.File(out_file, 'w') as h5file:
             n_val = int(val_frac * len(train))
@@ -160,12 +163,12 @@ def get_weights(pt, pt_min, pt_max, pt_bins):
     return image_weights
 
 
-def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
+def make_flat_sample(image_h5_file, pt_min, pt_max, pt_bins=20):
     """ Crop and weight a dataset such that pt is within pt_min and pt_max
     and the pt distribution is approximately flat. Return the images and
     weights.
     """
-    with h5py.File(filename, 'r') as h5file:
+    with h5py.File(image_h5_file, 'r') as h5file:
         images = h5file['images']
         auxvars = h5file['auxvars']
         jet_pt_accept = ((auxvars['pt_trimmed'] >= pt_min) &
@@ -175,10 +178,6 @@ def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
     weights = get_weights(jet_pt, pt_min, pt_max, pt_bins)
     return images, weights
 
-
-
-from numpy import ma
-from  matplotlib import cbook
 
 class MidPointNorm(Normalize):
     def __init__(self, midpoint=0, vmin=None, vmax=None, clip=False):
@@ -244,9 +243,9 @@ class MidPointNorm(Normalize):
                 return  val*abs(vmax-midpoint) + midpoint
 
 
-
-
-def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity", simple=False):
+def plot_jet_image(
+        ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity",
+        simple=False):
     """Display jet image.
 
     Args:
@@ -263,7 +262,8 @@ def plot_jet_image(ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity
         else:
             norm = LogNorm(vmin=vmin, vmax=vmax)
             ticks = np.logspace(
-                np.log10(vmin), np.log10(vmax), 1+np.log10(vmax)-np.log10(vmin))
+                np.log10(vmin), np.log10(vmax),
+                1 + np.log10(vmax) - np.log10(vmin))
     else:
         norm = None
         ticks = None
