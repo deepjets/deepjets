@@ -364,7 +364,7 @@ def plot_gen_dists(
 
 
 def combined_likelihood(
-        Y_true, var1, var2, sample_weight=None, n_bins=(50,50)):
+        Y_true, var1, var2, sample_weight=None, n_bins=(20,20)):
     var1_s = var1[Y_true[:, 0] == 1]
     var1_b = var1[Y_true[:, 0] == 0]
     var2_s = var2[Y_true[:, 0] == 1]
@@ -375,19 +375,20 @@ def combined_likelihood(
     else:
         weights_s = None
         weights_b = None
-    x_edges = np.linspace(var1.min(), var1.max(), n_bins[0]+1)
-    y_edges = np.linspace(var2.min(), var2.max(), n_bins[1]+1)
-    dx = x_edges[1] - x_edges[0]
-    dy = y_edges[1] - y_edges[0]
+    dx = 0.5*(var1.max() - var1.min()) / (n_bins[0] - 1)
+    dy = 0.5*(var2.max() - var2.min()) / (n_bins[1] - 1)
+    x_edges = np.linspace(var1.min()-dx, var1.max()+dx, n_bins[0]+1)
+    y_edges = np.linspace(var2.min()-dy, var2.max()+dy, n_bins[1]+1)
     h_s, _, _ = np.histogram2d(
-        var1_s, var2_s, [x_edges, y_edges], weights=weights_s)
+        var1_s, var2_s, bins=[x_edges, y_edges], weights=weights_s)
     h_b, _, _ = np.histogram2d(
-        var1_b, var2_b, [x_edges, y_edges], weights=weights_b)
+        var1_b, var2_b, bins=[x_edges, y_edges], weights=weights_b)
     h_s /= weights_s.sum()
     h_b /= weights_b.sum()
     h_b[h_b == 0] = 0.5 / weights_b.sum()
     return interp2d(
-        x_edges[1:]-dx, y_edges[1:]-dy, h_s/h_b, kind='cubic', fill_value=1.)
+        x_edges[1:]-dx, y_edges[1:]-dy, (h_s/h_b).reshape(-1), kind='cubic',
+        fill_value=1.)
 
 
 def default_roc_curve(Y_test, var, sample_weight=None):
