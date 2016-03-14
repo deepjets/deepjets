@@ -363,43 +363,7 @@ def plot_gen_dists(
     fig.show()
 
 
-def combined_likelihood(
-        Y_true, var1, var2, sample_weight=None, n_bins=(20,20)):
-    var1_s = var1[Y_true[:, 0] == 1]
-    var1_b = var1[Y_true[:, 0] == 0]
-    var2_s = var2[Y_true[:, 0] == 1]
-    var2_b = var2[Y_true[:, 0] == 0]   
-    if sample_weight is not None:
-        weights_s = sample_weight[Y_true[:, 0] == 1]
-        weights_b = sample_weight[Y_true[:, 0] == 0]
-    else:
-        weights_s = None
-        weights_b = None
-    dx = 0.5*(var1.max() - var1.min()) / (n_bins[0] - 1)
-    dy = 0.5*(var2.max() - var2.min()) / (n_bins[1] - 1)
-    x_edges = np.linspace(var1.min()-dx, var1.max()+dx, n_bins[0]+1)
-    y_edges = np.linspace(var2.min()-dy, var2.max()+dy, n_bins[1]+1)
-    h_s, _, _ = np.histogram2d(
-        var1_s, var2_s, bins=[x_edges, y_edges], weights=weights_s)
-    h_b, _, _ = np.histogram2d(
-        var1_b, var2_b, bins=[x_edges, y_edges], weights=weights_b)
-    h_s /= weights_s.sum()
-    h_b /= weights_b.sum()
-    h_b[h_b == 0] = 0.5 / weights_b.sum()
-    return interp2d(
-        x_edges[1:]-dx, y_edges[1:]-dy, (h_s/h_b).reshape(-1), kind='cubic',
-        fill_value=1.)
-
-
-def default_roc_curve(Y_test, var, sample_weight=None):
-    fpr, tpr, _ = roc_curve(Y_test[:, 0], var, sample_weight=sample_weight)
-    res = 1./len(Y_test)
-    return np.array([[tp, 1./max(fp, res)]
-                     for tp,fp in zip(tpr,fpr)
-                     if (0.2 <= tp <= 0.8 and fp > 0.)])
-
-
-def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=10000):
+def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=10):
     var_s = var[Y_true[:, 0] == 1]
     var_b = var[Y_true[:, 0] == 0]
     argsort_b = var_b.argsort()
@@ -409,25 +373,87 @@ def custom_roc_curve(Y_true, var, sample_weight=None, n_bins=10000):
         weights_b = sample_weight[Y_true[:, 0] == 0]
         weights_b = weights_b[argsort_b]
     else:
-        weights_s = None
-        weights_b = None
-    n_per_bin = max(len(var_b) / n_bins, 1)
+        weights_s = np.ones(len(var_s))
+        weights_b = np.ones(len(var_b))
     bins = np.array([var_b[i] for i in
-                     xrange(0, len(var_b), n_per_bin)] + [var_b[-1]])
-    bins[0] = min(bins[0], var_s.min())
-    bins[-1] = max(bins[-1], var_s.max())
+                     xrange(0, len(var_b), nb_per_bin)] + [var_b[-1]])
+    bins[0] = min(bins[0], 0.9*var_s.min())
+    bins[-1] = max(bins[-1], 1.1*var_s.max())
     h_s, _ = np.histogram(var_s, bins, weights=weights_s)
     h_b, _ = np.histogram(var_b, bins, weights=weights_b)
+    h_s /= weights_s.sum()
+    h_b /= weights_b.sum()
     lklhd_rat = h_s / h_b
-    score_s = lklhd_rat[np.searchsorted(bins[1:], var_s)]
-    score_b = lklhd_rat[np.searchsorted(bins[1:], var_b)]
-    fpr, tpr, _ = roc_curve(
-        np.concatenate((np.ones(len(score_s)), np.zeros(len(score_b)))),
-        np.concatenate((score_s, score_b)))
+    return (lklhd_rat, bins)
+
+
+def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+    var1_s = var1[Y_true[:, 0] == 1]
+    var1_b = var1[Y_true[:, 0] == 0]
+    var2_s = var2[Y_true[:, 0] == 1]
+    var2_b = var2[Y_true[:, 0] == 0]  
+    argsort_b = var1_b.argsort()
+    var1_b = var1_b[argsort_b]
+    var2_b = var2_b[argsort_b]  
+    if sample_weight is not None:
+        weights_s = sample_weight[Y_true[:, 0] == 1]
+        weights_b = sample_weight[Y_true[:, 0] == 0]
+        weights_b = weights_b[argsort_b]
+    else:
+        weights_s = np.ones(len(var1_s))
+        weights_b = np.ones(len(var1_b))
+    nb_per_slice = int(np.round(np.sqrt(len(var1_b) / nb_per_bin)))
+    bins1 = np.array([var1_b[i] for i in
+                      xrange(0, len(var1_b), nb_per_slice)] + [var1_b[-1]])
+    bins1[0] = min(bins1[0], 0.9*var1_s.min())
+    bins1[-1] = max(bins1[-1], 1.1*var1_s.max())
+    bins2 = []
+    lklhd_rat = []
+    for i in xrange(len(bins1) - 1):
+        var2_s_slice = var2_s[(var1_s >= bins1[i]) * (var1_s < bins1[i+1])]
+        var2_b_slice = var2_b[i*nb_per_slice : (i+1)*nb_per_slice]
+        argsort_b = var2_b_slice.argsort()
+        var2_b_slice = var2_b_slice[argsort_b]
+        w_s_slice = weights_s[(var1_s >= bins1[i]) * (var1_s < bins1[i+1])]
+        w_b_slice = weights_b[i*nb_per_slice : (i+1)*nb_per_slice]
+        w_b_slice = w_b_slice[argsort_b]
+        bins2_slice = np.array([var2_b_slice[j] for j in
+                                xrange(0, len(var2_b_slice), nb_per_bin)] +
+                               [var2_b_slice[-1]])
+        bins2_slice[0] = min(bins2_slice[0], 0.9*var2_s.min())
+        bins2_slice[-1] = max(bins2_slice[-1], 1.1*var2_s.max())
+        bins2.append(bins2_slice)
+        h_s, _ = np.histogram(var2_s_slice, bins2_slice, weights=w_s_slice)
+        h_b, _ = np.histogram(var2_b_slice, bins2_slice, weights=w_b_slice)
+        h_s /= weights_s.sum()
+        h_b /= weights_b.sum()
+        lklhd_rat.append(h_s / h_b)
+    return (lklhd_rat, bins1, bins2)
+
+
+def default_roc_curve(Y_true, var, sample_weight=None):
+    fpr, tpr, _ = roc_curve(Y_true[:, 0], var, sample_weight=sample_weight)
     res = 1./len(Y_true)
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
+
+
+def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=10):
+    lklhd_rat, bins = likelihood_ratio(Y_true, var, sample_weight, nb_per_bin)
+    scores = lklhd_rat[np.digitize(var, bins) - 1]
+    return default_roc_curve(Y_true, scores, sample_weight)
+
+
+def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+    lklhd_rat, bins1, bins2 = likelihood_ratio2d(
+        Y_true, var1, var2, sample_weight, nb_per_bin)
+    scores = np.zeros(len(Y_true))
+    for i in xrange(len(Y_true)):
+        j1 = np.digitize(var1[i], bins1)-1
+        j2 = np.digitize(var2[i], bins2[j1])-1
+        scores[i] = lklhd_rat[j1][j2]
+    return default_roc_curve(Y_true, scores, sample_weight)
 
 
 def auxvar_roc_curve(

@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 import sys
 from .models import load_model, save_model
-from .utils import default_roc_curve, custom_roc_curve, plot_roc_curve
+from .utils import default_roc_curve, lklhd_roc_curve, plot_roc_curve
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc
@@ -11,7 +11,7 @@ from sklearn.metrics import auc
 
 def train_model(
         model, train_h5_file, model_name='model', batch_size=32, epochs=100,
-        patience=10, verbose=2, use_custom_roc_curve=True, log_to_file=False,
+        patience=10, verbose=2, use_lklhd_roc_curve=True, log_to_file=False,
         read_into_RAM=False):
     """Train model. Save model with best AUC.
     
@@ -80,8 +80,8 @@ def train_model(
             X_val, batch_size=batch_size, verbose=0)
         Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         # Calculate AUC for custom early stopping
-        if use_custom_roc_curve:
-            inv_curve = custom_roc_curve(Y_val, Y_prob[:, 0], weights_val)
+        if use_lklhd_roc_curve:
+            inv_curve = lklhd_roc_curve(Y_val, Y_prob[:, 0], weights_val)
         else:
             inv_curve = default_roc_curve(Y_val, Y_prob[:, 0], weights_val)
         try:
@@ -146,7 +146,7 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        use_custom_roc_curve=True, log_to_file=False, show_ROC_curve=True,
+        use_lklhd_roc_curve=True, log_to_file=False, show_ROC_curve=True,
         X_dataset='X_test', Y_dataset='Y_test'):
     """Test model. Display ROC curve.
     
@@ -192,8 +192,8 @@ def test_model(
             weights_test = h5file['auxvars_test']['weights'][:]
         except KeyError:
             weights_test = None
-    if use_custom_roc_curve:
-        inv_curve = custom_roc_curve(Y_test, Y_prob[:, 0], weights_test)
+    if use_lklhd_roc_curve:
+        inv_curve = lklhd_roc_curve(Y_test, Y_prob[:, 0], weights_test)
     else:
         inv_curve = default_roc_curve(Y_test, Y_prob[:, 0], weights_test)
     # AUC score
