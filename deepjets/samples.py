@@ -8,10 +8,10 @@ from .preprocessing import preprocess, pixel_edges
 from .utils import pT, tot_mom
 
 
-def get_images(config, nevents, pt_min, pt_max,
-               pix_size=(0.1, 0.1), image_size=25,
-               normalize=True, jet_size=1.0, subjet_size_fraction=0.5,
-               **kwargs):
+def get_images(
+        config, nevents, pt_min, pt_max, m_min=None, m_max=(),
+        pix_size=(0.1, 0.1), image_size=25, normalize=True, jet_size=1.0,
+        subjet_size_fraction=0.5, **kwargs):
     """
     Return image array and weights
     """
@@ -32,26 +32,29 @@ def get_images(config, nevents, pt_min, pt_max,
         pix_size=pix_size)
 
     ievent = 0
-    for event in generate(config, nevents, jet_size=jet_size,
-                          subjet_size_fraction=subjet_size_fraction,
-                          trimmed_pt_min=pt_min, trimmed_pt_max=pt_max,
-                          compute_auxvars=True,
-                          **kwargs):
-        jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
-        image = preprocess(subjets, trimmed_constit, edges,
-                           zoom=1. / shrinkage,
-                           normalize=normalize,
-                           out_width=image_size)
-        images[ievent] = image
-        pt[ievent] = jets[0]['pT']
-        pt_trimmed[ievent] = jets[1]['pT']
-        mass[ievent] = jets[0]['mass']
-        mass_trimmed[ievent] = jets[1]['mass']
-        subjet_dr[ievent] = auxvars['subjet_dr']
-        tau_1[ievent] = auxvars['tau_1']
-        tau_2[ievent] = auxvars['tau_2']
-        tau_3[ievent] = auxvars['tau_3']
-        ievent += 1
+    while ievent < nevents:
+        for event in generate(config, nevents, jet_size=jet_size,
+                              subjet_size_fraction=subjet_size_fraction,
+                              trimmed_pt_min=pt_min, trimmed_pt_max=pt_max,
+                              compute_auxvars=True,
+                              **kwargs):
+            jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
+            if (jets[1]['mass'] < m_min) or (jets[1]['mass'] > m_max):
+                continue
+            image = preprocess(subjets, trimmed_constit, edges,
+                               zoom=1. / shrinkage,
+                               normalize=normalize,
+                               out_width=image_size)
+            images[ievent] = image
+            pt[ievent] = jets[0]['pT']
+            pt_trimmed[ievent] = jets[1]['pT']
+            mass[ievent] = jets[0]['mass']
+            mass_trimmed[ievent] = jets[1]['mass']
+            subjet_dr[ievent] = auxvars['subjet_dr']
+            tau_1[ievent] = auxvars['tau_1']
+            tau_2[ievent] = auxvars['tau_2']
+            tau_3[ievent] = auxvars['tau_3']
+            ievent += 1
 
     auxvars = np.core.records.fromarrays(
         [pt, pt_trimmed, mass, mass_trimmed, subjet_dr, tau_1, tau_2, tau_3],
@@ -60,28 +63,32 @@ def get_images(config, nevents, pt_min, pt_max,
     return images, auxvars
 
 
-def _generate_one_bin(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
+def _generate_one_bin(
+        config, nevents_per_pt_bin, pt_lo, pt_hi, m_min=None, m_max=(),
+        **kwargs):
     params_dict = {
         'PhaseSpace:pTHatMin': pt_lo - 20.,
         'PhaseSpace:pTHatMax': pt_hi + 20.}
-    return get_images(config, nevents_per_pt_bin,
-                      pt_min=pt_lo, pt_max=pt_hi,
-                      params_dict=params_dict,
-                      **kwargs)
+    return get_images(
+            config, nevents_per_pt_bin, m_min=m_min, m_max=m_max, pt_min=pt_lo,
+            pt_max=pt_hi, params_dict=params_dict, **kwargs)
 
 
 def get_weights(pt, pt_min, pt_max, pt_bins):
     # Compute weights such that pT distribution is flat
-    pt_hist, edges = np.histogram(pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1))
+    pt_hist, edges = np.histogram(
+        pt, bins=np.linspace(pt_min, pt_max, pt_bins + 1))
     # Normalize
     pt_hist = np.true_divide(pt_hist, pt_hist.sum())
-    image_weights = np.true_divide(1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
+    image_weights = np.true_divide(
+        1., np.take(pt_hist, np.searchsorted(edges, pt) - 1))
     image_weights = np.true_divide(image_weights, image_weights.mean())
     return image_weights
 
 
-def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
-               pt_bins=10, n_jobs=-1, **kwargs):
+def get_sample(
+        config, nevents_per_pt_bin, pt_min, pt_max, m_min=None, m_max=(),
+        pt_bins=10, n_jobs=-1, **kwargs):
     """
     Construct a sample of images over a pT range by combining samples
     constructed in pT intervals in this range.
@@ -90,8 +97,9 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
     pt_bin_edges = np.linspace(pt_min, pt_max, pt_bins + 1)
 
     out = Parallel(n_jobs=n_jobs)(
-        delayed(_generate_one_bin)(config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs)
-            for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]))
+        delayed(_generate_one_bin)(
+            config, nevents_per_pt_bin, pt_lo, pt_hi, m_min, m_max, **kwargs)
+        for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]))
 
     images = np.concatenate([x[0] for x in out])
     auxvars = np.concatenate([x[1] for x in out])
@@ -113,12 +121,14 @@ def get_sample(config, nevents_per_pt_bin, pt_min, pt_max,
 
 def make_flat_sample(filename, pt_min, pt_max, pt_bins=20):
     """ Crop and weight a dataset such that pt is within pt_min and pt_max
-    and the pt distribution is approximately flat. Return the images and weights
+    and the pt distribution is approximately flat. Return the images and
+    weights.
     """
     with h5py.File(filename, 'r') as hfile:
         images = hfile['images']
         auxvars = hfile['auxvars']
-        jet_pt_accept = (auxvars['pt_trimmed'] >= pt_min) & (auxvars['pt_trimmed'] < pt_max)
+        jet_pt_accept = ((auxvars['pt_trimmed'] >= pt_min) &
+                         (auxvars['pt_trimmed'] < pt_max))
         images = np.take(images, np.where(jet_pt_accept)[0], axis=0)
         jet_pt = auxvars['pt_trimmed'][jet_pt_accept]
     weights = get_weights(jet_pt, pt_min, pt_max, pt_bins)
