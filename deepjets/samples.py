@@ -55,6 +55,8 @@ def get_images(
             tau_2[ievent] = auxvars['tau_2']
             tau_3[ievent] = auxvars['tau_3']
             ievent += 1
+            if ievent == nevents:
+                break
 
     auxvars = np.core.records.fromarrays(
         [pt, pt_trimmed, mass, mass_trimmed, subjet_dr, tau_1, tau_2, tau_3],
