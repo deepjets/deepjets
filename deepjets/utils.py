@@ -7,7 +7,6 @@ from matplotlib import cbook
 from matplotlib.colors import LogNorm, Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import ma
-from scipy.interpolate import interp2d
 from sklearn import cross_validation
 from sklearn.metrics import roc_curve
 
@@ -364,6 +363,20 @@ def plot_gen_dists(
 
 
 def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=10):
+    """Signal to background likelihood ratio for a single variable.
+    
+    Ratio is regularised by binning such that the same number of background
+    images is in each bin.
+    
+    Args:
+        Y_true: array of true classes (n*2).
+        var: array of variable values.
+        sample_weight: array of sample weights.
+        nb_per_bin: number of background samples to include in each bin.
+    Returns:
+        lklhd_rat: array of signal to background likelihood ratios for bins.
+        bins: array of bin edges in var.
+    """
     var_s = var[Y_true[:, 0] == 1]
     var_b = var[Y_true[:, 0] == 0]
     argsort_b = var_b.argsort()
@@ -388,6 +401,23 @@ def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=10):
 
 
 def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+    """Signal to background likelihood ratio for a pair of variables.
+    
+    Ratio is regularised by binning such that the same number of background
+    images is in each bin.
+    
+    Args:
+        Y_true: array of true classes (n*2).
+        var1: array of variable values.
+        var2: array of variable values.
+        sample_weight: array of sample weights.
+        nb_per_bin: number of background samples to include in each bin.
+    Returns:
+        lklhd_rat: list of array of signal to background likelihood ratios for
+                   each set of bins.
+        bins1: array of bin edges in var1.
+        bins2: list of arrays of bin edges in var2.
+    """
     var1_s = var1[Y_true[:, 0] == 1]
     var1_b = var1[Y_true[:, 0] == 0]
     var2_s = var2[Y_true[:, 0] == 1]
@@ -432,6 +462,15 @@ def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
 
 
 def default_roc_curve(Y_true, var, sample_weight=None):
+    """Default ROC curve for a single variable.
+    
+    Args:
+        Y_true: array of true classes (n*2).
+        var: array of variable values.
+        sample_weight: array of sample weights.
+    Returns:
+        Array of (signal efficiency, 1/[background efficiency]) pairs.
+    """
     fpr, tpr, _ = roc_curve(Y_true[:, 0], var, sample_weight=sample_weight)
     res = 1./len(Y_true)
     return np.array([[tp, 1./max(fp, res)]
@@ -440,12 +479,33 @@ def default_roc_curve(Y_true, var, sample_weight=None):
 
 
 def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=10):
+    """Likelihood ratio ROC curve for a single variable.
+    
+    Args:
+        Y_true: array of true classes (n*2).
+        var: array of variable values.
+        sample_weight: array of sample weights.
+        nb_per_bin: number of background samples per bin for likelihood ratio.
+    Returns:
+        Array of (signal efficiency, 1/[background efficiency]) pairs.
+    """
     lklhd_rat, bins = likelihood_ratio(Y_true, var, sample_weight, nb_per_bin)
     scores = lklhd_rat[np.digitize(var, bins) - 1]
     return default_roc_curve(Y_true, scores, sample_weight)
 
 
 def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+    """Likelihood ratio ROC curve for a pair of variables.
+    
+    Args:
+        Y_true: array of true classes (n*2).
+        var1: array of variable values.
+        var2: array of variable values.
+        sample_weight: array of sample weights.
+        nb_per_bin: number of background samples per bin for likelihood ratio.
+    Returns:
+        Array of (signal efficiency, 1/[background efficiency]) pairs.
+    """
     lklhd_rat, bins1, bins2 = likelihood_ratio2d(
         Y_true, var1, var2, sample_weight, nb_per_bin)
     scores = np.zeros(len(Y_true))
@@ -457,7 +517,7 @@ def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
 
 
 def auxvar_roc_curve(
-        test_h5_file, auxvar, Y_dataset='Y_test', use_custom_roc_curve=True):
+        test_h5_file, auxvar, Y_dataset='Y_test', use_lklhd_roc_curve=True):
     """Calculate ROC curve associated with auxvar.
 
     Args:
@@ -470,8 +530,8 @@ def auxvar_roc_curve(
     with h5py.File(test_h5_file, 'r') as h5file:
         Y_test = h5file[Y_dataset][:]
         var = h5file[auxvar][:]
-    if use_custom_roc_curve:
-        return custom_roc_curve(Y_test, var)
+    if use_lklhd_roc_curve:
+        return lklhd_roc_curve(Y_test, var)
     else:
         return default_roc_curve(Y_test, var)
 
@@ -517,6 +577,7 @@ def plot_roc_curves(roc_data, labels, filename=None):
 
 
 def tot_mom(jet_csts):
+    """Jet momentum calculated from constituent 4-vectors."""
     E_tot  = np.sum(jet_csts['ET'] * np.cosh(jet_csts['eta']))
     px_tot = np.sum(jet_csts['ET'] * np.cos(jet_csts['phi']))
     py_tot = np.sum(jet_csts['ET'] * np.sin(jet_csts['phi']))
@@ -525,16 +586,18 @@ def tot_mom(jet_csts):
 
 
 def mass(E, px, py, pz):
+    """Mass calculated from 4-vector."""
     m2 = E**2 - px**2 - py**2 - pz**2
     return np.sign(m2) * np.sqrt(abs(m2))
 
 
 def jet_mass(jet_csts):
-    """Returns jet mass calculated from constituent 4-vectors."""
+    """Jet mass calculated from constituent 4-vectors."""
     return mass(*tot_mom(jet_csts))
 
 
 def pT(E, px, py, pz):
+    """Transverse momentum calculated from 4-vector."""
     return (px**2 + py**2)**0.5
 
 
@@ -544,5 +607,6 @@ dphi = lambda phi1, phi2 : abs(math.fmod((math.fmod(phi1, 2*math.pi) -
 
 
 def dR(jet1, jet2):
+    """Subjet separation calculated from subjet 4-vectors."""
     return ((jet1['eta'] - jet2['eta'])**2 +
             dphi(jet1['phi'], jet2['phi'])**2)**0.5

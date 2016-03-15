@@ -28,6 +28,8 @@ def train_model(
         verbose: 0 suppresses all progress updates.
                  1 provides minimal progress updates.
                  2 provides full progress updates.
+        use_lklhd_roc_curve: if True, use likelihood ratio-based ROC curve for
+                             early stopping, else use default.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
         read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
