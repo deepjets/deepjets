@@ -18,3 +18,4 @@ build
 *.h5
 *.nfs*
 *.DS_Store
+.ipynb_checkpoints
