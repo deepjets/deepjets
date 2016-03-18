@@ -28,6 +28,11 @@ if [ ! -d HepMC-2.06.09 ]; then
     tar xfz HepMC-2.06.09.tar.gz
 fi
 
+if [ ! -d Delphes-3.3.2 ]; then
+    wget http://cp3.irmp.ucl.ac.be/downloads/Delphes-3.3.2.tar.gz
+    tar xfz Delphes-3.3.2.tar.gz
+fi
+
 cd fastjet-3.1.3
 make clean
 ./configure --prefix=$PREFIX --enable-cgal --enable-allcxxplugins
@@ -56,6 +61,18 @@ make clean
 ./configure --prefix=$PREFIX --with-momentum=GEV --with-length=MM
 make -j2
 make install
+cd ..
+
+cd Delphes-3.3.2
+make clean
+./configure
+make -j2
+cp libDelphes.so libDelphesNoFastJet.so $PREFIX/lib/
+mkdir $PREFIX/include/Delphes
+cp -r modules/ $PREFIX/include/Delphes
+cp -r classes/ $PREFIX/include/Delphes
+mkdir $PREFIX/share/Delphes
+cp -r cards/ $PREFIX/share/Delphes
 cd ..
 
 curl -O https://herwig.hepforge.org/hg/bootstrap/raw-file/published/herwig-bootstrap
