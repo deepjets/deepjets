@@ -8,4 +8,4 @@ cimport cython
 
 from libcpp cimport bool
 from libcpp.vector cimport vector
-from libcpp.string cimport string
+from libcpp.string cimport string, const_char

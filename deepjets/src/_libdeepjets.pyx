@@ -3,6 +3,7 @@
 include "setup.pxi"
 include "Pythia.pxi"
 include "HepMC.pxi"
-include "fastjet.pxi"
+include "FastJet.pxi"
+include "Delphes.pxi"
 include "deepjets.pxi"
 include "generate.pyx"

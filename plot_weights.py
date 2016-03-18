@@ -6,7 +6,8 @@ from deepjets.utils import plot_jet_image
 images, auxvars = get_sample('w.config', 1000,
                              pt_min=200, pt_max=500, pt_bins=10,
                              shrink=True, shrink_mass=80.385,
-                             subjet_dr_min=0.3) # 3 pixels
+                             subjet_dr_min=0.3, # 3 pixels
+                             delphes=True, random_state=10)
 
 pt = auxvars['pt_trimmed']
 weights = auxvars['weights']

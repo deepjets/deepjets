@@ -1,3 +1,5 @@
+import tempfile
+
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
@@ -17,13 +19,40 @@ def generate_pythia(string config, string xmldoc,
                     bool shrink=False, float shrink_mass=-1.,
                     int cut_on_pdgid=0, float pdgid_pt_min=-1, float pdgid_pt_max=-1,
                     params_dict=None,
-                    bool compute_auxvars=False):
+                    bool compute_auxvars=False,
+                    bool delphes=False,
+                    string delphes_config=''):
     """
     Generate Pythia events and yield jet and constituent arrays
     """
     if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
         raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+    
+    # Delphes init
+    cdef ExRootConfReader* delphes_conf_reader = NULL
+    cdef Delphes* modular_delphes = NULL
+    cdef TObjArray* delphes_all_particles = NULL
+    cdef TObjArray* delphes_stable_particles = NULL
+    cdef TObjArray* delphes_partons = NULL
+    cdef TObjArray* delphes_input_array = NULL
 
+    if delphes:
+        delphes_config_reader = new ExRootConfReader()
+        delphes_config_reader.ReadFile(delphes_config.c_str())
+        # Set Delhes' random seed. Only possible through a config file...
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write("set RandomSeed {0:d}\n".format(random_state))
+            tmp.flush()
+            delphes_config_reader.ReadFile(tmp.name)
+        modular_delphes = new Delphes("Delphes")
+        modular_delphes.SetConfReader(delphes_config_reader)
+        delphes_all_particles = modular_delphes.ExportArray("allParticles")
+        delphes_stable_particles = modular_delphes.ExportArray("stableParticles")
+        delphes_partons = modular_delphes.ExportArray("partons")
+        modular_delphes.InitTask()
+        delphes_input_array = modular_delphes.ImportArray("Calorimeter/towers")
+    
+    # Pythia init
     cdef int ievent;
     cdef Pythia* pythia = new Pythia(xmldoc, False)
 
@@ -61,16 +90,32 @@ def generate_pythia(string config, string xmldoc,
     try:
         ievent = 0
         while ievent < n_events:
-            # Generate event. Quit if failure.
+            # generate event and quit if failure
             if not pythia.next():
                 raise RuntimeError("event generation aborted prematurely")
             
             if not keep_pythia_event(pythia.event, cut_on_pdgid, pdgid_pt_min, pdgid_pt_max):
+                # event doesn't pass our truth-level cuts
                 continue
 
             particles.clear()
-            pythia_to_pseudojet(pythia.event, particles, eta_max)
 
+            if delphes:
+                modular_delphes.Clear()
+                # convert Pythia particles into Delphes candidates
+                pythia_to_delphes(pythia.event, modular_delphes,
+                                  delphes_all_particles,
+                                  delphes_stable_particles,
+                                  delphes_partons)
+                # run Delphes reconstruction
+                modular_delphes.ProcessTask()
+                # convert Delphes reconstructed eflow candidates into pseudojets
+                delphes_to_pseudojet(delphes_input_array, particles)
+            else:
+                # convert Pythia particles directly into pseudojets
+                pythia_to_pseudojet(pythia.event, particles, eta_max)
+            
+            # run jet clustering
             result = get_jets(particles,
                               jet_size, subjet_size_fraction,
                               subjet_pt_min_fraction,
@@ -116,6 +161,8 @@ def generate_pythia(string config, string xmldoc,
         pythia.stat()
     finally:
         del pythia
+        del modular_delphes
+        del delphes_config_reader
 
 
 @cython.boundscheck(False)

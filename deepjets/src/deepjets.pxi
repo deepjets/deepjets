@@ -17,3 +17,5 @@ cdef extern from "deepjets.h":
     IO_GenEvent* get_hepmc_reader(string)
     void hepmc_to_pseudojet(GenEvent&, vector[PseudoJet]&, double)
     void pythia_to_pseudojet(Event&, vector[PseudoJet]&, double)
+    void pythia_to_delphes(Event&, Delphes*, TObjArray*, TObjArray*, TObjArray*)
+    void delphes_to_pseudojet(TObjArray*, vector[PseudoJet]&)

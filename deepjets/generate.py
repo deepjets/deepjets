@@ -12,12 +12,20 @@ def generate(config, nevents,
              shrink=False, shrink_mass=-1,
              cut_on_pdgid=0, pdgid_pt_min=-1, pdgid_pt_max=-1,
              params_dict=None,
-             compute_auxvars=False):
+             compute_auxvars=False,
+             delphes=False,
+             delphes_config='delphes_card_ATLAS_NoFastJet.tcl'):
     if random_state is None:
         # Pythia will use time
         random_state = 0
     xmldoc = os.path.join(os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
                           'share/Pythia8/xmldoc')
+    if not os.path.isfile(delphes_config):
+        # use global config in share directory
+        delphes_config = os.path.join(
+            os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
+            'share/Delphes/cards', delphes_config)
+
     for event in _generate(config, xmldoc, nevents,
                            random_state=random_state,
                            beam_ecm=beam_ecm,
@@ -34,5 +42,7 @@ def generate(config, nevents,
                            pdgid_pt_min=pdgid_pt_min,
                            pdgid_pt_max=pdgid_pt_max,
                            params_dict=params_dict,
-                           compute_auxvars=compute_auxvars):
+                           compute_auxvars=compute_auxvars,
+                           delphes=delphes,
+                           delphes_config=delphes_config):
         yield event

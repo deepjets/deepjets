@@ -45,6 +45,36 @@ try:
 except KeyError:
     raise RuntimeError("first run \"source setup.sh\"")
 
+
+def root_flags(root_config='root-config'):
+    root_cflags = subprocess.Popen(
+        [root_config, '--cflags'],
+        stdout=subprocess.PIPE).communicate()[0].strip()
+    root_ldflags = subprocess.Popen(
+        [root_config, '--libs'],
+        stdout=subprocess.PIPE).communicate()[0].strip()
+    if sys.version > '3':
+        root_cflags = root_cflags.decode('utf-8')
+        root_ldflags = root_ldflags.decode('utf-8')
+    return root_cflags.split(), root_ldflags.split()
+
+rootsys = os.getenv('ROOTSYS', None)
+if rootsys is not None:
+    try:
+        root_config = os.path.join(rootsys, 'bin', 'root-config')
+        root_cflags, root_ldflags = root_flags(root_config)
+    except OSError:
+        raise RuntimeError(
+            "ROOTSYS is {0} but running {1} failed".format(
+                rootsys, root_config))
+else:
+    try:
+        root_cflags, root_ldflags = root_flags()
+    except OSError:
+        raise RuntimeError(
+            "root-config is not in PATH and ROOTSYS is not set. "
+            "Is ROOT installed correctly?")
+
 libdeepjets = Extension(
     'deepjets._libdeepjets',
     sources=['deepjets/src/_libdeepjets.pyx'],
@@ -55,16 +85,19 @@ libdeepjets = Extension(
         'deepjets/src',
         '/usr/local/include',
         os.path.join(DEEPJETS_SFT_DIR, 'include'),
+        os.path.join(DEEPJETS_SFT_DIR, 'include', 'Delphes'),
     ],
     library_dirs=[
         '/usr/local/lib',
         os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
-    libraries='pythia8 fastjet fastjetcontribfragile CGAL gmp HepMC'.split(),
-    extra_compile_args=[
+    libraries=('pythia8 fastjet fastjetcontribfragile '
+               'CGAL gmp HepMC DelphesNoFastJet').split(),
+    extra_compile_args=root_cflags + [
         '-Wno-unused-function',
         '-Wno-write-strings',
-    ])
+    ],
+    extra_link_args=root_ldflags)
 
 setup(
     name='deepjets',

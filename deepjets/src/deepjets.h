@@ -1,16 +1,25 @@
 #include "Pythia8/Pythia.h"
 #include "Pythia8Plugins/FastJet3.h"
+
 #include "fastjet/contrib/Nsubjettiness.hh"
+
+#include "HepMC/IO_GenEvent.h"
+#include "HepMC/GenEvent.h"
+
+#include "Delphes/modules/Delphes.h"
+#include "Delphes/classes/DelphesClasses.h"
+#include "Delphes/classes/DelphesFactory.h"
+
+#include "TObjArray.h"
+#include "TLorentzVector.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmath>
 #include <algorithm>
-
-#include "HepMC/IO_GenEvent.h"
-#include "HepMC/GenEvent.h"
 #include <math.h>
-#include <algorithm>
 #include <vector>
+
 
 using namespace Pythia8;
 
@@ -54,6 +63,51 @@ void pythia_to_pseudojet(Pythia8::Event& event, std::vector<fastjet::PseudoJet>&
     fastjet::PseudoJet particleTemp = event[i];
     output.push_back(particleTemp);
   }
+}
+
+
+void pythia_to_delphes(Pythia8::Event& event, Delphes* delphes,
+                       TObjArray* all_particles,
+                       TObjArray* stable_particles,
+                       TObjArray* partons) {
+    // Based on code here:
+    // https://cp3.irmp.ucl.ac.be/projects/delphes/browser/examples/ExternalFastJet/ExternalFastJetBasic.cpp
+    DelphesFactory* factory = delphes->GetFactory();
+    Candidate* candidate;
+    int pdgid;
+    for (int i = 0; i < event.size(); ++i) {
+        if (!event[i].isVisible()) continue;
+        candidate = factory->NewCandidate();
+        const Pythia8::Particle& particle = event[i];
+        candidate->PID = particle.id();
+        pdgid = particle.idAbs();
+        candidate->Status = particle.status();
+        candidate->Charge = particle.charge();
+        candidate->Mass = particle.m();
+        candidate->Momentum.SetPxPyPzE(particle.px(), particle.py(), particle.pz(), particle.e());
+        candidate->Position.SetXYZT(particle.xProd(), particle.yProd(), particle.zProd(), particle.tProd());
+        all_particles->Add(candidate);
+        if (particle.isFinal()) {
+            stable_particles->Add(candidate);
+        } else if (pdgid <= 5 || pdgid == 21 || pdgid == 15) {
+            partons->Add(candidate);
+        }
+    }
+}
+
+
+void delphes_to_pseudojet(TObjArray* input_array, std::vector<fastjet::PseudoJet>& output) {
+    // Based on code here:
+    // https://cp3.irmp.ucl.ac.be/projects/delphes/browser/examples/ExternalFastJet/ExternalFastJetBasic.cpp
+    TIterator* input_iterator = input_array->MakeIterator();
+    Candidate* candidate;
+    fastjet::PseudoJet pseudojet;
+    TLorentzVector momentum;
+    while((candidate = static_cast<Candidate*>(input_iterator->Next()))) {
+        momentum = candidate->Momentum;
+        pseudojet = fastjet::PseudoJet(momentum.Px(), momentum.Py(), momentum.Pz(), momentum.E());
+        output.push_back(pseudojet);
+    }
 }
 
 

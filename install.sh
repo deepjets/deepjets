@@ -73,6 +73,7 @@ cp -r modules/ $PREFIX/include/Delphes
 cp -r classes/ $PREFIX/include/Delphes
 mkdir $PREFIX/share/Delphes
 cp -r cards/ $PREFIX/share/Delphes
+cp -r external/ExRootAnalysis $PREFIX/include/
 cd ..
 
 curl -O https://herwig.hepforge.org/hg/bootstrap/raw-file/published/herwig-bootstrap
