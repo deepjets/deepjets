@@ -90,6 +90,24 @@ def prepare_datasets(
             h5file.create_dataset('Y_test', data=classes)
             h5file.create_dataset('auxvars_test', data=auxvars)
         return {'test' : out_file}
+    # Train images only
+    if test_frac <= 0:
+        # Shuffle to make sure validation set contains both classes
+        rs = np.random.RandomState(shuffle_seed)
+        train = np.arange(len(images))
+        rs.shuffle(train)
+        out_file = dataset_name+'_train.h5'
+        with h5py.File(out_file, 'w') as h5file:
+            n_val = int(val_frac * len(train))
+            h5file.create_dataset('X_val', data=images[train][:n_val])
+            h5file.create_dataset('Y_val', data=classes[train][:n_val])
+            h5file.create_dataset(
+                'auxvars_val', data=auxvars[train][:n_val])
+            h5file.create_dataset('X_train', data=images[train][n_val:])
+            h5file.create_dataset('Y_train', data=classes[train][n_val:])
+            h5file.create_dataset(
+                'auxvars_train', data=auxvars[train][n_val:])
+        return {'train' : out_file}
     # Top level train-test split
     rs = cross_validation.ShuffleSplit(
         n_images, n_iter=1, test_size=test_frac, random_state=shuffle_seed)
