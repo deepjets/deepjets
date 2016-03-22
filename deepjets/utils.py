@@ -362,7 +362,7 @@ def plot_gen_dists(
     fig.show()
 
 
-def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=10):
+def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=1):
     """Signal to background likelihood ratio for a single variable.
     
     Ratio is regularised by binning such that the same number of background
@@ -400,7 +400,7 @@ def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=10):
     return (lklhd_rat, bins)
 
 
-def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     """Signal to background likelihood ratio for a pair of variables.
     
     Ratio is regularised by binning such that the same number of background
@@ -486,7 +486,7 @@ def default_roc_curve(Y_true, var, sample_weight=None):
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
 
 
-def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=10):
+def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a single variable.
     
     Args:
@@ -502,7 +502,7 @@ def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=10):
     return default_roc_curve(Y_true, scores, sample_weight)
 
 
-def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
+def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a pair of variables.
     
     Args:
@@ -516,16 +516,16 @@ def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=10):
     """
     lklhd_rat_a, bins1_a, bins2_a = likelihood_ratio2d(
         Y_true, var1, var2, sample_weight, nb_per_bin)
-    lklhd_rat_b, bins2_b, bins1_b = likelihood_ratio2d(
-        Y_true, var2, var1, sample_weight, nb_per_bin)
+    #lklhd_rat_b, bins2_b, bins1_b = likelihood_ratio2d(
+    #    Y_true, var2, var1, sample_weight, nb_per_bin)
     scores = np.zeros(len(Y_true))
     for i in xrange(len(Y_true)):
         j1_a = np.digitize(var1[i], bins1_a)-1
         j2_a = np.digitize(var2[i], bins2_a[j1_a])-1
-        j2_b = np.digitize(var2[i], bins2_b)-1
-        j1_b = np.digitize(var1[i], bins1_b[j2_b])-1
+        #j2_b = np.digitize(var2[i], bins2_b)-1
+        #j1_b = np.digitize(var1[i], bins1_b[j2_b])-1
         #scores[i] = 0.5*(lklhd_rat_a[j1_a][j2_a] + lklhd_rat_b[j2_b][j1_b])
-        scores[i] = lklhd_rat_b[j2_b][j1_b]
+        scores[i] = lklhd_rat_a[j1_a][j2_a]
     return default_roc_curve(Y_true, scores, sample_weight)
 
 
