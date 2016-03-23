@@ -42,6 +42,7 @@ void hepmc_to_pseudojet(HepMC::GenEvent& evt, std::vector<fastjet::PseudoJet>& o
   int pdgid;
   IsStateFinal isfinal;
   HepMC::FourVector fourvect;
+  output.clear();
   for (HepMC::GenEvent::particle_iterator p = evt.particles_begin(); p != evt.particles_end(); ++p) if (isfinal(*p)) {
     // visibility test
     pdgid = abs((*p)->pdg_id());
@@ -55,6 +56,7 @@ void hepmc_to_pseudojet(HepMC::GenEvent& evt, std::vector<fastjet::PseudoJet>& o
 
 
 void pythia_to_pseudojet(Pythia8::Event& event, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+  output.clear();
   for (int i = 0; i < event.size(); ++i) if (event[i].isFinal()) {
     // Require visible particles inside detector.
     if (!event[i].isVisible()) continue;
@@ -99,6 +101,7 @@ void pythia_to_delphes(Pythia8::Event& event, Delphes* delphes,
 void delphes_to_pseudojet(TObjArray* input_array, std::vector<fastjet::PseudoJet>& output) {
     // Based on code here:
     // https://cp3.irmp.ucl.ac.be/projects/delphes/browser/examples/ExternalFastJet/ExternalFastJetBasic.cpp
+    output.clear();
     TIterator* input_iterator = input_array->MakeIterator();
     Candidate* candidate;
     fastjet::PseudoJet pseudojet;

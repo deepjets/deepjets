@@ -2,14 +2,155 @@ import tempfile
 
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
+dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
+dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
+
+
+cdef class GeneratorInput:
+    cdef bool get_next_event(self):
+        return False
+    
+    cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
+        pass
+
+    cdef void to_delphes(self, Delphes* modular_delphes,
+                         TObjArray* delphes_all_particles,
+                         TObjArray* delphes_stable_particles,
+                         TObjArray* delphes_partons):
+        pass
+
+    cdef void finish(self):
+        pass
+
+
+cdef class PythiaInput(GeneratorInput):
+    cdef Pythia* pythia
+    cdef int cut_on_pdgid
+    cdef float pdgid_pt_min
+    cdef float pdgid_pt_max
+
+    def __cinit__(self, string config, string xmldoc,
+                  int random_state=0, float beam_ecm=13000.,
+                  int cut_on_pdgid=0,
+                  float pdgid_pt_min=-1, float pdgid_pt_max=-1,
+                  params_dict=None):
+        self.pythia = new Pythia(xmldoc, False)
+        self.pythia.readString("Init:showProcesses = on")
+        self.pythia.readString("Init:showMultipartonInteractions = off")
+        self.pythia.readString("Init:showChangedSettings = on")
+        self.pythia.readString("Init:showChangedParticleData = off")
+        self.pythia.readString("Next:numberShowInfo = 0")
+        self.pythia.readString("Next:numberShowProcess = 0")
+        self.pythia.readString("Next:numberShowEvent = 0")
+        self.pythia.readFile(config)  # read user config after options above
+        self.pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
+        self.pythia.readString('Random:setSeed = on')
+        self.pythia.readString('Random:seed = {0}'.format(random_state))
+        if params_dict is not None:
+            for param, value in params_dict.items():
+                self.pythia.readString('{0} = {1}'.format(param, value))
+        self.pythia.init()
+        self.cut_on_pdgid = cut_on_pdgid
+        self.pdgid_pt_min = pdgid_pt_min
+        self.pdgid_pt_max = pdgid_pt_max
+
+    def __dealloc__(self):
+        del self.pythia
+
+    cdef bool get_next_event(self):
+        # generate event and quit if failure
+        if not self.pythia.next():
+            raise RuntimeError("event generation aborted prematurely")
+        
+        if not keep_pythia_event(self.pythia.event, self.cut_on_pdgid,
+                                 self.pdgid_pt_min, self.pdgid_pt_max):
+            # event doesn't pass our truth-level cuts
+            return False
+        return True
+
+    cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
+        pythia_to_pseudojet(self.pythia.event, particles, eta_max)
+        
+    cdef void to_delphes(self, Delphes* modular_delphes,
+                         TObjArray* delphes_all_particles,
+                         TObjArray* delphes_stable_particles,
+                         TObjArray* delphes_partons):
+        # convert Pythia particles into Delphes candidates
+        pythia_to_delphes(self.pythia.event, modular_delphes,
+                          delphes_all_particles,
+                          delphes_stable_particles,
+                          delphes_partons)
+
+    cdef void finish(self):
+        self.pythia.stat()
+
+
+cdef class HepMCInput(GeneratorInput):
+    cdef IO_GenEvent* hepmc_reader
+    cdef GenEvent* event
+
+    def __cinit__(self, string filename):
+        self.hepmc_reader = get_hepmc_reader(filename)
+
+    def __dealloc__(self):
+        del self.event
+        del self.hepmc_reader
+
+    cdef bool get_next_event(self):
+        self.event = self.hepmc_reader.read_next_event()
+        if self.event == NULL:
+            return False
+        return True
+
+    cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
+        hepmc_to_pseudojet(self.event[0], particles, eta_max)
+        del self.event
+        self.event = NULL
+
+
+cdef class Jets:
+    cdef readonly np.ndarray jet_arr  # contains jet and trimmed jet
+    cdef readonly np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
+    cdef readonly np.ndarray jet_constit_arr  # contains original jet constituents
+    cdef readonly np.ndarray subjet_constit_arr  # contains trimmed jet constituents
+    cdef readonly float subjet_dr
+    cdef readonly float tau_1
+    cdef readonly float tau_2
+    cdef readonly float tau_3
+
+
+cdef void jets_from_result(Jets jets, Result* result):
+    cdef int num_jet_constit
+    cdef int num_subjets
+    cdef int num_subjets_constit
+
+    num_jet_constit = result.jet.constituents().size()
+    num_subjets = result.subjets.size()
+    num_subjets_constit = 0
+    for isubjet in range(result.subjets.size()):
+        num_subjets_constit += result.subjets[isubjet].constituents().size()
+    
+    jets.jet_arr = np.empty((2,), dtype=dtype_jet)
+    jets.subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
+    jets.jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
+    jets.subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
+
+    result_to_arrays(result[0],
+                     <DTYPE_t*> jets.jet_arr.data,
+                     <DTYPE_t*> jets.subjet_arr.data,
+                     <DTYPE_t*> jets.jet_constit_arr.data,
+                     <DTYPE_t*> jets.subjet_constit_arr.data)
+    
+    jets.subjet_dr = result.subjet_dr
+    jets.tau_1 = result.tau_1
+    jets.tau_2 = result.tau_2
+    jets.tau_3 = result.tau_3
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def generate_pythia(string config, string xmldoc,
+def generate_events(GeneratorInput gen_input,
                     int n_events,
-                    int random_state=0,
-                    float beam_ecm=13000.,
                     float eta_max=5.,
                     float jet_size=0.6,
                     float subjet_size_fraction=0.5,
@@ -17,31 +158,30 @@ def generate_pythia(string config, string xmldoc,
                     float subjet_dr_min=0.,
                     float trimmed_pt_min=10., float trimmed_pt_max=-1., 
                     bool shrink=False, float shrink_mass=-1.,
-                    int cut_on_pdgid=0, float pdgid_pt_min=-1, float pdgid_pt_max=-1,
-                    params_dict=None,
                     bool compute_auxvars=False,
                     bool delphes=False,
-                    string delphes_config=''):
+                    string delphes_config='',
+                    int delphes_random_state=0):
     """
-    Generate Pythia events and yield jet and constituent arrays
+    Generate events (or read HepMC) and yield jet and constituent arrays
     """
     if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
         raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
     
     # Delphes init
-    cdef ExRootConfReader* delphes_conf_reader = NULL
+    cdef ExRootConfReader* delphes_config_reader = NULL
     cdef Delphes* modular_delphes = NULL
     cdef TObjArray* delphes_all_particles = NULL
     cdef TObjArray* delphes_stable_particles = NULL
     cdef TObjArray* delphes_partons = NULL
     cdef TObjArray* delphes_input_array = NULL
-
+    
     if delphes:
         delphes_config_reader = new ExRootConfReader()
         delphes_config_reader.ReadFile(delphes_config.c_str())
         # Set Delhes' random seed. Only possible through a config file...
         with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write("set RandomSeed {0:d}\n".format(random_state))
+            tmp.write("set RandomSeed {0:d}\n".format(delphes_random_state))
             tmp.flush()
             delphes_config_reader.ReadFile(tmp.name)
         modular_delphes = new Delphes("Delphes")
@@ -51,70 +191,20 @@ def generate_pythia(string config, string xmldoc,
         delphes_partons = modular_delphes.ExportArray("partons")
         modular_delphes.InitTask()
         delphes_input_array = modular_delphes.ImportArray("Calorimeter/towers")
-    
-    # Pythia init
+
     cdef int ievent;
-    cdef Pythia* pythia = new Pythia(xmldoc, False)
-
-    pythia.readString("Init:showProcesses = on")
-    pythia.readString("Init:showMultipartonInteractions = off")
-    pythia.readString("Init:showChangedSettings = on")
-    pythia.readString("Init:showChangedParticleData = off")
-    pythia.readString("Next:numberShowInfo = 0")
-    pythia.readString("Next:numberShowProcess = 0")
-    pythia.readString("Next:numberShowEvent = 0")
-    pythia.readFile(config)  # read user config after options above
-    pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
-    pythia.readString('Random:setSeed = on')
-    pythia.readString('Random:seed = {0}'.format(random_state))
-    if params_dict is not None:
-        for param, value in params_dict.items():
-            pythia.readString('{0} = {1}'.format(param, value))
-    pythia.init()
-
-    cdef int num_jet_constit = 0
-    cdef int num_subjets = 0
-    cdef int num_subjets_constit = 0
-
-    cdef np.ndarray jet_arr  # contains jet and trimmed jet
-    cdef np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
-    cdef np.ndarray jet_constit_arr  # contains original jet constituents
-    cdef np.ndarray subjet_constit_arr  # contains trimmed jet constituents
-
     cdef Result* result
     cdef vector[PseudoJet] particles
-
-    dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
-    dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
-
+    
     try:
         ievent = 0
         while ievent < n_events:
-            # generate event and quit if failure
-            if not pythia.next():
-                raise RuntimeError("event generation aborted prematurely")
-            
-            if not keep_pythia_event(pythia.event, cut_on_pdgid, pdgid_pt_min, pdgid_pt_max):
-                # event doesn't pass our truth-level cuts
+            if not gen_input.get_next_event():
                 continue
 
-            particles.clear()
+            # convert generator output directly into pseudojets
+            gen_input.to_pseudojet(particles, eta_max)
 
-            if delphes:
-                modular_delphes.Clear()
-                # convert Pythia particles into Delphes candidates
-                pythia_to_delphes(pythia.event, modular_delphes,
-                                  delphes_all_particles,
-                                  delphes_stable_particles,
-                                  delphes_partons)
-                # run Delphes reconstruction
-                modular_delphes.ProcessTask()
-                # convert Delphes reconstructed eflow candidates into pseudojets
-                delphes_to_pseudojet(delphes_input_array, particles)
-            else:
-                # convert Pythia particles directly into pseudojets
-                pythia_to_pseudojet(pythia.event, particles, eta_max)
-            
             # run jet clustering
             result = get_jets(particles,
                               jet_size, subjet_size_fraction,
@@ -127,137 +217,41 @@ def generate_pythia(string config, string xmldoc,
             if result == NULL:
                 # didn't find any jets passing cuts in this event
                 continue
-
-            num_jet_constit = result.jet.constituents().size()
-            num_subjets = result.subjets.size()
-            num_subjets_constit = 0
-            for isubjet in range(result.subjets.size()):
-                num_subjets_constit += result.subjets[isubjet].constituents().size()
             
-            jet_arr = np.empty((2,), dtype=dtype_jet)
-            subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
-            jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
-            subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
-
-            result_to_arrays(result[0],
-                             <DTYPE_t*> jet_arr.data,
-                             <DTYPE_t*> subjet_arr.data,
-                             <DTYPE_t*> jet_constit_arr.data,
-                             <DTYPE_t*> subjet_constit_arr.data)
-            
-            if compute_auxvars:
-                auxdict = {
-                    'subjet_dr': result.subjet_dr,
-                    'tau_1': result.tau_1,
-                    'tau_2': result.tau_2,
-                    'tau_3': result.tau_3,
-                    }
-                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage, auxdict
-            else:
-                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
-
+            truth_jets = Jets()
+            jets_from_result(truth_jets, result)
             del result
+            detector_jets = None
+
+            if delphes:
+                modular_delphes.Clear()
+                # convert generator particles into Delphes candidates
+                gen_input.to_delphes(modular_delphes,
+                                     delphes_all_particles,
+                                     delphes_stable_particles,
+                                     delphes_partons)
+                # run Delphes reconstruction
+                modular_delphes.ProcessTask()
+                # convert Delphes reconstructed eflow candidates into pseudojets
+                delphes_to_pseudojet(delphes_input_array, particles)
+
+                # run jet clustering
+                result = get_jets(particles,
+                                  jet_size, subjet_size_fraction,
+                                  subjet_pt_min_fraction,
+                                  subjet_dr_min,
+                                  trimmed_pt_min, trimmed_pt_max,
+                                  shrink, shrink_mass,
+                                  compute_auxvars)
+
+                if result != NULL:
+                    detector_jets = Jets()
+                    jets_from_result(detector_jets, result)
+                    del result
+
+            yield truth_jets, detector_jets
             ievent += 1
-        pythia.stat()
+        gen_input.finish()
     finally:
-        del pythia
         del modular_delphes
         del delphes_config_reader
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def read_hepmc(string filename,
-               int n_events,
-               float eta_max=5.,
-               float jet_size=0.6,
-               float subjet_size_fraction=0.5,
-               float subjet_pt_min_fraction=0.05,
-               float subjet_dr_min=0.,
-               float trimmed_pt_min=10., float trimmed_pt_max=-1., 
-               bool shrink=False, float shrink_mass=-1.,
-               bool compute_auxvars=False):
-    """
-    Read HepMC files and yield jet and constituent arrays
-    """
-    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
-        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
-
-    cdef int ievent;
-
-    cdef int num_jet_constit = 0
-    cdef int num_subjets = 0
-    cdef int num_subjets_constit = 0
-
-    cdef np.ndarray jet_arr  # contains jet and trimmed jet
-    cdef np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
-    cdef np.ndarray jet_constit_arr  # contains original jet constituents
-    cdef np.ndarray subjet_constit_arr  # contains trimmed jet constituents
-
-    cdef Result* result
-
-    cdef IO_GenEvent* hepmc_reader
-    cdef GenEvent* event
-    cdef vector[PseudoJet] particles
-
-    hepmc_reader = get_hepmc_reader(filename)
-
-    dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
-    dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
-
-    try:
-        ievent = 0
-        while n_events < 0 or ievent < n_events:
-            # get next event
-            event = hepmc_reader.read_next_event()
-            if event == NULL:
-                break
-
-            particles.clear()
-            hepmc_to_pseudojet(event[0], particles, eta_max)
-            del event
-
-            result = get_jets(particles,
-                              jet_size, subjet_size_fraction,
-                              subjet_pt_min_fraction,
-                              subjet_dr_min,
-                              trimmed_pt_min, trimmed_pt_max,
-                              shrink, shrink_mass,
-                              compute_auxvars)
-
-            if result == NULL:
-                # didn't find any jets passing cuts in this event
-                continue
-
-            num_jet_constit = result.jet.constituents().size()
-            num_subjets = result.subjets.size()
-            num_subjets_constit = 0
-            for isubjet in range(result.subjets.size()):
-                num_subjets_constit += result.subjets[isubjet].constituents().size()
-            
-            jet_arr = np.empty((2,), dtype=dtype_jet)
-            subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
-            jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
-            subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
-
-            result_to_arrays(result[0],
-                             <DTYPE_t*> jet_arr.data,
-                             <DTYPE_t*> subjet_arr.data,
-                             <DTYPE_t*> jet_constit_arr.data,
-                             <DTYPE_t*> subjet_constit_arr.data)
-            
-            if compute_auxvars:
-                auxdict = {
-                    'subjet_dr': result.subjet_dr,
-                    'tau_1': result.tau_1,
-                    'tau_2': result.tau_2,
-                    'tau_3': result.tau_3,
-                    }
-                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage, auxdict
-            else:
-                yield jet_arr, subjet_arr, jet_constit_arr, subjet_constit_arr, result.shrinkage
-
-            del result
-            ievent += 1
-    finally:
-        del hepmc_reader

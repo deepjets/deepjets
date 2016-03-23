@@ -1,3 +1,9 @@
-from deepjets.generate import generate
-for thing in generate('qcd.config', 100000, delphes=True, random_state=4):
-    pass
+from deepjets.generate import get_generator_input, generate
+
+gen_input = get_generator_input('pythia', 'w.config')
+
+for pythia, delphes in generate(gen_input, 10, delphes=True):
+    print pythia.jet_arr
+    if delphes is not None:
+        print delphes.jet_arr
+    print '========'
