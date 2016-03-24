@@ -10,17 +10,10 @@ def get_generator_input(name, filename, **kwargs):
     """
     name = name.lower().strip()
     if name == 'pythia':
-        random_state = kwargs.pop('random_state', 0)
-        beam_ecm = kwargs.pop('beam_ecm', 13000.)
-        cut_on_pdgid = kwargs.pop('cut_on_pdgid', 0)
-        pdgid_pt_min = kwargs.pop('pdgid_pt_min', -1)
-        pdgid_pt_max = kwargs.pop('pdgid_pt_max', -1)
         xmldoc = os.path.join(
             os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
             'share/Pythia8/xmldoc')
-        gen_input = PythiaInput(filename, xmldoc, random_state, beam_ecm,
-                                cut_on_pdgid, pdgid_pt_min, pdgid_pt_max,
-                                kwargs)
+        gen_input = PythiaInput(filename, xmldoc, **kwargs)
     elif name == 'hepmc':
         gen_input = HepMCInput(filename)
         if kwargs:

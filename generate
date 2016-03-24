@@ -17,6 +17,8 @@ parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--trimmed-pt-min', type=float, default=10.)
 parser.add_argument('--trimmed-pt-max', type=float, default=-1)
+parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
+parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
 parser.add_argument('--params', default=None)
 parser.add_argument('config_or_hepmc')
 args = parser.parse_args()
@@ -35,8 +37,7 @@ elif args.shrink_mass == 'wmass':
 else:
     raise ValueError("this should not happen")
 
-from deepjets.generate import generate
-from deepjets.hepmc import read_hepmc
+from deepjets.generate import generate, get_generator_input
 from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
@@ -72,51 +73,43 @@ dset_subjet_size_fraction[0] = args.subjet_size_fraction
 hepmc = False
 if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
     hepmc = True
-    generator = read_hepmc(
-        args.config_or_hepmc, args.events,
-        jet_size=args.jet_size,
-        subjet_size_fraction=args.subjet_size_fraction,
-        subjet_dr_min=args.subjet_dr_min,
-        trimmed_pt_min=args.trimmed_pt_min,
-        trimmed_pt_max=args.trimmed_pt_max,
-        shrink=args.shrink,
-        shrink_mass=args.shrink_mass,
-        compute_auxvars=True)
+    gen_input = get_generator_input('hepmc', args.config_or_hepmc)
     widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
     pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
 else:
-    generator = generate(
-        args.config_or_hepmc, args.events,
-        random_state=args.seed,
-        jet_size=args.jet_size,
-        subjet_size_fraction=args.subjet_size_fraction,
-        subjet_dr_min=args.subjet_dr_min,
-        trimmed_pt_min=args.trimmed_pt_min,
-        trimmed_pt_max=args.trimmed_pt_max,
-        shrink=args.shrink,
-        shrink_mass=args.shrink_mass,
+    gen_input = get_generator_input('pythia',
+        args.config_or_hepmc, random_state=args.seed,
         cut_on_pdgid=args.cut_on_pdgid,
         pdgid_pt_min=args.pdgid_pt_min,
         pdgid_pt_max=args.pdgid_pt_max,
-        params_dict=args.params,
-        compute_auxvars=True) 
+        params_dict=args.params)
+
+generator = generate(
+    gen_input,
+    args.events,
+    jet_size=args.jet_size,
+    subjet_size_fraction=args.subjet_size_fraction,
+    subjet_dr_min=args.subjet_dr_min,
+    trimmed_pt_min=args.trimmed_pt_min,
+    trimmed_pt_max=args.trimmed_pt_max,
+    trimmed_mass_min=args.trimmed_mass_min,
+    trimmed_mass_max=args.trimmed_mass_max,
+    shrink=args.shrink,
+    shrink_mass=args.shrink_mass,
+    compute_auxvars=True) 
 
 i = 0
 for event in generator:
-
-    jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
-    
-    dset_jet[i] = jets[0]
-    dset_trimmed_jet[i] = jets[1]
-    dset_subjets[i] = subjets
-    dset_constit[i] = constit
-    dset_trimmed_constit[i] = trimmed_constit
-    dset_shrinkage[i] = shrinkage
-    dset_dr_subjets[i] = auxvars['subjet_dr']
-    dset_tau_1[i] = auxvars['tau_1']
-    dset_tau_2[i] = auxvars['tau_2']
-    dset_tau_3[i] = auxvars['tau_3']
-    
+    dset_jet[i] = event.jets[0]
+    dset_trimmed_jet[i] = event.jets[1]
+    dset_subjets[i] = event.subjets
+    dset_constit[i] = event.constit
+    dset_trimmed_constit[i] = event.trimmed_constit
+    dset_shrinkage[i] = event.shrinkage
+    dset_dr_subjets[i] = event.subjet_dr
+    dset_tau_1[i] = event.tau_1
+    dset_tau_2[i] = event.tau_2
+    dset_tau_3[i] = event.tau_3
     i += 1
 
     if hepmc:

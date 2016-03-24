@@ -7,7 +7,7 @@ dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
 
 
 cdef class GeneratorInput:
-    cdef bool get_next_event(self):
+    cdef bool get_next_event(self) except *:
         return False
     
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
@@ -109,10 +109,11 @@ cdef class HepMCInput(GeneratorInput):
 
 
 cdef class Jets:
-    cdef readonly np.ndarray jet_arr  # contains jet and trimmed jet
-    cdef readonly np.ndarray subjet_arr  # contains subjets (that sum to trimmed jet)
-    cdef readonly np.ndarray jet_constit_arr  # contains original jet constituents
-    cdef readonly np.ndarray subjet_constit_arr  # contains trimmed jet constituents
+    cdef readonly np.ndarray jets  # contains jet and trimmed jet
+    cdef readonly np.ndarray subjets  # contains subjets (that sum to trimmed jet)
+    cdef readonly np.ndarray constit  # contains original jet constituents
+    cdef readonly np.ndarray trimmed_constit  # contains trimmed jet constituents
+    cdef readonly float shrinkage
     cdef readonly float subjet_dr
     cdef readonly float tau_1
     cdef readonly float tau_2
@@ -130,17 +131,17 @@ cdef void jets_from_result(Jets jets, Result* result):
     for isubjet in range(result.subjets.size()):
         num_subjets_constit += result.subjets[isubjet].constituents().size()
     
-    jets.jet_arr = np.empty((2,), dtype=dtype_jet)
-    jets.subjet_arr = np.empty((num_subjets,), dtype=dtype_jet)
-    jets.jet_constit_arr = np.empty((num_jet_constit,), dtype=dtype_constit)
-    jets.subjet_constit_arr = np.empty((num_subjets_constit,), dtype=dtype_constit)
+    jets.jets = np.empty((2,), dtype=dtype_jet)
+    jets.subjets = np.empty((num_subjets,), dtype=dtype_jet)
+    jets.constit = np.empty((num_jet_constit,), dtype=dtype_constit)
+    jets.trimmed_constit = np.empty((num_subjets_constit,), dtype=dtype_constit)
 
     result_to_arrays(result[0],
-                     <DTYPE_t*> jets.jet_arr.data,
-                     <DTYPE_t*> jets.subjet_arr.data,
-                     <DTYPE_t*> jets.jet_constit_arr.data,
-                     <DTYPE_t*> jets.subjet_constit_arr.data)
-    
+                     <DTYPE_t*> jets.jets.data,
+                     <DTYPE_t*> jets.subjets.data,
+                     <DTYPE_t*> jets.constit.data,
+                     <DTYPE_t*> jets.trimmed_constit.data)
+    jets.shrinkage = result.shrinkage 
     jets.subjet_dr = result.subjet_dr
     jets.tau_1 = result.tau_1
     jets.tau_2 = result.tau_2
