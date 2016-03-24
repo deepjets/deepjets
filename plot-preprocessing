@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
-from deepjets.generate import generate
+from deepjets.generate import generate, get_generator_input
 from deepjets.preprocessing import *
 from deepjets.utils import plot_jet_image
 import numpy as np
 
 # generate one event
-event = list(generate('w.config', 1, jet_size=1.0, shrink=True,
+gen_input = get_generator_input('pythia', 'w.config',
+                                params_dict={
+                                    'PhaseSpace:pTHatMin': 250,
+                                    'PhaseSpace:pTHatMax': 300})
+event = list(generate(gen_input, 1,
+    jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
-    trimmed_pt_min=200, trimmed_pt_max=500,
-    params_dict={'PhaseSpace:pTHatMin': 250,
-        'PhaseSpace:pTHatMax': 300}))[0]
-
-jets, subjets, constit, trimmed_constit, shrinkage = event
+    trimmed_pt_min=200, trimmed_pt_max=500))[0]
 
 edges = pixel_edges(
         jet_size=1.0,
@@ -43,13 +44,13 @@ for ax in axes:
     simple_axes(ax)
 
 
-translate(trimmed_constit, subjets)
-axes[0].scatter(trimmed_constit['eta'], trimmed_constit['phi'],
-        marker='o', s=trimmed_constit['ET'] * 5)
+translate(event.trimmed_constit, event.subjets)
+axes[0].scatter(event.trimmed_constit['eta'], event.trimmed_constit['phi'],
+        marker='o', s=event.trimmed_constit['ET'] * 5)
 axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
       fontsize=18, fontweight='bold', va='top')
 
-image = pixelize(trimmed_constit, edges)
+image = pixelize(event.trimmed_constit, edges)
 
 width, height = image.T.shape
 dw, dh = 1./width, 1./height
@@ -59,21 +60,21 @@ axes[1].imshow(
 axes[1].text(0.05, 0.95, "Pixelize", transform=axes[1].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
-image = rotate_image(image, subjets)
+image = rotate_image(image, event.subjets)
 axes[2].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[2].text(0.05, 0.95, "Rotate", transform=axes[2].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
-image = reflect_image(image, subjets)
+image = reflect_image(image, event.subjets)
 axes[3].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
 axes[3].text(0.05, 0.95, "Reflect", transform=axes[3].transAxes,
       color='white', fontsize=18, fontweight='bold', va='top')
 
-image = zoom_image(image, 1. / shrinkage, 25)
+image = zoom_image(image, 1. / event.shrinkage, 25)
 axes[4].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='jet')
@@ -114,12 +115,9 @@ from matplotlib.colors import LogNorm
 fig = plt.figure(figsize=(14, 7))
 
 nevents = 80
-
-events = list(generate('w.config', nevents, jet_size=1.0, shrink=True,
+events = list(generate(gen_input, nevents, jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
-    trimmed_pt_min=200, trimmed_pt_max=500,
-    params_dict={'PhaseSpace:pTHatMin': 250,
-        'PhaseSpace:pTHatMax': 300}))
+    trimmed_pt_min=200, trimmed_pt_max=500))
 
 images = []
 
@@ -127,6 +125,8 @@ images = []
 def animate(iframe):
     print "plotting frame {0}".format(iframe)
     plt.clf()
+
+    event = events[iframe]
 
     axes = [
     plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
@@ -137,17 +137,18 @@ def animate(iframe):
         simple_axes(ax)
     fig.tight_layout()
 
-    
-    jets, subjets, constit, trimmed_constit, shrinkage = events[iframe]
-
-    translate(trimmed_constit, subjets)
-    axes[0].scatter(trimmed_constit['eta'], trimmed_constit['phi'],
-            marker='o', s=trimmed_constit['ET'] * 5)
+    translate(event.trimmed_constit, event.subjets)
+    axes[0].scatter(
+            event.trimmed_constit['eta'],
+            event.trimmed_constit['phi'],
+            marker='o', s=event.trimmed_constit['ET'] * 5)
     axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
         fontsize=18, fontweight='bold', va='top')
     
-    image = preprocess(subjets, trimmed_constit, edges,
-                       zoom=1. / shrinkage,
+    image = preprocess(event.subjets,
+                       event.trimmed_constit,
+                       edges,
+                       zoom=1. / event.shrinkage,
                        normalize=True,
                        out_width=25)
     images.append(image)

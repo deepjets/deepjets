@@ -3,18 +3,19 @@ import h5py
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
-from .generate import generate
+from .generate import generate, get_generator_input
 from .preprocessing import preprocess, pixel_edges
-from .utils import pT, tot_mom
 
 
 def get_images(
-        config, nevents, pt_min, pt_max, m_min=None, m_max=(),
+        config, nevents, pt_min, pt_max, m_min=-1., m_max=-1.,
         pix_size=(0.1, 0.1), image_size=25, normalize=True, jet_size=1.0,
         subjet_size_fraction=0.5, **kwargs):
     """
     Return image array and weights
     """
+    gen_input = get_generator_input('pythia', config, **kwargs)
+
     images = np.empty((nevents, image_size, image_size), dtype=np.double)
 
     pt = np.empty(nevents, dtype=np.double)
@@ -33,27 +34,24 @@ def get_images(
 
     ievent = 0
     while ievent < nevents:
-        for event in generate(config, nevents, jet_size=jet_size,
+        for event in generate(gen_input, nevents, jet_size=jet_size,
                               subjet_size_fraction=subjet_size_fraction,
                               trimmed_pt_min=pt_min, trimmed_pt_max=pt_max,
-                              compute_auxvars=True,
-                              **kwargs):
-            jets, subjets, constit, trimmed_constit, shrinkage, auxvars = event
-            if (jets[1]['mass'] < m_min) or (jets[1]['mass'] > m_max):
-                continue
-            image = preprocess(subjets, trimmed_constit, edges,
-                               zoom=1. / shrinkage,
+                              trimmed_mass_min=m_min, trimmed_mass_max=m_max,
+                              compute_auxvars=True):
+            image = preprocess(event.subjets, event.trimmed_constit, edges,
+                               zoom=1. / event.shrinkage,
                                normalize=normalize,
                                out_width=image_size)
             images[ievent] = image
-            pt[ievent] = jets[0]['pT']
-            pt_trimmed[ievent] = jets[1]['pT']
-            mass[ievent] = jets[0]['mass']
-            mass_trimmed[ievent] = jets[1]['mass']
-            subjet_dr[ievent] = auxvars['subjet_dr']
-            tau_1[ievent] = auxvars['tau_1']
-            tau_2[ievent] = auxvars['tau_2']
-            tau_3[ievent] = auxvars['tau_3']
+            pt[ievent] = event.jets[0]['pT']
+            pt_trimmed[ievent] = event.jets[1]['pT']
+            mass[ievent] = event.jets[0]['mass']
+            mass_trimmed[ievent] = event.jets[1]['mass']
+            subjet_dr[ievent] = event.subjet_dr
+            tau_1[ievent] = event.tau_1
+            tau_2[ievent] = event.tau_2
+            tau_3[ievent] = event.tau_3
             ievent += 1
             if ievent == nevents:
                 break
@@ -66,14 +64,13 @@ def get_images(
 
 
 def _generate_one_bin(
-        config, nevents_per_pt_bin, pt_lo, pt_hi, m_min=None, m_max=(),
-        **kwargs):
+        config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
     params_dict = {
         'PhaseSpace:pTHatMin': pt_lo - 20.,
         'PhaseSpace:pTHatMax': pt_hi + 20.}
     return get_images(
-            config, nevents_per_pt_bin, m_min=m_min, m_max=m_max, pt_min=pt_lo,
-            pt_max=pt_hi, params_dict=params_dict, **kwargs)
+        config, nevents_per_pt_bin, pt_min=pt_lo,
+        pt_max=pt_hi, params_dict=params_dict, **kwargs)
 
 
 def get_weights(pt, pt_min, pt_max, pt_bins):
@@ -89,7 +86,7 @@ def get_weights(pt, pt_min, pt_max, pt_bins):
 
 
 def get_sample(
-        config, nevents_per_pt_bin, pt_min, pt_max, m_min=None, m_max=(),
+        config, nevents_per_pt_bin, pt_min, pt_max,
         pt_bins=10, n_jobs=-1, **kwargs):
     """
     Construct a sample of images over a pT range by combining samples
