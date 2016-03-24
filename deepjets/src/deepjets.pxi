@@ -12,7 +12,7 @@ cdef extern from "deepjets.h":
 
     bool keep_pythia_event(Event&, int, double, double)
     void result_to_arrays(Result&, double*, double*, double*, double*)
-    Result* get_jets(vector[PseudoJet]&, double, double, double, double, double, double, bool, double, bool)
+    Result* get_jets(vector[PseudoJet]&, double, double, double, double, double, double, double, double, bool, double, bool)
     
     IO_GenEvent* get_hepmc_reader(string)
     void hepmc_to_pseudojet(GenEvent&, vector[PseudoJet]&, double)

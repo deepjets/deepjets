@@ -157,6 +157,7 @@ def generate_events(GeneratorInput gen_input,
                     float subjet_pt_min_fraction=0.05,
                     float subjet_dr_min=0.,
                     float trimmed_pt_min=10., float trimmed_pt_max=-1., 
+                    float trimmed_mass_min=-1., float trimmed_mass_max=-1.,
                     bool shrink=False, float shrink_mass=-1.,
                     bool compute_auxvars=False,
                     bool delphes=False,
@@ -211,6 +212,7 @@ def generate_events(GeneratorInput gen_input,
                               subjet_pt_min_fraction,
                               subjet_dr_min,
                               trimmed_pt_min, trimmed_pt_max,
+                              trimmed_mass_min, trimmed_mass_max,
                               shrink, shrink_mass,
                               compute_auxvars)
 
@@ -221,9 +223,9 @@ def generate_events(GeneratorInput gen_input,
             truth_jets = Jets()
             jets_from_result(truth_jets, result)
             del result
-            detector_jets = None
 
             if delphes:
+                detector_jets = None
                 modular_delphes.Clear()
                 # convert generator particles into Delphes candidates
                 gen_input.to_delphes(modular_delphes,
@@ -241,6 +243,7 @@ def generate_events(GeneratorInput gen_input,
                                   subjet_pt_min_fraction,
                                   subjet_dr_min,
                                   trimmed_pt_min, trimmed_pt_max,
+                                  trimmed_mass_min, trimmed_mass_max,
                                   shrink, shrink_mass,
                                   compute_auxvars)
 
@@ -249,7 +252,10 @@ def generate_events(GeneratorInput gen_input,
                     jets_from_result(detector_jets, result)
                     del result
 
-            yield truth_jets, detector_jets
+                yield truth_jets, detector_jets
+
+            else:
+                yield truth_jets
             ievent += 1
         gen_input.finish()
     finally:

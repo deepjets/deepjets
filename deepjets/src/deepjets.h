@@ -203,6 +203,7 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& fjInputs,
                  double subjet_pt_min_fraction,
                  double subjet_dr_min,
                  double trimmed_pt_min, double trimmed_pt_max,
+                 double trimmed_mass_min, double trimmed_mass_max,
                  bool shrink, double shrink_mass,
                  bool compute_auxvars) {
   /*
@@ -277,6 +278,22 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& fjInputs,
   }
   if (trimmed_pt_max > 0) {
     if (trimmed_jet.perp() >= trimmed_pt_max) {
+      delete clustSeq;
+      delete TclustSeq;
+      return NULL;
+    }
+  }
+
+  // mass cuts on trimmed jet
+  if (trimmed_mass_min > 0) {
+    if (trimmed_jet.m() < trimmed_mass_min) {
+      delete clustSeq;
+      delete TclustSeq;
+      return NULL;
+    }
+  }
+  if (trimmed_mass_max > 0) {
+    if (trimmed_jet.m() >= trimmed_mass_max) {
       delete clustSeq;
       delete TclustSeq;
       return NULL;
