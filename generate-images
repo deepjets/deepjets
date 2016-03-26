@@ -5,7 +5,7 @@ parser = ArgumentParser()
 parser.add_argument('--jobs', type=int, default=1)
 parser.add_argument('--events', type=int, default=100)
 parser.add_argument('--shrink', action='store_true', default=False)
-parser.add_argument('--random-state', type=int, default=None)
+parser.add_argument('--random-state', type=int, default=0)
 parser.add_argument('config')
 parser.add_argument('output')
 args = parser.parse_args()
@@ -16,12 +16,14 @@ import numpy as np
 import os
 
 images, auxvars = get_sample(
-    args.config, args.events,
+    generator_params=dict(
+        random_state=args.random_state,
+        filename=args.config),
+    nevents_per_pt_bin=args.events,
     pt_min=200, pt_max=500, pt_bins=10,
     shrink=args.shrink, shrink_mass=80.385,
     subjet_dr_min=0.3, # 3 pixels
-    n_jobs=args.jobs,
-    random_state=args.random_state)
+    n_jobs=args.jobs)
 
 with lock(args.output, external=True,
           lock_path=os.path.dirname(os.path.abspath(args.output))): # InterProcessLock

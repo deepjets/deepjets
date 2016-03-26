@@ -8,13 +8,13 @@ from .preprocessing import preprocess, pixel_edges
 
 
 def get_images(
-        config, nevents, pt_min, pt_max, m_min=-1., m_max=-1.,
+        generator_params, nevents, pt_min, pt_max,
         pix_size=(0.1, 0.1), image_size=25, normalize=True, jet_size=1.0,
         subjet_size_fraction=0.5, **kwargs):
     """
     Return image array and weights
     """
-    gen_input = get_generator_input('pythia', config, **kwargs)
+    gen_input = get_generator_input('pythia', **generator_params)
 
     images = np.empty((nevents, image_size, image_size), dtype=np.double)
 
@@ -37,8 +37,8 @@ def get_images(
         for event in generate(gen_input, nevents, jet_size=jet_size,
                               subjet_size_fraction=subjet_size_fraction,
                               trimmed_pt_min=pt_min, trimmed_pt_max=pt_max,
-                              trimmed_mass_min=m_min, trimmed_mass_max=m_max,
-                              compute_auxvars=True):
+                              compute_auxvars=True,
+                              **kwargs):
             image = preprocess(event.subjets, event.trimmed_constit, edges,
                                zoom=1. / event.shrinkage,
                                normalize=normalize,
@@ -64,13 +64,16 @@ def get_images(
 
 
 def _generate_one_bin(
-        config, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
+        generator_params, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs):
     params_dict = {
         'PhaseSpace:pTHatMin': pt_lo - 20.,
         'PhaseSpace:pTHatMax': pt_hi + 20.}
+    # defensive copy
+    generator_params = generator_params.copy()
+    generator_params['params_dict'] = params_dict
     return get_images(
-        config, nevents_per_pt_bin, pt_min=pt_lo,
-        pt_max=pt_hi, params_dict=params_dict, **kwargs)
+        generator_params, nevents_per_pt_bin, pt_min=pt_lo, pt_max=pt_hi,
+        **kwargs)
 
 
 def get_weights(pt, pt_min, pt_max, pt_bins):
@@ -86,8 +89,8 @@ def get_weights(pt, pt_min, pt_max, pt_bins):
 
 
 def get_sample(
-        config, nevents_per_pt_bin, pt_min, pt_max,
-        pt_bins=10, n_jobs=-1, **kwargs):
+        generator_params, nevents_per_pt_bin, pt_min, pt_max, pt_bins=10,
+        n_jobs=-1, **kwargs):
     """
     Construct a sample of images over a pT range by combining samples
     constructed in pT intervals in this range.
@@ -97,7 +100,7 @@ def get_sample(
 
     out = Parallel(n_jobs=n_jobs)(
         delayed(_generate_one_bin)(
-            config, nevents_per_pt_bin, pt_lo, pt_hi, m_min, m_max, **kwargs)
+            generator_params, nevents_per_pt_bin, pt_lo, pt_hi, **kwargs)
         for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]))
 
     images = np.concatenate([x[0] for x in out])
@@ -110,7 +113,7 @@ def get_sample(
     auxvars = append_fields(auxvars, 'weights', data=image_weights)
 
     # shuffle
-    random_state = np.random.RandomState(random_state)
+    random_state = np.random.RandomState(generator_params.get('random_state', 0))
     permute_idx = random_state.permutation(images.shape[0])
     images = images[permute_idx]
     auxvars = auxvars[permute_idx]
