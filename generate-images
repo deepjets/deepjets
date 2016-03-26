@@ -21,6 +21,7 @@ images, auxvars = get_sample(
         filename=args.config),
     nevents_per_pt_bin=args.events,
     pt_min=200, pt_max=500, pt_bins=10,
+    trimmed_mass_min=65, trimmed_mass_max=95,
     shrink=args.shrink, shrink_mass=80.385,
     subjet_dr_min=0.3, # 3 pixels
     n_jobs=args.jobs)
