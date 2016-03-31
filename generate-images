@@ -19,12 +19,12 @@ parser.add_argument('config')
 parser.add_argument('output')
 args = parser.parse_args()
 
-from deepjets.samples import get_sample, dataset_append
+from deepjets.samples import get_flat_images, dataset_append
 from oslo_concurrency.lockutils import lock
 import numpy as np
 import os
 
-images, auxvars = get_sample(
+images, auxvars = get_flat_images(
     generator_params=dict(
         random_state=args.random_state,
         filename=args.config),

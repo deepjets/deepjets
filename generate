@@ -4,9 +4,9 @@ import os
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
-parser.add_argument('--events', type=int, default=1000)
-parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--output', '-o', default=None)
+parser.add_argument('--events', type=int, default=1000)
+parser.add_argument('--random-state', type=int, default=0)
 parser.add_argument('--jet-size', type=float, default=1.0)
 parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
 parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
@@ -15,12 +15,21 @@ parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
-parser.add_argument('--trimmed-pt-min', type=float, default=10.)
-parser.add_argument('--trimmed-pt-max', type=float, default=-1)
 parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
 parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
 parser.add_argument('--params', default=None)
 parser.add_argument('config_or_hepmc')
+subparsers = parser.add_subparsers(dest='subparser')
+
+unweighted_parser = subparsers.add_parser('unweighted')
+unweighted_parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
+unweighted_parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
+
+weighted_parser = subparsers.add_parser('weighted')
+weighted_parser.add_argument('--pt-min', type=float, default=200)
+weighted_parser.add_argument('--pt-max', type=float, default=500)
+weighted_parser.add_argument('--pt-bins', type=float, default=10)
+
 args = parser.parse_args()
 
 if args.output is None:
@@ -38,96 +47,114 @@ else:
     raise ValueError("this should not happen")
 
 from deepjets.generate import generate, get_generator_input
+from deepjets.samples import create_event_datasets, get_flat_events 
 from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
 from fnmatch import fnmatch
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
-DTYPE = np.double
+h5file = h5py.File(args.output, 'w')
 
-f = h5py.File(args.output, 'w')
-dt_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
-dt_jets = h5py.special_dtype(vlen=dt_jet)
-dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
+def generate_unweighted():
+    hepmc = False
+    if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
+        hepmc = True
+        gen_input = get_generator_input('hepmc', args.config_or_hepmc)
+        widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+        pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
+    else:
+        gen_input = get_generator_input('pythia',
+            args.config_or_hepmc, random_state=args.random_state,
+            cut_on_pdgid=args.cut_on_pdgid,
+            pdgid_pt_min=args.pdgid_pt_min,
+            pdgid_pt_max=args.pdgid_pt_max,
+            params_dict=args.params)
 
-dset_jet = f.create_dataset('jet', (args.events,), maxshape=(args.events,), dtype=dt_jet, chunks=True)
-dset_trimmed_jet = f.create_dataset('trimmed_jet', (args.events,), maxshape=(args.events,), dtype=dt_jet, chunks=True)
-dset_subjets = f.create_dataset('subjets', (args.events,), maxshape=(args.events,), dtype=dt_jets, chunks=True)
-dset_constit = f.create_dataset('constituents', (args.events,), maxshape=(args.events,), dtype=dt_constit, chunks=True)
-dset_trimmed_constit = f.create_dataset('trimmed_constituents', (args.events,), maxshape=(args.events,), dtype=dt_constit, chunks=True)
-dset_shrinkage = f.create_dataset('shrinkage', (args.events,), maxshape=(args.events,), dtype=DTYPE, chunks=True)
-dset_dr_subjets = f.create_dataset('dR_subjets', (args.events,), maxshape=(args.events,), dtype=DTYPE, chunks=True)
-dset_tau_1 = f.create_dataset('tau_1', (args.events,), maxshape=(args.events,), dtype=DTYPE, chunks=True)
-dset_tau_2 = f.create_dataset('tau_2', (args.events,), maxshape=(args.events,), dtype=DTYPE, chunks=True)
-dset_tau_3 = f.create_dataset('tau_3', (args.events,), maxshape=(args.events,), dtype=DTYPE, chunks=True)
+    create_event_datasets(h5file, args.events,
+                          args.jet_size, args.subjet_size_fraction)
 
-# config dsets
-dset_jet_size = f.create_dataset('jet_size', (1,), dtype=DTYPE)
-dset_subjet_size_fraction = f.create_dataset('subjet_size_fraction', (1,), dtype=DTYPE)
+    dset_jet = h5file['jet']
+    dset_trimmed_jet = h5file['trimmed_jet']
+    dset_subjets = h5file['subjets']
+    dset_constit = h5file['constituents']
+    dset_trimmed_constit = h5file['trimmed_constituents']
+    dset_shrinkage = h5file['shrinkage']
+    dset_dr_subjets = h5file['subjet_dr']
+    dset_tau_1 = h5file['tau_1']
+    dset_tau_2 = h5file['tau_2']
+    dset_tau_3 = h5file['tau_3']
 
-dset_jet_size[0] = args.jet_size
-dset_subjet_size_fraction[0] = args.subjet_size_fraction
+    generator = generate(
+        gen_input,
+        args.events,
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_pt_min=args.trimmed_pt_min,
+        trimmed_pt_max=args.trimmed_pt_max,
+        trimmed_mass_min=args.trimmed_mass_min,
+        trimmed_mass_max=args.trimmed_mass_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass,
+        compute_auxvars=True) 
 
-hepmc = False
-if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
-    hepmc = True
-    gen_input = get_generator_input('hepmc', args.config_or_hepmc)
-    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
-    pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
-else:
-    gen_input = get_generator_input('pythia',
-        args.config_or_hepmc, random_state=args.seed,
+    ievent = 0
+    for event in generator:
+        dset_jet[ievent] = event.jets[0]
+        dset_trimmed_jet[ievent] = event.jets[1]
+        dset_subjets[ievent] = event.subjets
+        dset_constit[ievent] = event.constit
+        dset_trimmed_constit[ievent] = event.trimmed_constit
+        dset_shrinkage[ievent] = event.shrinkage
+        dset_dr_subjets[ievent] = event.subjet_dr
+        dset_tau_1[ievent] = event.tau_1
+        dset_tau_2[ievent] = event.tau_2
+        dset_tau_3[ievent] = event.tau_3
+        ievent += 1
+        if hepmc:
+            pbar.update(i)
+
+    if hepmc:
+        pbar.finish()
+        # The number of events passing cuts may have been less than the requested
+        # number of events. Shrink datasets to remove empty rows
+        if ievent < args.events:
+            dset_jet.resize((ievent,))
+            dset_trimmed_jet.resize((ievent,))
+            dset_subjets.resize((ievent,))
+            dset_constit.resize((ievent,))
+            dset_trimmed_constit.resize((ievent,))
+            dset_shrinkage.resize((ievent,))
+            dset_dr_subjets.resize((ievent,))
+            dset_tau_1.resize((ievent,))
+            dset_tau_2.resize((ievent,))
+            dset_tau_3.resize((ievent,))
+
+
+def generate_weighted():
+    generator_params = dict(
+        filename=args.config_or_hepmc,
+        random_state=args.random_state,
         cut_on_pdgid=args.cut_on_pdgid,
         pdgid_pt_min=args.pdgid_pt_min,
         pdgid_pt_max=args.pdgid_pt_max,
         params_dict=args.params)
+    create_event_datasets(h5file, args.events * args.pt_bins,
+                          args.jet_size, args.subjet_size_fraction)
+    get_flat_events(h5file, generator_params, args.events,
+        args.pt_min, args.pt_max, args.pt_bins, 
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_mass_min=args.trimmed_mass_min,
+        trimmed_mass_max=args.trimmed_mass_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass)
 
-generator = generate(
-    gen_input,
-    args.events,
-    jet_size=args.jet_size,
-    subjet_size_fraction=args.subjet_size_fraction,
-    subjet_dr_min=args.subjet_dr_min,
-    trimmed_pt_min=args.trimmed_pt_min,
-    trimmed_pt_max=args.trimmed_pt_max,
-    trimmed_mass_min=args.trimmed_mass_min,
-    trimmed_mass_max=args.trimmed_mass_max,
-    shrink=args.shrink,
-    shrink_mass=args.shrink_mass,
-    compute_auxvars=True) 
+if args.subparser == 'unweighted':
+    generate_unweighted()
+else:
+    generate_weighted()
 
-i = 0
-for event in generator:
-    dset_jet[i] = event.jets[0]
-    dset_trimmed_jet[i] = event.jets[1]
-    dset_subjets[i] = event.subjets
-    dset_constit[i] = event.constit
-    dset_trimmed_constit[i] = event.trimmed_constit
-    dset_shrinkage[i] = event.shrinkage
-    dset_dr_subjets[i] = event.subjet_dr
-    dset_tau_1[i] = event.tau_1
-    dset_tau_2[i] = event.tau_2
-    dset_tau_3[i] = event.tau_3
-    i += 1
-
-    if hepmc:
-        pbar.update(i)
-
-if hepmc:
-    pbar.finish()
-    # The number of events passing cuts may have been less than the requested
-    # number of events. Shrink datasets to remove empty rows
-    if i < args.events:
-        dset_jet.resize((i,))
-        dset_trimmed_jet.resize((i,))
-        dset_subjets.resize((i,))
-        dset_constit.resize((i,))
-        dset_trimmed_constit.resize((i,))
-        dset_shrinkage.resize((i,))
-        dset_dr_subjets.resize((i,))
-        dset_tau_1.resize((i,))
-        dset_tau_2.resize((i,))
-        dset_tau_3.resize((i,))
-
-f.close()
+h5file.close()
