@@ -5,7 +5,16 @@ parser = ArgumentParser()
 parser.add_argument('--jobs', type=int, default=1)
 parser.add_argument('--events', type=int, default=100)
 parser.add_argument('--shrink', action='store_true', default=False)
+parser.add_argument('--no-zoom', action='store_true', default=False)
 parser.add_argument('--random-state', type=int, default=0)
+parser.add_argument('--jet-size', type=float, default=1.0)
+parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
+parser.add_argument('--pt-min', type=float, default=200)
+parser.add_argument('--pt-max', type=float, default=500)
+parser.add_argument('--pt-bins', type=float, default=10)
+parser.add_argument('--trimmed-mass-min', type=float, default=65)
+parser.add_argument('--trimmed-mass-max', type=float, default=95)
 parser.add_argument('config')
 parser.add_argument('output')
 args = parser.parse_args()
@@ -20,11 +29,14 @@ images, auxvars = get_sample(
         random_state=args.random_state,
         filename=args.config),
     nevents_per_pt_bin=args.events,
-    pt_min=200, pt_max=500, pt_bins=10,
-    trimmed_mass_min=65, trimmed_mass_max=95,
+    pt_min=args.pt_min, pt_max=args.pt_max, pt_bins=args.pt_bins,
+    trimmed_mass_min=args.trimmed_mass_min,
+    trimmed_mass_max=args.trimmed_mass_max,
     shrink=args.shrink, shrink_mass=80.385,
-    subjet_dr_min=0.3, # 3 pixels
-    n_jobs=args.jobs)
+    jet_size=args.jet_size,
+    subjet_size_fraction=args.subjet_size_fraction,
+    subjet_dr_min=args.subjet_dr_min,
+    n_jobs=args.jobs, zoom=not args.no_zoom)
 
 with lock(args.output, external=True,
           lock_path=os.path.dirname(os.path.abspath(args.output))): # InterProcessLock

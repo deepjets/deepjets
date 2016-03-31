@@ -10,7 +10,7 @@ from .preprocessing import preprocess, pixel_edges
 def get_images(
         generator_params, nevents, pt_min, pt_max,
         pix_size=(0.1, 0.1), image_size=25, normalize=True, jet_size=1.0,
-        subjet_size_fraction=0.5, **kwargs):
+        subjet_size_fraction=0.5, zoom=True, **kwargs):
     """
     Return image array and weights
     """
@@ -40,7 +40,7 @@ def get_images(
                               compute_auxvars=True,
                               **kwargs):
             image = preprocess(event.subjets, event.trimmed_constit, edges,
-                               zoom=1. / event.shrinkage,
+                               zoom=1. / event.shrinkage if zoom else False,
                                normalize=normalize,
                                out_width=image_size)
             images[ievent] = image

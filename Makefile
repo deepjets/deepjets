@@ -74,6 +74,15 @@ images-no-shrink:
 		echo "$(setup) ./generate-images qcd.config $(output)/qcd_images_noshrink.h5 --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_noshrink_$${chunk} -l nodes=1:ppn=2; \
 	done
 
+images-no-zoom:
+	mkdir -p $(output)/log
+	for chunk in $$(seq 1 1 10); do \
+		echo "$(setup) ./generate-images w.config $(output)/w_images_nozoom.h5 --shrink --no-zoom --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_nozoom_$${chunk} -l nodes=1:ppn=2; \
+	done
+	for chunk in $$(seq 1 1 10); do \
+		echo "$(setup) ./generate-images qcd.config $(output)/qcd_images_nozoom.h5 --shrink --no-zoom --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_nozoom_$${chunk} -l nodes=1:ppn=2; \
+	done
+
 w-images-no-batch:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \

@@ -63,6 +63,10 @@ void pythia_to_pseudojet(Pythia8::Event& event, std::vector<fastjet::PseudoJet>&
     if (abs(event[i].eta()) > eta_max) continue;
     // Create a PseudoJet from the complete Pythia particle.
     fastjet::PseudoJet particleTemp = event[i];
+    // TODO: associate particle to pseudojet with
+    // fastjet::PseudoJet::UserInfoBase
+    // see
+    // http://fastjet.hepforge.org/svn/contrib/contribs/VertexJets/trunk/example.cc
     output.push_back(particleTemp);
   }
 }
@@ -109,13 +113,17 @@ void delphes_to_pseudojet(TObjArray* input_array, std::vector<fastjet::PseudoJet
     while((candidate = static_cast<Candidate*>(input_iterator->Next()))) {
         momentum = candidate->Momentum;
         pseudojet = fastjet::PseudoJet(momentum.Px(), momentum.Py(), momentum.Pz(), momentum.E());
+        // TODO: associate Candidate to PseudoJet with a
+        // fastjet::PseudoJet::UserInfoBase
+        // see
+        // http://fastjet.hepforge.org/svn/contrib/contribs/VertexJets/trunk/example.cc
         output.push_back(pseudojet);
     }
 }
 
 
 /*
- * Instead if passing around many arguments, we use a Result struct
+ * Instead if passing around many arguments...
  */
 struct Result {
   ~Result() {

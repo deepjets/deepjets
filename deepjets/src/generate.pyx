@@ -235,7 +235,7 @@ def generate_events(GeneratorInput gen_input,
                                      delphes_partons)
                 # run Delphes reconstruction
                 modular_delphes.ProcessTask()
-                # convert Delphes reconstructed eflow candidates into pseudojets
+                # convert Delphes candidates into pseudojets
                 delphes_to_pseudojet(delphes_input_array, particles)
 
                 # run jet clustering

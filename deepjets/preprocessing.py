@@ -181,6 +181,8 @@ def preprocess(subjets, constits, edges,
         image = reflect_image(image, subjets)
     if zoom is not False:
         image = zoom_image(image, zoom, out_width)
+    else:
+        image = zoom_image(image, 1., out_width)
     if normalize:
         image = normalize_image(image)
     return image

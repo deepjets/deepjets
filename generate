@@ -42,7 +42,6 @@ from deepjets.utils import mass, tot_mom, pT, dR
 import numpy as np
 import h5py
 from fnmatch import fnmatch
-
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
 DTYPE = np.double
