@@ -25,7 +25,7 @@ def get_generator_input(name, filename, **kwargs):
     return gen_input
 
 
-def generate(gen_input, nevents,
+def generate(gen_input, events,
              eta_max=5.,
              jet_size=1.0, subjet_size_fraction=0.5,
              subjet_pt_min_fraction=0.05,
@@ -45,7 +45,7 @@ def generate(gen_input, nevents,
             'share/Delphes/cards', delphes_config)
 
     for event in _generate_events(
-            gen_input, nevents,
+            gen_input, events,
             eta_max=eta_max,
             jet_size=jet_size,
             subjet_size_fraction=subjet_size_fraction,

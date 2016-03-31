@@ -1,6 +1,8 @@
 # simple makefile to simplify repetitive build env management tasks under posix
 
 PYTHON := $(shell which python)
+NOSETESTS := $(shell which nosetests)
+
 output := /data/edawe/public/deepjets/events/pythia_masswindow
 setup := cd /data/edawe/private/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
 WMASS := 80.385
@@ -23,6 +25,9 @@ clean: clean-build clean-pyc clean-so
 in: inplace # just a shortcut
 inplace:
 	@$(PYTHON) setup.py build_ext -i
+
+test: inplace
+	@$(NOSETESTS) -s -v deepjets
 
 events:
 	mkdir -p $(output)/log
