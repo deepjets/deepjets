@@ -40,6 +40,7 @@ import logging
 
 logging.basicConfig()
 log = logging.getLogger(os.path.basename(__file__))
+log.setLevel(logging.INFO)
 
 if args.output is None:
     args.output = os.path.splitext(args.config_or_hepmc)[0] + '.h5'
@@ -63,17 +64,18 @@ import h5py
 from fnmatch import fnmatch
 from progressbar import Bar, ETA, Percentage, ProgressBar
 
+output_exists = os.path.exists(args.output)
 h5file = h5py.File(args.output, 'w')
 
 hepmc = False
 if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
     hepmc = True
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
 
 def generate_unweighted():
     if hepmc:
         gen_input = get_generator_input('hepmc', args.config_or_hepmc)
-        widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
-        pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
     else:
         gen_input = get_generator_input('pythia',
             args.config_or_hepmc, random_state=args.random_state,
@@ -171,12 +173,24 @@ try:
         generate_unweighted()
     else:
         generate_weighted()
+except KeyboardInterrupt:
+    if hepmc:
+        pbar.finish()
+    log.info("Caught Ctrl-c ... cleaning up")
+    h5file.close()
+    if not output_exists:
+        log.info("Removing {0}".format(args.output))
+        os.unlink(args.output)
+    sys.exit(1)
 except Exception as e:
+    if hepmc:
+        pbar.finish()
     if args.debug:                        
         # If in debug mode show full stack trace
         import traceback
         traceback.print_exception(*sys.exc_info())
     log.error(str(e))
-    sys.exit(1) 
-finally:
+    h5file.close()
+    sys.exit(1)
+else:
     h5file.close()
