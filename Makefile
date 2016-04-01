@@ -64,29 +64,31 @@ test-events:
 images:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images w.config $(output)/w_images.h5 --shrink --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate w.config --output $(output)/w_events_shrink_$${chunk}.h5 --shrink --events 10000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 weighted" | qsub -e $(output)/log -o $(output)/log -N w_events_shrink_$${chunk} -l nodes=1:ppn=1; \
 	done
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images qcd.config $(output)/qcd_images.h5 --shrink --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate qcd.config --output $(output)/qcd_events_shrink_$${chunk}.h5 --shrink --events 10000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 weighted" | qsub -e $(output)/log -o $(output)/log -N qcd_events_shrink_$${chunk} -l nodes=1:ppn=1; \
 	done
 
 images-no-shrink:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images w.config $(output)/w_images_noshrink.h5 --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_noshrink_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate w.config --output $(output)/w_events_noshrink_$${chunk}.h5 --events 10000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 weighted" | qsub -e $(output)/log -o $(output)/log -N w_events_noshrink_$${chunk} -l nodes=1:ppn=1; \
 	done
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images qcd.config $(output)/qcd_images_noshrink.h5 --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_noshrink_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate qcd.config --output $(output)/qcd_events_noshrink_$${chunk}.h5 --events 10000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 weighted" | qsub -e $(output)/log -o $(output)/log -N qcd_events_noshrink_$${chunk} -l nodes=1:ppn=1; \
 	done
 
-images-no-zoom:
+images-stanford:
 	mkdir -p $(output)/log
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images w.config $(output)/w_images_nozoom.h5 --shrink --no-zoom --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N w_images_nozoom_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate w.config $(output)/w_events_stanford_$${chunk}.h5 --events 100000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 --params \"PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320\" --jet-size 0.6 unweighted --trimmed-pt-min 250 --trimmed-pt-max 300" | qsub -e $(output)/log -o $(output)/log -N w_events_stanford_$${chunk} -l nodes=1:ppn=1; \
 	done
 	for chunk in $$(seq 1 1 10); do \
-		echo "$(setup) ./generate-images qcd.config $(output)/qcd_images_nozoom.h5 --shrink --no-zoom --events 10000 --jobs 2 --random-state $${chunk}" | qsub -e $(output)/log -o $(output)/log -N qcd_images_nozoom_$${chunk} -l nodes=1:ppn=2; \
+		echo "$(setup) ./generate qcd.config $(output)/qcd_events_stanford_$${chunk}.h5 --events 100000 --random-state $${chunk} --trimmed-mass-min 65 --trimmed-mass-max 95 --params \"PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320\" --jet-size 0.6 unweighted --trimmed-pt-min 250 --trimmed-pt-max 300" | qsub -e $(output)/log -o $(output)/log -N qcd_events_stanford_$${chunk} -l nodes=1:ppn=1; \
 	done
+
+all-images: images images-no-shrink images-stanford
 
 w-images-no-batch:
 	mkdir -p $(output)/log
