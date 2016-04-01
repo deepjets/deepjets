@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -18,6 +19,9 @@ parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
 parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
 parser.add_argument('--params', default=None)
+parser.add_argument('-d', '--debug', action='store_true', default=False,       
+                    help="show stack trace in the event of "                
+                         "an uncaught exception")
 parser.add_argument('config_or_hepmc')
 subparsers = parser.add_subparsers(dest='subparser')
 
@@ -31,6 +35,11 @@ weighted_parser.add_argument('--pt-max', type=float, default=500)
 weighted_parser.add_argument('--pt-bins', type=float, default=10)
 
 args = parser.parse_args()
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(os.path.basename(__file__))
 
 if args.output is None:
     args.output = os.path.splitext(args.config_or_hepmc)[0] + '.h5'
@@ -56,10 +65,12 @@ from progressbar import Bar, ETA, Percentage, ProgressBar
 
 h5file = h5py.File(args.output, 'w')
 
+hepmc = False
+if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
+    hepmc = True
+
 def generate_unweighted():
-    hepmc = False
-    if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
-        hepmc = True
+    if hepmc:
         gen_input = get_generator_input('hepmc', args.config_or_hepmc)
         widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
         pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
@@ -113,7 +124,7 @@ def generate_unweighted():
         dset_tau_3[ievent] = event.tau_3
         ievent += 1
         if hepmc:
-            pbar.update(i)
+            pbar.update(ievent)
 
     if hepmc:
         pbar.finish()
@@ -133,6 +144,9 @@ def generate_unweighted():
 
 
 def generate_weighted():
+    if hepmc:
+        raise NotImplementedError(
+            "Generating weighted events from HepMC is not implemented")
     generator_params = dict(
         filename=args.config_or_hepmc,
         random_state=args.random_state,
@@ -152,9 +166,17 @@ def generate_weighted():
         shrink=args.shrink,
         shrink_mass=args.shrink_mass)
 
-if args.subparser == 'unweighted':
-    generate_unweighted()
-else:
-    generate_weighted()
-
-h5file.close()
+try:
+    if args.subparser == 'unweighted':
+        generate_unweighted()
+    else:
+        generate_weighted()
+except Exception as e:
+    if args.debug:                        
+        # If in debug mode show full stack trace
+        import traceback
+        traceback.print_exception(*sys.exc_info())
+    log.error(str(e))
+    sys.exit(1) 
+finally:
+    h5file.close()
