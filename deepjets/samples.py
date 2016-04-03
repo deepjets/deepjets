@@ -90,7 +90,8 @@ def get_images(generator_params, nevents, pt_min, pt_max,
     return images, auxvars
 
 
-def get_events(h5file, generator_params, nevents, pt_min, pt_max, **kwargs):
+def get_events(h5file, generator_params, nevents, pt_min, pt_max,
+               offset=0, **kwargs):
     params_dict = {
         'PhaseSpace:pTHatMin': pt_min - 20.,
         'PhaseSpace:pTHatMax': pt_max + 20.}
@@ -111,7 +112,7 @@ def get_events(h5file, generator_params, nevents, pt_min, pt_max, **kwargs):
     dset_tau_2 = h5file['tau_2']
     dset_tau_3 = h5file['tau_3']
 
-    ievent = 0
+    ievent = offset
     for event in generate(gen_input, nevents,
                           trimmed_pt_min=pt_min,
                           trimmed_pt_max=pt_max,
@@ -216,9 +217,11 @@ def get_flat_events(h5file, generator_params, nevents_per_pt_bin,
     """
     pt_bin_edges = np.linspace(pt_min, pt_max, pt_bins + 1)
 
+    offset = 0
     for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):
         get_events(h5file, generator_params, nevents_per_pt_bin,
-                   pt_lo, pt_hi, **kwargs)
+                   pt_lo, pt_hi, offset=offset, **kwargs)
+        offset += nevents_per_pt_bin
 
     pt = h5file['trimmed_jet']['pT']
     event_weights = get_flat_weights(pt, pt_min, pt_max, pt_bins * 4)
