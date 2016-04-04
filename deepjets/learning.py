@@ -10,12 +10,12 @@ from sklearn.metrics import auc, roc_curve
 
 
 def train_model(
-        model, train_h5_file, model_name='model', batch_size=32, epochs=100,
-        patience=10, verbose=2, roc_auc_loss=False, log_to_file=False,
+        model, train_h5_file, model_name='model', batch_size=100, epochs=100,
+        patience=10, verbose=2, use_auc_score=False, log_to_file=False,
         read_into_RAM=False):
     """Train model. Save model with best score.
     
-    Train model, optionally using area under ROC curve as measure of success
+    Optionally use area under ROC curve as measure of success
     (not explcitiy implemented as loss function).
     
     Args:
@@ -28,8 +28,8 @@ def train_model(
         verbose: 0 suppresses all progress updates.
                  1 provides minimal progress updates.
                  2 provides full progress updates.
-        roc_auc_loss: if True, use likelihood ratio-based ROC curve for
-                      early stopping.
+        use_auc_score: if True, use likelihood ratio-based ROC curve for
+                       early stopping.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
         read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
@@ -43,12 +43,18 @@ def train_model(
     else:
         log_file = sys.stdout
     epoch = 0
-    best_loss = 0.
     stop_cdn = 0
+    if use_auc_score:
+        best_score = 0
+        print("Using ROC AUC for early stopping.", file=log_file)
+    else:
+        best_score = 1000
+        print("Using loss function for early stopping.", file=log_file)
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1:
-        print("Training on {0} samples, validating on {1} samples.".format(
-              len(h5file['X_train']), len(h5file['X_val'])), file=log_file)
+        print("Training on {0} samples, ".format(len(h5file['X_train'])) + 
+              "validating on {0} samples.".format(len(h5file['X_val'])),
+              file=log_file)
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
         sys.stdout.flush()
     if log_file is not sys.stdout:
@@ -76,7 +82,7 @@ def train_model(
         model.fit(
             X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0,
             sample_weight=weights_train, shuffle=shuffle)
-        if roc_auc_loss:
+        if use_auc_score:
             # Calculate AUC for custom early stopping
             Y_prob = model.predict_proba(
                 X_val, batch_size=batch_size, verbose=0)
@@ -85,28 +91,37 @@ def train_model(
             scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
             fpr, tpr, _ = roc_curve(
                 Y_val[:, 0], scores, sample_weight=weights_val)
-            current_loss = auc(fpr, tpr)
+            current_score = auc(fpr, tpr)
+            if current_score > best_score:
+                best_score = current_score
+                stop_cdn = 0
+                save_model(model, model_name)
+            else:
+                stop_cdn += 1
         else:
-            current_loss = model.evaluate(
+            # Evaluate loss function value for early stopping
+            current_score = model.evaluate(
                 X_val, Y_val, batch_size=batch_size, verbose=0,
                 sample_weight=weights_val)
-        if current_loss > best_loss:
-            best_loss = current_loss
-            stop_cdn = 0
-            save_model(model, model_name)
-        else:
-            stop_cdn += 1
+            if current_score < best_score:
+                best_score = current_score
+                stop_cdn = 0
+                save_model(model, model_name)
+            else:
+                stop_cdn += 1
         if log_to_file:
             log_file = open(model_name+'_log.txt', 'a')
             print(
-                "Epoch {0}/{1}: epochs w/o increase = {2}, score = {3}".format(
-                epoch+1, epochs, stop_cdn, current_loss), file=log_file)
+                "Epoch {0}/{1}: ".format(epoch+1, epochs) +
+                "epochs w/o improvement = {0}, ".format(stop_cdn) +
+                "score = {0}".format(current_score), file=log_file)
             log_file.close()
         elif verbose >= 2:
             print("\r", end='')
             print(
-                "Epoch {0}/{1}: epochs w/o increase = {2}, score = {3}".format(
-                epoch+1, epochs, stop_cdn, current_loss) + 20*' ', end='')
+                "Epoch {0}/{1}: ".format(epoch+1, epochs) +
+                "epochs w/o improvement = {0}, ".format(stop_cdn) +
+                "score = {0}".format(current_score) + 20*" ", end='')
             sys.stdout.flush()
         if stop_cdn >= patience:
             if log_to_file:
@@ -122,19 +137,21 @@ def train_model(
     if log_to_file:
         log_file = open(model_name+'_log.txt', 'a')
         print(
-            "Training complete. Best validation score = {0}".format(best_loss),
+            "Training complete. Best validation score = {0}".format(
+                best_score),
             file=log_file)
         log_file.close()
     elif verbose >= 2:
         print(
-            "Training complete. Best validation score = {0}".format(best_loss),
+            "Training complete. Best validation score = {0}".format(
+                best_score),
             file=log_file)
         sys.stdout.flush()
     return model
 
 
 def test_model(
-        model, test_h5_file, model_name='model', batch_size=32, verbose=2,
+        model, test_h5_file, model_name='model', batch_size=100, verbose=2,
         log_to_file=False, show_roc_curve=True, X_dataset='X_test',
         Y_dataset='Y_test'):
     """Test model. Display ROC curve.
@@ -195,7 +212,7 @@ def test_model(
     # Print results
     if verbose >= 2:
         print("Score    = {0}".format(objective_score), file=log_file)
-        print("AUC      = {0}".format(auc_score), file=log_file)
+        print("ROC AUC  = {0}".format(auc_score), file=log_file)
         print(
             "Accuracy = {0}/{1} = {2}\n".format(
                 accuracy_score, len(Y_test),
@@ -232,7 +249,7 @@ def train_test_star_cv(kwargs):
 
 
 def cross_validate_model(
-        model, train_h5_files, model_name='model', batch_size=32, epochs=100,
+        model, train_h5_files, model_name='model', batch_size=100, epochs=100,
         patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
         max_jobs=1):
     """Cross validate model using k-folded datasets.
@@ -350,7 +367,7 @@ def train_test_star_gs(kwargs):
 
 def optimizer_grid_search(
         get_model, get_model_args, optimizer, optimizer_kwargs_grid,
-        train_h5_files, model_name='model', batch_size=32, epochs=100,
+        train_h5_files, model_name='model', batch_size=100, epochs=100,
         patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
         max_jobs=1):
     """Perform cross-validated grid search on optimizer kwargs.
