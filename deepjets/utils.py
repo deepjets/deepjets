@@ -487,7 +487,7 @@ def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     return (lklhd_rat, bins1, bins2)
 
 
-def default_roc_curve(Y_true, var, sample_weight=None):
+def default_inv_roc_curve(Y_true, var, sample_weight=None):
     """Default ROC curve for a single variable.
     
     Args:
@@ -504,7 +504,7 @@ def default_roc_curve(Y_true, var, sample_weight=None):
                      if (0.2 <= tp <= 0.8 and fp > 0.)])
 
 
-def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
+def lklhd_inv_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a single variable.
     
     Args:
@@ -517,7 +517,7 @@ def lklhd_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
     """
     lklhd_rat, bins = likelihood_ratio(Y_true, var, sample_weight, nb_per_bin)
     scores = lklhd_rat[np.digitize(var, bins) - 1]
-    return default_roc_curve(Y_true, scores, sample_weight)
+    return default_inv_roc_curve(Y_true, scores, sample_weight)
 
 
 def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
@@ -586,17 +586,20 @@ def plot_roc_curve(roc_data, label=None, filename=None):
         fig.savefig(filename, format='pdf')
 
 
-def plot_roc_curves(roc_data, labels, filename=None):
+def plot_roc_curves(roc_data, labels, styles=None, filename=None):
     """Display ROC curve.
 
     Args:
         roc_data: array containing list of ROC curves to plot.
         label: labels to include in legend.
+        styles: list of linestyles.
     """
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    for dat, label in zip(roc_data, labels):
-        ax.plot(dat[:, 0], dat[:, 1], label=label)
+    if styles is None:
+        styles = ['-'] * len(roc_data)
+    for dat, label, ls in zip(roc_data, labels, styles):
+        ax.plot(dat[:, 0], dat[:, 1], label=label, ls=ls)
     ax.set_xlabel('signal efficiency', fontsize=16)
     ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)

@@ -3,20 +3,20 @@ import h5py
 import numpy as np
 import sys
 from .models import load_model, save_model
-from .utils import default_roc_curve, lklhd_roc_curve, plot_roc_curve
+from .utils import likelihood_ratio, plot_roc_curve
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
-from sklearn.metrics import auc
+from sklearn.metrics import auc, roc_curve
 
 
 def train_model(
         model, train_h5_file, model_name='model', batch_size=32, epochs=100,
-        patience=10, verbose=2, use_lklhd_roc_curve=True, log_to_file=False,
+        patience=10, verbose=2, roc_auc_loss=False, log_to_file=False,
         read_into_RAM=False):
-    """Train model. Save model with best AUC.
+    """Train model. Save model with best score.
     
-    Train model using area under ROC curve as measure of success (not
-    explcitiy implemented as loss function).
+    Train model, optionally using area under ROC curve as measure of success
+    (not explcitiy implemented as loss function).
     
     Args:
         model: keras model to train.
@@ -28,8 +28,8 @@ def train_model(
         verbose: 0 suppresses all progress updates.
                  1 provides minimal progress updates.
                  2 provides full progress updates.
-        use_lklhd_roc_curve: if True, use likelihood ratio-based ROC curve for
-                             early stopping, else use default.
+        roc_auc_loss: if True, use likelihood ratio-based ROC curve for
+                      early stopping.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
         read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
@@ -43,9 +43,8 @@ def train_model(
     else:
         log_file = sys.stdout
     epoch = 0
-    best_auc = 0.
+    best_loss = 0.
     stop_cdn = 0
-    stuck_cdn = 0
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1:
         print("Training on {0} samples, validating on {1} samples.".format(
@@ -57,12 +56,10 @@ def train_model(
     if read_into_RAM:
         shuffle = False
         X_train = h5file['X_train'][:]
-        Y_train = h5file['Y_train'][:]
         X_val = h5file['X_val'][:]
     else:
         shuffle = 'batch'
         X_train = h5file['X_train']
-        Y_train = h5file['Y_train']
         X_val = h5file['X_val']
     try:
         weights_train = h5file['auxvars_train']['weights'][:]
@@ -72,40 +69,44 @@ def train_model(
         weights_val = h5file['auxvars_val']['weights'][:]
     except KeyError:
         weights_val = None
-    Y_val = h5file['Y_val']
+    Y_train = h5file['Y_train'][:]
+    Y_val = h5file['Y_val'][:]
     while epoch < epochs:
         # Fitting and validation
         model.fit(
             X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0,
             sample_weight=weights_train, shuffle=shuffle)
-        Y_prob = model.predict_proba(
-            X_val, batch_size=batch_size, verbose=0)
-        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
-        # Calculate AUC for custom early stopping
-        if use_lklhd_roc_curve:
-            inv_curve = lklhd_roc_curve(Y_val, Y_prob[:, 0], weights_val)
+        if roc_auc_loss:
+            # Calculate AUC for custom early stopping
+            Y_prob = model.predict_proba(
+                X_val, batch_size=batch_size, verbose=0)
+            lklhd_rat, bins = likelihood_ratio(
+                Y_val, Y_prob[:, 0], weights_val)
+            scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
+            fpr, tpr, _ = roc_curve(
+                Y_val[:, 0], scores, sample_weight=weights_val)
+            current_loss = auc(fpr, tpr)
         else:
-            inv_curve = default_roc_curve(Y_val, Y_prob[:, 0], weights_val)
-        try:
-            current_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
-        except IndexError:
-            current_auc = -1
-            stuck_cdn += 1
-        if current_auc > best_auc:
-            best_auc = current_auc
+            current_loss = model.evaluate(
+                X_val, Y_val, batch_size=batch_size, verbose=0,
+                sample_weight=weights_val)
+        if current_loss > best_loss:
+            best_loss = current_loss
             stop_cdn = 0
             save_model(model, model_name)
         else:
             stop_cdn += 1
         if log_to_file:
             log_file = open(model_name+'_log.txt', 'a')
-            print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
-                epoch+1, epochs, stop_cdn, current_auc), file=log_file)
+            print(
+                "Epoch {0}/{1}: epochs w/o increase = {2}, score = {3}".format(
+                epoch+1, epochs, stop_cdn, current_loss), file=log_file)
             log_file.close()
         elif verbose >= 2:
             print("\r", end='')
-            print("Epoch {0}/{1}: epochs w/o increase = {2}, AUC = {3}".format(
-                epoch+1, epochs, stop_cdn, current_auc) + 20*' ', end='')
+            print(
+                "Epoch {0}/{1}: epochs w/o increase = {2}, score = {3}".format(
+                epoch+1, epochs, stop_cdn, current_loss) + 20*' ', end='')
             sys.stdout.flush()
         if stop_cdn >= patience:
             if log_to_file:
@@ -116,31 +117,17 @@ def train_model(
                 print("\nPatience tolerance reached.")
                 sys.stdout.flush()
             break
-        # Reset model if AUC calculation fails three times
-        if stuck_cdn > 2:
-            if log_to_file:
-                log_file = open(model_name+'_log.txt', 'a')
-                print("Training stuck, rolling back to best AUC.",
-                      file=log_file)
-                log_file.close()
-            elif verbose >= 1:
-                print("Training stuck, rolling back to best AUC.")
-                sys.stdout.flush()
-            model = load_model(model_name)
-            stuck_cdn = 0
-            epoch = 0
-            continue
         epoch += 1
     h5file.close()
     if log_to_file:
         log_file = open(model_name+'_log.txt', 'a')
         print(
-            "Training complete. Best validation AUC = {0}".format(best_auc),
+            "Training complete. Best validation score = {0}".format(best_loss),
             file=log_file)
         log_file.close()
     elif verbose >= 2:
         print(
-            "Training complete. Best validation AUC = {0}".format(best_auc),
+            "Training complete. Best validation score = {0}".format(best_loss),
             file=log_file)
         sys.stdout.flush()
     return model
@@ -148,8 +135,8 @@ def train_model(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=32, verbose=2,
-        use_lklhd_roc_curve=True, log_to_file=False, show_ROC_curve=True,
-        X_dataset='X_test', Y_dataset='Y_test'):
+        log_to_file=False, show_roc_curve=True, X_dataset='X_test',
+        Y_dataset='Y_test'):
     """Test model. Display ROC curve.
     
     Args:
@@ -162,7 +149,7 @@ def test_model(
                  2 provides full progress updates.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
-        show_ROC_curve: if True plot, display and output ROC curve.
+        show_roc_curve: if True plot, display and output ROC curve.
         X_dataset: name of X_test dataset.
         Y_dataset: name of Y_test dataset.
     Returns:
@@ -180,44 +167,49 @@ def test_model(
             print("Testing on {0} samples.\nDataset from {1}.".format(
                 len(h5file[X_dataset]), test_h5_file), file=log_file)
             sys.stdout.flush()
-        # Score from model loss function
-        objective_score = model.evaluate(
-            h5file[X_dataset], h5file[Y_dataset], batch_size=batch_size,
-            verbose=0)
-        Y_test = h5file[Y_dataset][:]
-        Y_prob = model.predict_proba(
-            h5file[X_dataset], batch_size=batch_size, verbose=0)
-        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
-        Y_pred = model.predict_classes(
-            h5file[X_dataset], batch_size=batch_size, verbose=0)
         try:
             weights_test = h5file['auxvars_test']['weights'][:]
         except KeyError:
             weights_test = None
-    if use_lklhd_roc_curve:
-        inv_curve = lklhd_roc_curve(Y_test, Y_prob[:, 0], weights_test)
-    else:
-        inv_curve = default_roc_curve(Y_test, Y_prob[:, 0], weights_test)
-    # AUC score
-    final_auc = auc(inv_curve[:, 0], inv_curve[:, 1])
+        Y_test = h5file[Y_dataset][:]
+        # Score from model loss function
+        objective_score = model.evaluate(
+            h5file[X_dataset], Y_test, batch_size=batch_size, verbose=0,
+            sample_weight=weights_test)
+        Y_prob = model.predict_proba(
+            h5file[X_dataset], batch_size=batch_size, verbose=0)
+        Y_pred = model.predict_classes(
+            h5file[X_dataset], batch_size=batch_size, verbose=0)
+    # Calculate inverse ROC curve and AUC
+    lklhd_rat, bins = likelihood_ratio(Y_test, Y_prob[:, 0], weights_test)
+    scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
+    fpr, tpr, _ = roc_curve(Y_test[:, 0], scores, sample_weight=weights_test)
+    auc_score = auc(fpr, tpr)
+    res = 1./len(Y_test)
+    inv_roc_curve =  np.array([[tp, 1./max(fp, res)]
+                               for tp,fp in zip(tpr,fpr)
+                               if (0.2 <= tp <= 0.8 and fp > 0.)])
     # Number of correct classifications
-    accuracy = sum(
+    accuracy_score = sum(
         [1 for i in range(len(Y_test)) if Y_test[i, Y_pred[i]] == 1.0])
     # Print results
     if verbose >= 2:
         print("Score    = {0}".format(objective_score), file=log_file)
-        print("AUC      = {0}".format(final_auc), file=log_file)
-        print("Accuracy = {0}/{1} = {2}\n".format(
-            accuracy, len(Y_test), float(accuracy)/len(Y_test)), file=log_file)
+        print("AUC      = {0}".format(auc_score), file=log_file)
+        print(
+            "Accuracy = {0}/{1} = {2}\n".format(
+                accuracy_score, len(Y_test),
+                float(accuracy_score)/len(Y_test)),
+            file=log_file)
         sys.stdout.flush()
     if log_file is not sys.stdout:
         log_file.close()
-    if show_ROC_curve:
-        plot_roc_curve(inv_curve)
+    if show_roc_curve:
+        plot_roc_curve(inv_roc_curve)
     return {'score' : objective_score,
-            'AUC' : final_auc,
-            'accuracy' : float(accuracy)/len(Y_test),
-            'ROC_curve' : inv_curve}
+            'AUC' : auc_score,
+            'accuracy' : float(accuracy_score)/len(Y_test),
+            'ROC_curve' : inv_roc_curve}
 
 
 def train_test_star_cv(kwargs):
@@ -236,7 +228,7 @@ def train_test_star_cv(kwargs):
     return test_model(
         model, train_h5_file, model_name_ikf,
         batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],
-        show_ROC_curve=False, log_to_file=train_kwargs['log_to_file'])
+        show_roc_curve=False, log_to_file=train_kwargs['log_to_file'])
 
 
 def cross_validate_model(
@@ -349,7 +341,7 @@ def train_test_star_gs(kwargs):
     results = test_model(
         model, train_h5_file, model_name_igp_ikf,
         batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],
-        show_ROC_curve=False, log_to_file=train_kwargs['log_to_file'])
+        show_roc_curve=False, log_to_file=train_kwargs['log_to_file'])
     return {'igp' : igp,
             'ikf' : ikf,
             'parameters' : optimizer_kwargs,
