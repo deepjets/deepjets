@@ -1,5 +1,5 @@
 
-cdef extern from "deepjets.h":
+cdef extern from "clustering.h":
     cppclass Result:
         PseudoJet jet
         PseudoJet trimmed_jet
@@ -13,7 +13,9 @@ cdef extern from "deepjets.h":
     bool keep_pythia_event(Event&, int, double, double)
     void result_to_arrays(Result&, double*, double*, double*, double*)
     Result* get_jets(vector[PseudoJet]&, double, double, double, double, double, double, double, double, bool, double, bool)
-    
+
+
+cdef extern from "utils.h":
     IO_GenEvent* get_hepmc_reader(string)
     void hepmc_to_pseudojet(GenEvent&, vector[PseudoJet]&, double)
     void pythia_to_pseudojet(Event&, vector[PseudoJet]&, double)
