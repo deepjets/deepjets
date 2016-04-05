@@ -4,6 +4,9 @@ DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 dtype_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
 dtype_constit = np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)])
+dtype_particle = np.dtype([('E', DTYPE), ('px', DTYPE), ('py', DTYPE), ('pz', DTYPE), ('mass', DTYPE),
+                           ('prodx', DTYPE), ('prody', DTYPE), ('prodz', DTYPE), ('prodt', DTYPE),
+                           ('pdgid', DTYPE)])
 
 
 cdef class Jets:
@@ -21,18 +24,16 @@ cdef class Jets:
 cdef void jets_from_result(Jets jets, Result* result):
     cdef int num_jet_constit
     cdef int num_subjets
-    cdef int num_subjets_constit
+    cdef int num_trimmed_constit
 
-    num_jet_constit = result.jet.constituents().size()
+    num_jet_constit = result.constituents.size()
     num_subjets = result.subjets.size()
-    num_subjets_constit = 0
-    for isubjet in range(result.subjets.size()):
-        num_subjets_constit += result.subjets[isubjet].constituents().size()
-    
+    num_trimmed_constit = result.trimmed_constituents.size()
+
     jets.jets = np.empty((2,), dtype=dtype_jet)
     jets.subjets = np.empty((num_subjets,), dtype=dtype_jet)
     jets.constit = np.empty((num_jet_constit,), dtype=dtype_constit)
-    jets.trimmed_constit = np.empty((num_subjets_constit,), dtype=dtype_constit)
+    jets.trimmed_constit = np.empty((num_trimmed_constit,), dtype=dtype_constit)
 
     result_to_arrays(result[0],
                      <DTYPE_t*> jets.jets.data,
@@ -48,20 +49,42 @@ cdef void jets_from_result(Jets jets, Result* result):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def generate_events(GeneratorInput gen_input,
-                    int n_events,
-                    float eta_max=5.,
-                    float jet_size=0.6,
-                    float subjet_size_fraction=0.5,
-                    float subjet_pt_min_fraction=0.05,
-                    float subjet_dr_min=0.,
-                    float trimmed_pt_min=-1., float trimmed_pt_max=-1., 
-                    float trimmed_mass_min=-1., float trimmed_mass_max=-1.,
-                    bool shrink=False, float shrink_mass=-1.,
-                    bool compute_auxvars=False,
-                    bool delphes=False,
-                    string delphes_config='',
-                    int delphes_random_state=0):
+def generate_events(GeneratorInput gen_input, int n_events):
+    """
+    Generate events (or read HepMC) and yield particle arrays
+    """
+    cdef np.ndarray particle_array
+    cdef GenEvent* event
+    cdef vector[GenParticle*] particles
+    cdef int ievent = 0;
+    while ievent < n_events:
+        if not gen_input.get_next_event():
+            continue
+        event = gen_input.get_hepmc()
+        hepmc_finalstate_particles(event, particles)
+        particle_array = np.empty((particles.size(),), dtype=dtype_particle)
+        particles_to_array(particles, <DTYPE_t*> particle_array.data)
+        yield particle_array
+        del event
+        ievent += 1
+    gen_input.finish()
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cluster_event(GeneratorInput gen_input, int n_events,
+                  float eta_max=5.,
+                  float jet_size=0.6,
+                  float subjet_size_fraction=0.5,
+                  float subjet_pt_min_fraction=0.05,
+                  float subjet_dr_min=0.,
+                  float trimmed_pt_min=-1., float trimmed_pt_max=-1., 
+                  float trimmed_mass_min=-1., float trimmed_mass_max=-1.,
+                  bool shrink=False, float shrink_mass=-1.,
+                  bool compute_auxvars=False,
+                  bool delphes=False,
+                  string delphes_config='',
+                  int delphes_random_state=0):
     """
     Generate events (or read HepMC) and yield jet and constituent arrays
     """

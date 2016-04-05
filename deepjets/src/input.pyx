@@ -3,6 +3,9 @@ cdef class GeneratorInput:
     cdef bool get_next_event(self) except *:
         return False
     
+    cdef GenEvent* get_hepmc(self):
+        pass
+
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         pass
 
@@ -21,20 +24,32 @@ cdef class PythiaInput(GeneratorInput):
     cdef int cut_on_pdgid
     cdef float pdgid_pt_min
     cdef float pdgid_pt_max
+    cdef int verbosity
 
     def __cinit__(self, string config, string xmldoc,
                   int random_state=0, float beam_ecm=13000.,
                   int cut_on_pdgid=0,
                   float pdgid_pt_min=-1, float pdgid_pt_max=-1,
-                  params_dict=None):
+                  object params_dict=None, int verbosity=1):
         self.pythia = new Pythia(xmldoc, False)
-        self.pythia.readString("Init:showProcesses = on")
-        self.pythia.readString("Init:showMultipartonInteractions = off")
-        self.pythia.readString("Init:showChangedSettings = on")
-        self.pythia.readString("Init:showChangedParticleData = off")
-        self.pythia.readString("Next:numberShowInfo = 0")
-        self.pythia.readString("Next:numberShowProcess = 0")
-        self.pythia.readString("Next:numberShowEvent = 0")
+        if verbosity > 0:
+            self.pythia.readString("Init:showProcesses = on")
+            self.pythia.readString("Init:showChangedSettings = on")
+        else:
+            self.pythia.readString("Init:showProcesses = off")
+            self.pythia.readString("Init:showChangedSettings = off")
+        if verbosity > 1:
+            self.pythia.readString("Init:showMultipartonInteractions = on")
+            self.pythia.readString("Init:showChangedParticleData = on")
+            self.pythia.readString("Next:numberShowInfo = 1")
+            self.pythia.readString("Next:numberShowProcess = 1")
+            self.pythia.readString("Next:numberShowEvent = 1")
+        else:
+            self.pythia.readString("Init:showMultipartonInteractions = off")
+            self.pythia.readString("Init:showChangedParticleData = off")
+            self.pythia.readString("Next:numberShowInfo = 0")
+            self.pythia.readString("Next:numberShowProcess = 0")
+            self.pythia.readString("Next:numberShowEvent = 0")
         self.pythia.readFile(config)  # read user config after options above
         self.pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
         self.pythia.readString('Random:setSeed = on')
@@ -46,6 +61,7 @@ cdef class PythiaInput(GeneratorInput):
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
+        self.verbosity = verbosity
 
     def __dealloc__(self):
         del self.pythia
@@ -60,6 +76,9 @@ cdef class PythiaInput(GeneratorInput):
             # event doesn't pass our truth-level cuts
             return False
         return True
+    
+    cdef GenEvent* get_hepmc(self):
+        return pythia_to_hepmc(self.pythia)
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         pythia_to_pseudojet(self.pythia.event, particles, eta_max)
@@ -75,7 +94,8 @@ cdef class PythiaInput(GeneratorInput):
                           delphes_partons)
 
     cdef void finish(self):
-        self.pythia.stat()
+        if self.verbosity > 0:
+            self.pythia.stat()
 
 
 cdef class HepMCInput(GeneratorInput):
@@ -94,9 +114,11 @@ cdef class HepMCInput(GeneratorInput):
         if self.event == NULL:
             return False
         return True
+    
+    cdef GenEvent* get_hepmc(self):
+        return self.event
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         hepmc_to_pseudojet(self.event[0], particles, eta_max)
         del self.event
         self.event = NULL
-

@@ -3,21 +3,17 @@
 #include "fastjet/contrib/Nsubjettiness.hh"
 
 #include <vector>
-
+#include <algorithm>
 
 /*
  * Instead if passing around many arguments...
  */
 struct Result {
-  ~Result() {
-    delete jet_clusterseq;
-    delete subjet_clusterseq;
-  }
   fastjet::PseudoJet jet;
   fastjet::PseudoJet trimmed_jet;
   std::vector<fastjet::PseudoJet> subjets;
-  fastjet::ClusterSequence* jet_clusterseq;
-  fastjet::ClusterSequence* subjet_clusterseq;
+  std::vector<fastjet::PseudoJet> constituents;
+  std::vector<fastjet::PseudoJet> trimmed_constituents;
   double shrinkage;
   double subjet_dr;
   double tau_1;
@@ -43,7 +39,16 @@ void result_to_arrays(Result& result,
   jet_arr[6] = result.trimmed_jet.phi_std();
   jet_arr[7] = result.trimmed_jet.m();
 
-  std::vector<fastjet::PseudoJet> constits = result.jet.constituents();
+  std::vector<fastjet::PseudoJet> subjets = result.subjets;
+
+  for (unsigned int i = 0; i < subjets.size(); ++i) {
+    subjet_arr[i * 4 + 0] = subjets[i].perp();
+    subjet_arr[i * 4 + 1] = subjets[i].eta();
+    subjet_arr[i * 4 + 2] = subjets[i].phi_std();
+    subjet_arr[i * 4 + 3] = subjets[i].m();
+  }
+
+  std::vector<fastjet::PseudoJet> constits = result.constituents;
 
   for (unsigned int i = 0; i < constits.size(); ++i) {
     jet_constit_arr[i * 3 + 0] = constits[i].Et();
@@ -51,20 +56,12 @@ void result_to_arrays(Result& result,
     jet_constit_arr[i * 3 + 2] = constits[i].phi_std();
   }
 
-  // Get details and constituents from subjets.
-  int iconstit = 0;
-  for (unsigned int i = 0; i < result.subjets.size(); ++i) {
-    subjet_arr[i * 4 + 0] = result.subjets[i].perp();
-    subjet_arr[i * 4 + 1] = result.subjets[i].eta();
-    subjet_arr[i * 4 + 2] = result.subjets[i].phi_std();
-    subjet_arr[i * 4 + 3] = result.subjets[i].m();
-    constits = result.subjets[i].constituents();
-    for (unsigned int j = 0; j < constits.size(); ++j) {
-      subjet_constit_arr[iconstit * 3 + 0] = constits[j].Et();
-      subjet_constit_arr[iconstit * 3 + 1] = constits[j].eta();
-      subjet_constit_arr[iconstit * 3 + 2] = constits[j].phi_std();
-      ++iconstit;
-    }
+  std::vector<fastjet::PseudoJet> trimmed_constits = result.trimmed_constituents;
+
+  for (unsigned int i = 0; i < trimmed_constits.size(); ++i) {
+    subjet_constit_arr[i * 3 + 0] = trimmed_constits[i].Et();
+    subjet_constit_arr[i * 3 + 1] = trimmed_constits[i].eta();
+    subjet_constit_arr[i * 3 + 2] = trimmed_constits[i].phi_std();
   }
 }
 
@@ -105,25 +102,20 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
 
   double original_jet_size = jet_size;
 
+  std::unique_ptr<fastjet::ClusterSequence> sequence, shrunk_sequence;
+
   // Run Fastjet algorithm and sort jets in pT order
-  fastjet::JetDefinition jet_def(fastjet::genkt_algorithm, jet_size, -1); // anti-kt
-  fastjet::ClusterSequence* cluster_sequence = new fastjet::ClusterSequence(jet_inputs, jet_def);
-  std::vector<fastjet::PseudoJet> sorted_jets(sorted_by_pt(cluster_sequence->inclusive_jets())); // no pT cut here
+  fastjet::JetDefinition jet_def(fastjet::JetDefinition(fastjet::genkt_algorithm, jet_size, -1));
+  sequence.reset(new fastjet::ClusterSequence(jet_inputs, jet_def)); // anti-kt
+  std::vector<fastjet::PseudoJet> sorted_jets(sorted_by_pt(sequence->inclusive_jets())); // no pT cut here
 
   if (sorted_jets.empty()) {
-    delete cluster_sequence;
     return NULL;
   }
 
   // Get leading jet
-  fastjet::PseudoJet& jet = sorted_jets[0];
-
-  //// Store constituents from leading jet
-  //int jet_size = jet_constituents.size();
-  //std::vector<fastjet::PseudoJet> trimmed_jet_inputs;
-  //for (int i = 0; i < jet_size; ++i) {
-    //trimmed_jet_inputs.push_back(jet_constituents[i]);
-  /*}*/
+  fastjet::PseudoJet jet = sorted_jets[0];
+  std::vector<fastjet::PseudoJet> jet_constituents = jet.constituents();
 
   double shrinkage = 1.;
   double actual_size;
@@ -134,7 +126,6 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
       shrink_mass = jet.m();
       if (shrink_mass <= 0) {
         // Skip event
-        delete cluster_sequence;
         return NULL;
       }
     }
@@ -142,11 +133,22 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
     if (actual_size > jet_size) {
       // Original clustering must have been too small?
       // Skip event
-      delete cluster_sequence;
       return NULL;
     }
     shrinkage = actual_size / jet_size;
     jet_size = actual_size;
+
+    if (jet_size < original_jet_size) {
+      // Redo clustering on the jet constituents with the smaller jet size
+      fastjet::JetDefinition shrunk_jet_def(fastjet::genkt_algorithm, jet_size, -1);
+      shrunk_sequence.reset(new fastjet::ClusterSequence(jet_constituents, shrunk_jet_def)); // anti-kt
+      sorted_jets = sorted_by_pt(shrunk_sequence->inclusive_jets());
+      if (sorted_jets.empty()) {
+        return NULL;
+      }
+      jet = sorted_jets[0];
+      jet_constituents = jet.constituents();
+    }
   }
 
   fastjet::Filter filter(fastjet::JetDefinition(fastjet::genkt_algorithm, subjet_size_fraction * jet_size, 1), // kt
@@ -157,15 +159,11 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
   // pT cuts on trimmed jet
   if (trimmed_pt_min > 0) {
     if (trimmed_jet.perp() < trimmed_pt_min) {
-      delete cluster_sequence;
-      //delete trimmed_cluster_sequence;
       return NULL;
     }
   }
   if (trimmed_pt_max > 0) {
     if (trimmed_jet.perp() >= trimmed_pt_max) {
-      delete cluster_sequence;
-      //delete trimmed_cluster_sequence;
       return NULL;
     }
   }
@@ -173,15 +171,11 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
   // mass cuts on trimmed jet
   if (trimmed_mass_min > 0) {
     if (trimmed_jet.m() < trimmed_mass_min) {
-      delete cluster_sequence;
-      //delete trimmed_cluster_sequence;
       return NULL;
     }
   }
   if (trimmed_mass_max > 0) {
     if (trimmed_jet.m() >= trimmed_mass_max) {
-      delete cluster_sequence;
-      //delete trimmed_cluster_sequence;
       return NULL;
     }
   }
@@ -192,8 +186,6 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
     subjet_dr = sorted_subjets[0].delta_R(sorted_subjets[1]);
     if (subjet_dr_min > 0 && subjet_dr < subjet_dr_min) {
       // Skip event
-      delete cluster_sequence;
-      //delete trimmed_cluster_sequence;
       return NULL;
     }
   }
@@ -202,8 +194,8 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
   result->jet = jet;
   result->trimmed_jet = trimmed_jet;
   result->subjets = sorted_subjets;
-  result->jet_clusterseq = cluster_sequence;
-  //result->subjet_clusterseq = trimmed_cluster_sequence;
+  result->constituents = jet_constituents;
+  result->trimmed_constituents = trimmed_jet.constituents();
   result->shrinkage = shrinkage;
   result->subjet_dr = subjet_dr;
 

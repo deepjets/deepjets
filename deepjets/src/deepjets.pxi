@@ -4,6 +4,8 @@ cdef extern from "clustering.h":
         PseudoJet jet
         PseudoJet trimmed_jet
         vector[PseudoJet] subjets
+        vector[PseudoJet] constituents
+        vector[PseudoJet] trimmed_constituents
         double shrinkage
         double subjet_dr
         double tau_1
@@ -21,3 +23,6 @@ cdef extern from "utils.h":
     void pythia_to_pseudojet(Event&, vector[PseudoJet]&, double)
     void pythia_to_delphes(Event&, Delphes*, TObjArray*, TObjArray*, TObjArray*)
     void delphes_to_pseudojet(TObjArray*, vector[PseudoJet]&)
+    GenEvent* pythia_to_hepmc(Pythia*)
+    void hepmc_finalstate_particles(GenEvent*, vector[GenParticle*]&)
+    void particles_to_array(vector[GenParticle*]& particles, double*) 
