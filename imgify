@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-def imgify(filename, normalize, pix_size, image_size):
+def imgify(filename, normalize, pix_size, image_size, zoom):
     import os
     import numpy as np
     from deepjets.preprocessing import preprocess, pixel_edges
@@ -14,7 +14,7 @@ def imgify(filename, normalize, pix_size, image_size):
     dset_subjets = h5_input['subjets']
     dset_trimmed_constit = h5_input['trimmed_constituents']
     dset_shrinkage = h5_input['shrinkage']
-    dset_dr_subjets = h5_input['dR_subjets']
+    dset_dr_subjets = h5_input['subjet_dr']
     dset_tau_1 = h5_input['tau_1']
     dset_tau_2 = h5_input['tau_2']
     dset_tau_3 = h5_input['tau_3']
@@ -60,7 +60,7 @@ def imgify(filename, normalize, pix_size, image_size):
         subjets = dset_subjets[event]
         trimmed_constit = dset_trimmed_constit[event]
         image = preprocess(subjets, trimmed_constit, edges,
-                           zoom=1. / dset_shrinkage[event],
+                           zoom=1. / dset_shrinkage[event] if zoom else False,
                            normalize=normalize,
                            out_width=image_size)
         # save the jet mass, pT and image
@@ -77,6 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--normalize', default=False, action='store_true')
     parser.add_argument('--pix-size', default='0.1,0.1')
     parser.add_argument('--image-size', type=int, default=25)
+    parser.add_argument('--no-zoom', default=False, action='store_true')
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
     
@@ -84,6 +85,7 @@ if __name__ == '__main__':
     
     map_pool(
         FuncWorker,
-        [(imgify, filename, args.normalize, args.pix_size, args.image_size)
+        [(imgify, filename, args.normalize,
+          args.pix_size, args.image_size, not args.no_zoom)
             for filename in args.files],
         n_jobs=args.n)
