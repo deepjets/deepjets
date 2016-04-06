@@ -4,6 +4,7 @@ import numpy as np
 import sys
 from .models import load_model, save_model
 from .utils import likelihood_ratio, plot_roc_curve
+from keras import callbacks
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
@@ -11,28 +12,110 @@ from sklearn.metrics import auc, roc_curve
 
 def train_model(
         model, train_h5_file, model_name='model', batch_size=100, epochs=100,
-        patience=10, verbose=2, use_auc_score=False, log_to_file=False,
-        read_into_RAM=False):
+        val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.,
+        custom_lr_schedule=None, verbose=1, log_to_file=False,
+        read_into_ram=False):
     """Train model. Save model with best score.
-    
-    Optionally use area under ROC curve as measure of success
-    (not explcitiy implemented as loss function).
     
     Args:
         model: keras model to train.
         train_h5_file: name of h5 file containing 'X_train', 'Y_train',
-                       'X_val', 'Y_val', 'weights_train' (optional) datasets.
+                       'weights_train' (optional) datasets.
+        model_name: base filename to use for saving models.
+        batch_size, epochs: integers to pass to keras.
+        val_frac: fraction of training data held out for validation.
+        patience: number of epochs to run without improvement.
+        lr_init: initial learning rate.
+        lr_scale_factor: learning rate multiplied by this each epoch.
+        custom_lr_schedule: function that takes epoch number (int) and returns
+                            learning rate (float). Overrides lr_init and
+                            lr_scale_factor.
+        verbose: 0 suppresses all progress updates.
+                 1 provides fancy progress updates.
+                 2 provides simple progress updates.
+        log_to_file: if True full progress updates are written to
+                     model_name_log.txt.
+        read_into_ram: if True images read into RAM, otherwise h5 dataset
+                       passed directly to keras.
+    Returns:
+        history: keras object containing model and training history.
+    """
+    save_model(model, model_name)
+    if log_to_file:
+        log_file = open(model_name+'_log.txt', 'w')
+    else:
+        log_file = sys.stdout
+    print("Using loss function for early stopping.", file=log_file)
+    h5file = h5py.File(train_h5_file, 'r')
+    if verbose >= 1:
+        print("Datasets from {0}.".format(train_h5_file), file=log_file)
+        sys.stdout.flush()
+    if log_file is not sys.stdout:
+        log_file.close()
+    if read_into_ram:
+        shuffle = False
+        X_train = h5file['X_train'][:]
+        Y_train = h5file['Y_train'][:]
+        try:
+            weights_train = h5file['auxvars_train']['weights'][:]
+        except KeyError:
+            weights_train = None
+    else:
+        shuffle = 'batch'
+        X_train = h5file['X_train']
+        Y_train = h5file['Y_train']
+        try:
+            weights_train = h5file['auxvars_train']['weights']
+        except KeyError:
+            weights_train = None
+    checkpointer = callbacks.ModelCheckpoint(
+        '{0}_weights.h5'.format(model_name), monitor='val_loss',
+        verbose=verbose, save_best_only=True, mode='auto')
+    earlystopper = callbacks.EarlyStopping(
+        monitor='val_loss', patience=patience, verbose=verbose, mode='auto')
+    if custom_lr_schedule is None:
+        lr_s = lambda i: float(lr_init*(lr_scale_factor**i))
+    scheduler = callbacks.LearningRateScheduler(lr_s)
+    callback_list = [checkpointer, earlystopper, scheduler]
+    history = model.fit(
+        X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
+        validation_split=val_frac, verbose=verbose,
+        sample_weight=weights_train, shuffle=shuffle, callbacks=callback_list)
+    h5file.close()
+    if log_to_file:
+        log_file = open(model_name+'_log.txt', 'a')
+        print("\nTraining complete.", file=log_file)
+        print("\nTraining history:\n", file=log_file)
+        print(history.history, file=log_file)
+        log_file.close()
+    return history
+    
+    
+def train_model_auc_score(
+        model, train_h5_file, model_name='model', batch_size=100, epochs=100,
+        patience=10, lr_init=0.0001, lr_scale_factor=1.,
+        custom_lr_schedule=None, verbose=2, log_to_file=False,
+        read_into_ram=False):
+    """Train model. Save model with best ROC AUC score.
+    
+    Args:
+        model: keras model to train.
+        train_h5_file: name of h5 file containing 'X_train', 'Y_train',
+                       'weights_train' (optional) datasets.
         model_name: base filename to use for saving models.
         batch_size, epochs: integers to pass to keras.
         patience: number of epochs to run without improvement.
+        lr_init: initial learning rate.
+        lr_scale_factor: learning rate multiplied by this each epoch.
+        custom_lr_schedule: function that takes epoch number (int) and returns
+                            learning rate (float). Overrides lr_init and
+                            lr_scale_factor.
         verbose: 0 suppresses all progress updates.
-                 1 provides minimal progress updates.
-                 2 provides full progress updates.
-        use_auc_score: if True, use likelihood ratio-based ROC curve for
-                       early stopping.
+                 1 provides simple progress updates.
+                 2 provides detailed progress updates.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
-        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+        read_into_ram: if True images read into RAM, otherwise h5 dataset
                        passed directly to keras.
     Returns:
         model: model at final point in training (usually not the best model).
@@ -44,12 +127,8 @@ def train_model(
         log_file = sys.stdout
     epoch = 0
     stop_cdn = 0
-    if use_auc_score:
-        best_score = 0
-        print("Using ROC AUC for early stopping.", file=log_file)
-    else:
-        best_score = 1000
-        print("Using loss function for early stopping.", file=log_file)
+    best_score = 0
+    print("Using ROC AUC for early stopping.", file=log_file)
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1:
         print("Training on {0} samples, ".format(len(h5file['X_train'])) + 
@@ -59,7 +138,7 @@ def train_model(
         sys.stdout.flush()
     if log_file is not sys.stdout:
         log_file.close()
-    if read_into_RAM:
+    if read_into_ram:
         shuffle = False
         X_train = h5file['X_train'][:]
         X_val = h5file['X_val'][:]
@@ -77,38 +156,29 @@ def train_model(
         weights_val = None
     Y_train = h5file['Y_train'][:]
     Y_val = h5file['Y_val'][:]
+    if custom_lr_schedule is None:
+        lr_s = lambda i: float(lr_init*(lr_scale_factor**i))
     while epoch < epochs:
         # Fitting and validation
+        model.optimizer.lr.set_value(lr_s(epoch))
         model.fit(
             X_train, Y_train, batch_size=batch_size, nb_epoch=1, verbose=0,
             sample_weight=weights_train, shuffle=shuffle)
-        if use_auc_score:
-            # Calculate AUC for custom early stopping
-            Y_prob = model.predict_proba(
-                X_val, batch_size=batch_size, verbose=0)
-            lklhd_rat, bins = likelihood_ratio(
-                Y_val, Y_prob[:, 0], weights_val)
-            scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
-            fpr, tpr, _ = roc_curve(
-                Y_val[:, 0], scores, sample_weight=weights_val)
-            current_score = auc(fpr, tpr)
-            if current_score > best_score:
-                best_score = current_score
-                stop_cdn = 0
-                save_model(model, model_name)
-            else:
-                stop_cdn += 1
+        # Calculate AUC for custom early stopping
+        Y_prob = model.predict_proba(
+            X_val, batch_size=batch_size, verbose=0)
+        lklhd_rat, bins = likelihood_ratio(
+            Y_val, Y_prob[:, 0], weights_val)
+        scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
+        fpr, tpr, _ = roc_curve(
+            Y_val[:, 0], scores, sample_weight=weights_val)
+        current_score = auc(fpr, tpr)
+        if current_score > best_score:
+            best_score = current_score
+            stop_cdn = 0
+            save_model(model, model_name)
         else:
-            # Evaluate loss function value for early stopping
-            current_score = model.evaluate(
-                X_val, Y_val, batch_size=batch_size, verbose=0,
-                sample_weight=weights_val)
-            if current_score < best_score:
-                best_score = current_score
-                stop_cdn = 0
-                save_model(model, model_name)
-            else:
-                stop_cdn += 1
+            stop_cdn += 1
         if log_to_file:
             log_file = open(model_name+'_log.txt', 'a')
             print(
@@ -143,7 +213,7 @@ def train_model(
         log_file.close()
     elif verbose >= 2:
         print(
-            "Training complete. Best validation score = {0}".format(
+            "\nTraining complete. Best validation score = {0}".format(
                 best_score),
             file=log_file)
         sys.stdout.flush()
@@ -250,24 +320,31 @@ def train_test_star_cv(kwargs):
 
 def cross_validate_model(
         model, train_h5_files, model_name='model', batch_size=100, epochs=100,
-        patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
-        max_jobs=1):
+        val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.,
+        custom_lr_schedule=None, verbose=1, log_to_file=False,
+        read_into_ram=False, max_jobs=1):
     """Cross validate model using k-folded datasets.
     
     Args:
         model: keras model to train.
         train_h5_files: list of h5 files containing k-folds to train on. Each
-                        file contains 'X_train', 'Y_train', 'X_val', 'Y_val',
-                        'weights_train' (optional) datasets.
+                        file contains 'X_train', 'Y_train', 'weights_train'
+                        (optional) datasets.
         model_name: base filename to use for saving models.
         batch_size, epochs: integers to pass to keras.
+        val_frac: fraction of training data held out for validation.
         patience: number of epochs to run without improvement.
+        lr_init: initial learning rate.
+        lr_scale_factor: learning rate multiplied by this each epoch.
+        custom_lr_schedule: function that takes epoch number (int) and returns
+                            learning rate (float). Overrides lr_init and
+                            lr_scale_factor.
         verbose: 0 suppresses all progress updates.
-                 1 provides minimal progress updates.
-                 2 provides full progress updates.
+                 1 provides fancy progress updates.
+                 2 provides simple progress updates.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
-        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+        read_into_ram: if True images read into RAM, otherwise h5 dataset
                        passed directly to keras.
         max_jobs: number of processors to utilise.
     Returns:
@@ -286,17 +363,20 @@ def cross_validate_model(
     n_folds = len(train_h5_files)
     kf_kwargs = [
         {'ikf' : ikf,
-        'train_h5_file' : train_h5_files[ikf],
-        'model_name' : model_name,
-        'train_kwargs' : {'batch_size' : batch_size,
-                          'epochs' : epochs,
-                          'patience' : patience,
-                          'verbose' : verbose,
-                          'log_to_file' : log_to_file,
-                          'read_into_RAM' : read_into_RAM}}
+         'train_h5_file' : train_h5_files[ikf],
+         'model_name' : model_name,
+         'train_kwargs' : {'batch_size' : batch_size,
+                           'epochs' : epochs,
+                           'val_frac' : val_frac,
+                           'patience' : patience,
+                           'lr_init' : lr_init,
+                           'lr_scale_factor' : lr_scale_factor,
+                           'custom_lr_schedule' : custom_lr_schedule,
+                           'verbose' : verbose,
+                           'log_to_file' : log_to_file,
+                           'read_into_ram' : read_into_ram}}
         for ikf in xrange(n_folds)]
     save_model(model, model_name+'_base')
-    
     if max_jobs > 1:
         pool = Pool(max_jobs)
         results = pool.map(train_test_star_cv, kf_kwargs)
@@ -368,8 +448,9 @@ def train_test_star_gs(kwargs):
 def optimizer_grid_search(
         get_model, get_model_args, optimizer, optimizer_kwargs_grid,
         train_h5_files, model_name='model', batch_size=100, epochs=100,
-        patience=10, verbose=2, log_to_file=False, read_into_RAM=False,
-        max_jobs=1):
+        val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.,
+        custom_lr_schedule=None, verbose=1, log_to_file=False,
+        read_into_ram=False, max_jobs=1):
     """Perform cross-validated grid search on optimizer kwargs.
     
     Args:
@@ -383,13 +464,19 @@ def optimizer_grid_search(
                         'weights_train' (optional) datasets.
         model_name: base filename to use for saving models.
         batch_size, epochs: integers to pass to keras.
+        val_frac: fraction of training data held out for validation.
         patience: number of epochs to run without improvement.
+        lr_init: initial learning rate.
+        lr_scale_factor: learning rate multiplied by this each epoch.
+        custom_lr_schedule: function that takes epoch number (int) and returns
+                            learning rate (float). Overrides lr_init and
+                            lr_scale_factor.
         verbose: 0 suppresses all progress updates.
-                 1 provides minimal progress updates.
-                 2 provides full progress updates.
+                 1 provides fancy progress updates.
+                 2 provides simple progress updates.
         log_to_file: if True full progress updates are written to
                      model_name_log.txt.
-        read_into_RAM: if True datasets read into RAM, otherwise h5 datasets
+        read_into_ram: if True images read into RAM, otherwise h5 dataset
                        passed directly to keras.
         max_jobs: number of processors to utilise.
     Returns:
@@ -431,10 +518,14 @@ def optimizer_grid_search(
     # Cross-validate models
     train_kwargs = {'batch_size' : batch_size,
                     'epochs' : epochs,
+                    'val_frac' : val_frac,
                     'patience' : patience,
+                    'lr_init' : lr_init,
+                    'lr_scale_factor' : lr_scale_factor,
+                    'custom_lr_schedule' : custom_lr_schedule,
                     'verbose' : verbose,
                     'log_to_file' : log_to_file,
-                    'read_into_RAM' : read_into_RAM}
+                    'read_into_ram' : read_into_ram}
     gp_kwargs = []
     igp = 0
     for optimizer_kwargs in optimizer_kwargs_grid:
@@ -477,7 +568,7 @@ def optimizer_grid_search(
     return new_results
 
 
-def select_best_model(grid_search_results, metric='AUC', max_is_best=True):
+def select_best_model(grid_search_results, metric='score', max_is_best=False):
     """Select parameter values giving best value for metric.
     
     Args:

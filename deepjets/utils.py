@@ -475,12 +475,6 @@ def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
         bins2.append(bins2_slice)
         h_s, _ = np.histogram(var2_s_slice, bins2_slice, weights=w_s_slice)
         h_b, _ = np.histogram(var2_b_slice, bins2_slice, weights=w_b_slice)
-        """
-        if i == 0:
-            print(h_b)
-            print(bins2_slice)
-            print(var2_b_slice)
-        """
         h_s /= weights_s.sum()
         h_b /= weights_b.sum()
         lklhd_rat.append(h_s / h_b)
@@ -544,7 +538,7 @@ def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
         #j1_b = np.digitize(var1[i], bins1_b[j2_b])-1
         #scores[i] = 0.5*(lklhd_rat_a[j1_a][j2_a] + lklhd_rat_b[j2_b][j1_b])
         scores[i] = lklhd_rat_a[j1_a][j2_a]
-    return default_roc_curve(Y_true, scores, sample_weight)
+    return default_inv_roc_curve(Y_true, scores, sample_weight)
 
 
 def auxvar_roc_curve(
@@ -562,9 +556,9 @@ def auxvar_roc_curve(
         Y_test = h5file[Y_dataset][:]
         var = h5file[auxvar][:]
     if use_lklhd_roc_curve:
-        return lklhd_roc_curve(Y_test, var)
+        return lklhd_inv_roc_curve(Y_test, var)
     else:
-        return default_roc_curve(Y_test, var)
+        return default_inv_roc_curve(Y_test, var)
 
 def plot_roc_curve(roc_data, label=None, filename=None):
     """Display ROC curve.
