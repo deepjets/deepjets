@@ -51,7 +51,7 @@ cdef void jets_from_result(Jets jets, Result* result):
 @cython.wraparound(False)
 def generate_events(GeneratorInput gen_input, int n_events):
     """
-    Generate events (or read HepMC) and yield particle arrays
+    Generate events (or read HepMC) and yield numpy arrays of particles
     """
     cdef np.ndarray particle_array
     cdef GenEvent* event
@@ -70,116 +70,176 @@ def generate_events(GeneratorInput gen_input, int n_events):
     gen_input.finish()
 
 
+cdef object cluster_pseudojets(
+        vector[PseudoJet] pseudojets,
+        float jet_size,
+        float subjet_size_fraction,
+        float subjet_pt_min_fraction,
+        float subjet_dr_min,
+        float trimmed_pt_min, float trimmed_pt_max, 
+        float trimmed_mass_min, float trimmed_mass_max,
+        bool shrink, float shrink_mass,
+        bool compute_auxvars):
+    """
+    Perform jet clustering on a single event with FastJet as defined in
+    clustering.h in the get_jets function.
+    Return a Jets struct defined above.
+    """
+    cdef Result* result
+    # run jet clustering
+    result = get_jets(pseudojets,
+                      jet_size, subjet_size_fraction,
+                      subjet_pt_min_fraction,
+                      subjet_dr_min,
+                      trimmed_pt_min, trimmed_pt_max,
+                      trimmed_mass_min, trimmed_mass_max,
+                      shrink, shrink_mass,
+                      compute_auxvars)
+    if result == NULL:
+        # didn't find any jets passing cuts in this event
+        return None
+    jets = Jets()
+    jets_from_result(jets, result)
+    del result
+    return jets
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def cluster_event(GeneratorInput gen_input, int n_events,
-                  float eta_max=5.,
-                  float jet_size=0.6,
-                  float subjet_size_fraction=0.5,
-                  float subjet_pt_min_fraction=0.05,
-                  float subjet_dr_min=0.,
-                  float trimmed_pt_min=-1., float trimmed_pt_max=-1., 
-                  float trimmed_mass_min=-1., float trimmed_mass_max=-1.,
-                  bool shrink=False, float shrink_mass=-1.,
-                  bool compute_auxvars=False,
-                  bool delphes=False,
-                  string delphes_config='',
-                  int delphes_random_state=0):
+def cluster_numpy(np.ndarray particles,
+                  float eta_max,
+                  float jet_size,
+                  float subjet_size_fraction,
+                  float subjet_pt_min_fraction,
+                  float subjet_dr_min,
+                  float trimmed_pt_min, float trimmed_pt_max, 
+                  float trimmed_mass_min, float trimmed_mass_max,
+                  bool shrink, float shrink_mass,
+                  bool compute_auxvars):
     """
-    Generate events (or read HepMC) and yield jet and constituent arrays
+    Perform jet clustering on a numpy array of particles.
+    See cluster_pseudojets above.
     """
-    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
-        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+    cdef vector[PseudoJet] pseudojets
+    # convert numpy array into vector of pseudojets
+    array_to_pseudojets(particles.shape[0], <DTYPE_t*> particles.data,
+                        pseudojets, eta_max)
+    return cluster_pseudojets(
+        pseudojets,
+        jet_size,
+        subjet_size_fraction,
+        subjet_pt_min_fraction,
+        subjet_dr_min,
+        trimmed_pt_min, trimmed_pt_max,
+        trimmed_mass_min, trimmed_mass_max,
+        shrink, shrink_mass,
+        compute_auxvars)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cluster_hepmc(HepMCInput hepmc_input, int n_events,
+                  float eta_max,
+                  float jet_size,
+                  float subjet_size_fraction,
+                  float subjet_pt_min_fraction,
+                  float subjet_dr_min,
+                  float trimmed_pt_min, float trimmed_pt_max, 
+                  float trimmed_mass_min, float trimmed_mass_max,
+                  bool shrink, float shrink_mass,
+                  bool compute_auxvars):
+    cdef vector[PseudoJet] pseudojets
+    cdef int ievent = 0;
+    # event loop 
+    while ievent < n_events:
+        if not hepmc_input.get_next_event():
+            # no more events in HepMC file
+            break
+        # convert generator output directly into pseudojets
+        hepmc_input.to_pseudojet(pseudojets, eta_max)
+        # yield jets
+        yield cluster_pseudojets(
+            pseudojets,
+            jet_size,
+            subjet_size_fraction,
+            subjet_pt_min_fraction,
+            subjet_dr_min,
+            trimmed_pt_min, trimmed_pt_max,
+            trimmed_mass_min, trimmed_mass_max,
+            shrink, shrink_mass,
+            compute_auxvars)
+        ievent += 1
+    hepmc_input.finish()
+
+
+## WIP
+#cdef run_delphes(GenEvent* event, string config,
+                 #int random_state=0,
+                 #string detector_objects="Calorimeter/towers"):
+    #"""
+    #Reconstruct detector-level objects with Delphes
+    #"""
+    ## Delphes init
+    #cdef ExRootConfReader* delphes_config_reader = NULL
+    #cdef Delphes* modular_delphes = NULL
+    #cdef TObjArray* delphes_all_particles = NULL
+    #cdef TObjArray* delphes_stable_particles = NULL
+    #cdef TObjArray* delphes_partons = NULL
+    #cdef TObjArray* delphes_input_array = NULL
     
-    # Delphes init
-    cdef ExRootConfReader* delphes_config_reader = NULL
-    cdef Delphes* modular_delphes = NULL
-    cdef TObjArray* delphes_all_particles = NULL
-    cdef TObjArray* delphes_stable_particles = NULL
-    cdef TObjArray* delphes_partons = NULL
-    cdef TObjArray* delphes_input_array = NULL
+    #delphes_config_reader = new ExRootConfReader()
+    #delphes_config_reader.ReadFile(config.c_str())
+    ## Set Delhes' random seed. Only possible through a config file...
+    #with tempfile.NamedTemporaryFile() as tmp:
+        #tmp.write("set RandomSeed {0:d}\n".format(random_state))
+        #tmp.flush()
+        #delphes_config_reader.ReadFile(tmp.name)
+    #modular_delphes = new Delphes("Delphes")
+    #modular_delphes.SetConfReader(delphes_config_reader)
+    #delphes_all_particles = modular_delphes.ExportArray("allParticles")
+    #delphes_stable_particles = modular_delphes.ExportArray("stableParticles")
+    #delphes_partons = modular_delphes.ExportArray("partons")
+    #modular_delphes.InitTask()
+    #delphes_input_array = modular_delphes.ImportArray(detector_objects)
+
+    #cdef int ievent;
+    #cdef Result* result
+    #cdef vector[PseudoJet] particles
     
-    if delphes:
-        delphes_config_reader = new ExRootConfReader()
-        delphes_config_reader.ReadFile(delphes_config.c_str())
-        # Set Delhes' random seed. Only possible through a config file...
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write("set RandomSeed {0:d}\n".format(delphes_random_state))
-            tmp.flush()
-            delphes_config_reader.ReadFile(tmp.name)
-        modular_delphes = new Delphes("Delphes")
-        modular_delphes.SetConfReader(delphes_config_reader)
-        delphes_all_particles = modular_delphes.ExportArray("allParticles")
-        delphes_stable_particles = modular_delphes.ExportArray("stableParticles")
-        delphes_partons = modular_delphes.ExportArray("partons")
-        modular_delphes.InitTask()
-        delphes_input_array = modular_delphes.ImportArray("Calorimeter/towers")
+    #try:
+                #detector_jets = None
+                #modular_delphes.Clear()
+                ## convert generator particles into Delphes candidates
+                #gen_input.to_delphes(modular_delphes,
+                                     #delphes_all_particles,
+                                     #delphes_stable_particles,
+                                     #delphes_partons)
+                ## run Delphes reconstruction
+                #modular_delphes.ProcessTask()
+                ## convert Delphes candidates into pseudojets
+                #delphes_to_pseudojet(delphes_input_array, particles)
 
-    cdef int ievent;
-    cdef Result* result
-    cdef vector[PseudoJet] particles
-    
-    try:
-        ievent = 0
-        while ievent < n_events:
-            if not gen_input.get_next_event():
-                continue
+                ## run jet clustering
+                #result = get_jets(particles,
+                                  #jet_size, subjet_size_fraction,
+                                  #subjet_pt_min_fraction,
+                                  #subjet_dr_min,
+                                  #trimmed_pt_min, trimmed_pt_max,
+                                  #trimmed_mass_min, trimmed_mass_max,
+                                  #shrink, shrink_mass,
+                                  #compute_auxvars)
 
-            # convert generator output directly into pseudojets
-            gen_input.to_pseudojet(particles, eta_max)
+                #if result != NULL:
+                    #detector_jets = Jets()
+                    #jets_from_result(detector_jets, result)
+                    #del result
 
-            # run jet clustering
-            result = get_jets(particles,
-                              jet_size, subjet_size_fraction,
-                              subjet_pt_min_fraction,
-                              subjet_dr_min,
-                              trimmed_pt_min, trimmed_pt_max,
-                              trimmed_mass_min, trimmed_mass_max,
-                              shrink, shrink_mass,
-                              compute_auxvars)
+                #yield truth_jets, detector_jets
 
-            if result == NULL:
-                # didn't find any jets passing cuts in this event
-                continue
-            
-            truth_jets = Jets()
-            jets_from_result(truth_jets, result)
-            del result
-
-            if delphes:
-                detector_jets = None
-                modular_delphes.Clear()
-                # convert generator particles into Delphes candidates
-                gen_input.to_delphes(modular_delphes,
-                                     delphes_all_particles,
-                                     delphes_stable_particles,
-                                     delphes_partons)
-                # run Delphes reconstruction
-                modular_delphes.ProcessTask()
-                # convert Delphes candidates into pseudojets
-                delphes_to_pseudojet(delphes_input_array, particles)
-
-                # run jet clustering
-                result = get_jets(particles,
-                                  jet_size, subjet_size_fraction,
-                                  subjet_pt_min_fraction,
-                                  subjet_dr_min,
-                                  trimmed_pt_min, trimmed_pt_max,
-                                  trimmed_mass_min, trimmed_mass_max,
-                                  shrink, shrink_mass,
-                                  compute_auxvars)
-
-                if result != NULL:
-                    detector_jets = Jets()
-                    jets_from_result(detector_jets, result)
-                    del result
-
-                yield truth_jets, detector_jets
-
-            else:
-                yield truth_jets
-            ievent += 1
-        gen_input.finish()
-    finally:
-        del modular_delphes
-        del delphes_config_reader
+            #else:
+                #yield truth_jets
+            #ievent += 1
+        #gen_input.finish()
+    #finally:
+        #del modular_delphes
+        #del delphes_config_reader

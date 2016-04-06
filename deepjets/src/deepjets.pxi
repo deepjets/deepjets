@@ -14,7 +14,9 @@ cdef extern from "clustering.h":
 
     bool keep_pythia_event(Event&, int, double, double)
     void result_to_arrays(Result&, double*, double*, double*, double*)
-    Result* get_jets(vector[PseudoJet]&, double, double, double, double, double, double, double, double, bool, double, bool)
+    Result* get_jets(vector[PseudoJet]&, double, double, double,
+                     double, double, double, double, double, bool,
+                     double, bool)
 
 
 cdef extern from "utils.h":
@@ -26,3 +28,4 @@ cdef extern from "utils.h":
     GenEvent* pythia_to_hepmc(Pythia*)
     void hepmc_finalstate_particles(GenEvent*, vector[GenParticle*]&)
     void particles_to_array(vector[GenParticle*]& particles, double*) 
+    void array_to_pseudojets(unsigned int size, double* array, vector[PseudoJet]& output, double eta_max)

@@ -38,6 +38,9 @@ def generate(gen_input, events,
              delphes_config='delphes_card_ATLAS_NoFastJet.tcl',
              delphes_random_state=0):
 
+    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
+        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+
     if not os.path.isfile(delphes_config):
         # use global config in share directory
         delphes_config = os.path.join(

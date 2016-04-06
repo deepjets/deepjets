@@ -142,6 +142,7 @@ HepMC::GenEvent* pythia_to_hepmc(Pythia8::Pythia* pythia) {
     return event;
 }
 
+
 void particles_to_array(std::vector<HepMC::GenParticle*>& particles, double* array) {
   HepMC::GenParticle* particle;
   HepMC::FourVector momentum, prod_vertex;
@@ -160,4 +161,18 @@ void particles_to_array(std::vector<HepMC::GenParticle*>& particles, double* arr
     array[i * 10 + 8] = prod_vertex.t();
     array[i * 10 + 9] = particle->pdg_id();
   }
+}
+
+
+void array_to_pseudojets(unsigned int size, double* array, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+    output.clear();
+    fastjet::PseudoJet pseudojet;
+    for (unsigned int i = 0; i < size; ++i) {
+        // px, py, pz, E
+        pseudojet = fastjet::PseudoJet(array[i * 10 + 1], array[i * 10 + 2], array[i * 10 + 3], array[i * 10 + 0]);
+        if (abs(pseudojet.pseudorapidity()) > eta_max) {
+            continue;
+        }
+        output.push_back(pseudojet);
+    }
 }
