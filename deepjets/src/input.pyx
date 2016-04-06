@@ -1,3 +1,5 @@
+import os
+
 
 cdef class GeneratorInput:
     cdef bool get_next_event(self) except *:
@@ -99,11 +101,14 @@ cdef class PythiaInput(GeneratorInput):
 
 
 cdef class HepMCInput(GeneratorInput):
+    cdef string filename
     cdef IO_GenEvent* hepmc_reader
     cdef GenEvent* event
 
     def __cinit__(self, string filename):
+        self.filename = filename
         self.hepmc_reader = get_hepmc_reader(filename)
+        self.event = NULL
 
     def __dealloc__(self):
         del self.event
@@ -122,3 +127,30 @@ cdef class HepMCInput(GeneratorInput):
         hepmc_to_pseudojet(self.event[0], particles, eta_max)
         del self.event
         self.event = NULL
+
+    def estimate_num_events(self, int sample_size=1000):
+        """
+        Getting the exact number of events in a HepMC file is too expensive
+        since this involves counting total number of lines beginning with "E"
+        and the file can be GB in size. Even "wc -l file.hepmc" takes forever.
+        Instead we can estimate the number of events by averaging the event
+        sizes for the first N events and then dividing the total file size by
+        that. This estimate may be used to report a progress bar as the reader
+        loops over events.
+        """
+        cdef np.ndarray sizes = np.empty(sample_size, dtype=np.int32)
+        cdef int num_found = 0
+        cdef long long prev_location = 0
+        filesize = os.path.getsize(self.filename)
+        with open(self.filename, 'r') as infile:
+            for line in infile:
+                if line[0] == 'E':
+                    if num_found > 0:
+                        sizes[num_found - 1] = infile.tell() - prev_location
+                    if num_found == sample_size:
+                        break
+                    num_found += 1
+                    prev_location = infile.tell()
+            else:
+                return num_found
+        return long(filesize / np.average(sizes))

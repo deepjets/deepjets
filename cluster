@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+"""
+Perform jet clustering on HepMC or HDF5 input
+"""
+import os
+import sys
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--output', '-o', default=None)
+parser.add_argument('--jet-size', type=float, default=1.0)
+parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
+parser.add_argument('--shrink', default=False, action='store_true')
+parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
+parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
+parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
+parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
+parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
+parser.add_argument('-d', '--debug', action='store_true', default=False,       
+                    help="show stack trace in the event of "                
+                         "an uncaught exception")
+parser.add_argument('events_file', help="HDF5 or HepMC file")
+args = parser.parse_args()
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(os.path.basename(__file__))
+log.setLevel(logging.INFO)
+
+if args.output is None:
+    args.output = os.path.splitext(args.events_file)[0] + '_jets.h5'
+
+if args.shrink_mass == 'jet':
+    # shrink with jet mass
+    args.shrink_mass = -1
+elif args.shrink_mass == 'wmass':
+    args.shrink_mass = 80.385
+else:
+    raise ValueError("this should not happen")
+
+from deepjets.samples import create_jets_datasets
+from deepjets.generate import get_generator_input
+from deepjets.clustering import cluster
+from fnmatch import fnmatch
+from progressbar import Bar, ETA, Percentage, ProgressBar
+import numpy as np
+import h5py
+
+output_exists = os.path.exists(args.output)
+h5output = h5py.File(args.output, 'w')
+
+hepmc = fnmatch(os.path.splitext(args.events_file)[1], '.hepmc*')
+if not hepmc:
+    h5input = h5py.File(args.events_file, 'r')
+
+try:
+    if hepmc:
+        cluster_input = get_generator_input('hepmc', args.events_file)
+        # assume we could be up to 20% wrong here
+        num_events = long(cluster_input.estimate_num_events() * 1.2)
+    else:
+        cluster_input = h5input['events'] 
+        num_events = len(cluster_input)
+    
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=num_events).start()
+
+    create_jets_datasets(h5output, num_events,
+                         args.jet_size, args.subjet_size_fraction)
+
+    dset_jet = h5output['jet']
+    dset_trimmed_jet = h5output['trimmed_jet']
+    dset_subjets = h5output['subjets']
+    dset_constit = h5output['constituents']
+    dset_trimmed_constit = h5output['trimmed_constituents']
+    dset_shrinkage = h5output['shrinkage']
+    dset_dr_subjets = h5output['subjet_dr']
+    dset_tau_1 = h5output['tau_1']
+    dset_tau_2 = h5output['tau_2']
+    dset_tau_3 = h5output['tau_3']
+
+    generator = cluster(
+        cluster_input,
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_pt_min=args.trimmed_pt_min,
+        trimmed_pt_max=args.trimmed_pt_max,
+        trimmed_mass_min=args.trimmed_mass_min,
+        trimmed_mass_max=args.trimmed_mass_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass,
+        compute_auxvars=True) 
+
+    ievent = 0
+    for event in generator:
+        dset_jet[ievent] = event.jets[0]
+        dset_trimmed_jet[ievent] = event.jets[1]
+        dset_subjets[ievent] = event.subjets
+        dset_constit[ievent] = event.constit
+        dset_trimmed_constit[ievent] = event.trimmed_constit
+        dset_shrinkage[ievent] = event.shrinkage
+        dset_dr_subjets[ievent] = event.subjet_dr
+        dset_tau_1[ievent] = event.tau_1
+        dset_tau_2[ievent] = event.tau_2
+        dset_tau_3[ievent] = event.tau_3
+        ievent += 1
+        pbar.update(ievent)
+
+    if hepmc and ievent < num_events:
+        # shrink tables
+        # the estimate of the number of events could have been too large
+        dset_jet.resize((ievent,))
+        dset_trimmed_jet.resize((ievent,))
+        dset_subjets.resize((ievent,))
+        dset_constit.resize((ievent,))
+        dset_trimmed_constit.resize((ievent,))
+        dset_shrinkage.resize((ievent,))
+        dset_dr_subjets.resize((ievent,))
+        dset_tau_1.resize((ievent,))
+        dset_tau_2.resize((ievent,))
+        dset_tau_3.resize((ievent,))
+
+    pbar.finish()
+
+except KeyboardInterrupt:
+    pbar.finish()
+    log.info("Caught Ctrl-c ... cleaning up")
+    h5output.close()
+    if not hepmc:
+        h5input.close()
+    if not output_exists:
+        log.info("Removing {0}".format(args.output))
+        os.unlink(args.output)
+    sys.exit(1)
+except Exception as e:
+    #pbar.finish()
+    if args.debug:                        
+        # If in debug mode show full stack trace
+        import traceback
+        traceback.print_exception(*sys.exc_info())
+    log.error(str(e))
+    h5output.close()
+    if not hepmc:
+        h5input.close()
+    sys.exit(1)
+else:
+    h5output.close()
+    if not hepmc:
+        h5input.close()

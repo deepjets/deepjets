@@ -1,0 +1,196 @@
+#!/usr/bin/env python
+
+import os
+import sys
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--output', '-o', default=None)
+parser.add_argument('--events', type=int, default=1000)
+parser.add_argument('--random-state', type=int, default=0)
+parser.add_argument('--jet-size', type=float, default=1.0)
+parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
+parser.add_argument('--shrink', default=False, action='store_true')
+parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
+parser.add_argument('--cut-on-pdgid', type=int, default=0)
+parser.add_argument('--pdgid-pt-min', type=float, default=-1)
+parser.add_argument('--pdgid-pt-max', type=float, default=-1)
+parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
+parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
+parser.add_argument('--params', default=None)
+parser.add_argument('-d', '--debug', action='store_true', default=False,       
+                    help="show stack trace in the event of "                
+                         "an uncaught exception")
+parser.add_argument('config_or_hepmc')
+subparsers = parser.add_subparsers(dest='subparser')
+
+unweighted_parser = subparsers.add_parser('unweighted')
+unweighted_parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
+unweighted_parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
+
+weighted_parser = subparsers.add_parser('weighted')
+weighted_parser.add_argument('--pt-min', type=float, default=200)
+weighted_parser.add_argument('--pt-max', type=float, default=500)
+weighted_parser.add_argument('--pt-bins', type=float, default=10)
+
+args = parser.parse_args()
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(os.path.basename(__file__))
+log.setLevel(logging.INFO)
+
+if args.output is None:
+    args.output = os.path.splitext(args.config_or_hepmc)[0] + '.h5'
+
+if args.params is not None:
+    args.params = dict([token.split('=') for token in args.params.split(';')])
+
+if args.shrink_mass == 'jet':
+    # shrink with jet mass
+    args.shrink_mass = -1
+elif args.shrink_mass == 'wmass':
+    args.shrink_mass = 80.385
+else:
+    raise ValueError("this should not happen")
+
+from deepjets.generate import generate, get_generator_input
+from deepjets.samples import create_event_datasets, get_flat_events 
+from deepjets.utils import mass, tot_mom, pT, dR
+import numpy as np
+import h5py
+from fnmatch import fnmatch
+from progressbar import Bar, ETA, Percentage, ProgressBar
+
+output_exists = os.path.exists(args.output)
+h5file = h5py.File(args.output, 'w')
+
+hepmc = False
+if fnmatch(os.path.splitext(args.config_or_hepmc)[1], '.hepmc*'):
+    hepmc = True
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=args.events).start()
+
+def generate_unweighted():
+    if hepmc:
+        gen_input = get_generator_input('hepmc', args.config_or_hepmc)
+    else:
+        gen_input = get_generator_input('pythia',
+            args.config_or_hepmc, random_state=args.random_state,
+            cut_on_pdgid=args.cut_on_pdgid,
+            pdgid_pt_min=args.pdgid_pt_min,
+            pdgid_pt_max=args.pdgid_pt_max,
+            params_dict=args.params)
+
+    create_event_datasets(h5file, args.events,
+                          args.jet_size, args.subjet_size_fraction)
+
+    dset_jet = h5file['jet']
+    dset_trimmed_jet = h5file['trimmed_jet']
+    dset_subjets = h5file['subjets']
+    dset_constit = h5file['constituents']
+    dset_trimmed_constit = h5file['trimmed_constituents']
+    dset_shrinkage = h5file['shrinkage']
+    dset_dr_subjets = h5file['subjet_dr']
+    dset_tau_1 = h5file['tau_1']
+    dset_tau_2 = h5file['tau_2']
+    dset_tau_3 = h5file['tau_3']
+
+    generator = generate(
+        gen_input,
+        args.events,
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_pt_min=args.trimmed_pt_min,
+        trimmed_pt_max=args.trimmed_pt_max,
+        trimmed_mass_min=args.trimmed_mass_min,
+        trimmed_mass_max=args.trimmed_mass_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass,
+        compute_auxvars=True) 
+
+    ievent = 0
+    for event in generator:
+        dset_jet[ievent] = event.jets[0]
+        dset_trimmed_jet[ievent] = event.jets[1]
+        dset_subjets[ievent] = event.subjets
+        dset_constit[ievent] = event.constit
+        dset_trimmed_constit[ievent] = event.trimmed_constit
+        dset_shrinkage[ievent] = event.shrinkage
+        dset_dr_subjets[ievent] = event.subjet_dr
+        dset_tau_1[ievent] = event.tau_1
+        dset_tau_2[ievent] = event.tau_2
+        dset_tau_3[ievent] = event.tau_3
+        ievent += 1
+        if hepmc:
+            pbar.update(ievent)
+
+    if hepmc:
+        pbar.finish()
+        # The number of events passing cuts may have been less than the requested
+        # number of events. Shrink datasets to remove empty rows
+        if ievent < args.events:
+            dset_jet.resize((ievent,))
+            dset_trimmed_jet.resize((ievent,))
+            dset_subjets.resize((ievent,))
+            dset_constit.resize((ievent,))
+            dset_trimmed_constit.resize((ievent,))
+            dset_shrinkage.resize((ievent,))
+            dset_dr_subjets.resize((ievent,))
+            dset_tau_1.resize((ievent,))
+            dset_tau_2.resize((ievent,))
+            dset_tau_3.resize((ievent,))
+
+
+def generate_weighted():
+    if hepmc:
+        raise NotImplementedError(
+            "Generating weighted events from HepMC is not implemented")
+    generator_params = dict(
+        filename=args.config_or_hepmc,
+        random_state=args.random_state,
+        cut_on_pdgid=args.cut_on_pdgid,
+        pdgid_pt_min=args.pdgid_pt_min,
+        pdgid_pt_max=args.pdgid_pt_max,
+        params_dict=args.params)
+    create_event_datasets(h5file, args.events * args.pt_bins,
+                          args.jet_size, args.subjet_size_fraction)
+    get_flat_events(h5file, generator_params, args.events,
+        args.pt_min, args.pt_max, args.pt_bins, 
+        jet_size=args.jet_size,
+        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_dr_min=args.subjet_dr_min,
+        trimmed_mass_min=args.trimmed_mass_min,
+        trimmed_mass_max=args.trimmed_mass_max,
+        shrink=args.shrink,
+        shrink_mass=args.shrink_mass)
+
+try:
+    if args.subparser == 'unweighted':
+        generate_unweighted()
+    else:
+        generate_weighted()
+except KeyboardInterrupt:
+    if hepmc:
+        pbar.finish()
+    log.info("Caught Ctrl-c ... cleaning up")
+    h5file.close()
+    if not output_exists:
+        log.info("Removing {0}".format(args.output))
+        os.unlink(args.output)
+    sys.exit(1)
+except Exception as e:
+    if hepmc:
+        pbar.finish()
+    if args.debug:                        
+        # If in debug mode show full stack trace
+        import traceback
+        traceback.print_exception(*sys.exc_info())
+    log.error(str(e))
+    h5file.close()
+    sys.exit(1)
+else:
+    h5file.close()

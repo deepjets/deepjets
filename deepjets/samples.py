@@ -3,16 +3,22 @@ import h5py
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
-from .generate import generate, get_generator_input
+from .generate import generate_events, get_generator_input
 from .preprocessing import preprocess, pixel_edges
 
 DTYPE = np.double
-dt_jet = np.dtype([('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
+dt_jet = np.dtype(
+    [('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
 dt_jets = h5py.special_dtype(vlen=dt_jet)
-dt_constit = h5py.special_dtype(vlen=np.dtype([('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
+dt_constit = h5py.special_dtype(vlen=np.dtype(
+    [('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
+dt_particles = h5py.special_dtype(vlen=np.dtype(
+    [('E', DTYPE), ('px', DTYPE), ('py', DTYPE), ('pz', DTYPE), ('mass', DTYPE),
+     ('prodx', DTYPE), ('prody', DTYPE), ('prodz', DTYPE), ('prodt', DTYPE),
+     ('pdgid', DTYPE)]))
 
 
-def create_event_datasets(h5file, events, jet_size, subjet_size_fraction):
+def create_jets_datasets(h5file, events, jet_size, subjet_size_fraction):
     h5file.create_dataset('jet', (events,), maxshape=(events,), dtype=dt_jet, chunks=True)
     h5file.create_dataset('trimmed_jet', (events,), maxshape=(events,), dtype=dt_jet, chunks=True)
     h5file.create_dataset('subjets', (events,), maxshape=(events,), dtype=dt_jets, chunks=True)
@@ -29,6 +35,11 @@ def create_event_datasets(h5file, events, jet_size, subjet_size_fraction):
     dset_subjet_size_fraction = h5file.create_dataset('subjet_size_fraction', (1,), dtype=DTYPE)
     dset_jet_size[0] = jet_size
     dset_subjet_size_fraction[0] = subjet_size_fraction
+
+
+def create_event_datasets(h5file, events):
+    h5file.create_dataset('events', (events,), maxshape=(events,),
+                          dtype=dt_particles, chunks=True)
 
 
 def get_images(generator_params, nevents, pt_min, pt_max,

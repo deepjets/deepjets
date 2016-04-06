@@ -135,10 +135,48 @@ def cluster_numpy(np.ndarray particles,
         shrink, shrink_mass,
         compute_auxvars)
 
+    
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cluster_hdf5(dataset,
+                 float eta_max,
+                 float jet_size,
+                 float subjet_size_fraction,
+                 float subjet_pt_min_fraction,
+                 float subjet_dr_min,
+                 float trimmed_pt_min, float trimmed_pt_max, 
+                 float trimmed_mass_min, float trimmed_mass_max,
+                 bool shrink, float shrink_mass,
+                 bool compute_auxvars):
+    """
+    Perform jet clustering on an array of particle arrays.
+    Yield the clustering for each event.
+    See cluster_pseudojets above.
+    """
+    cdef vector[PseudoJet] pseudojets
+    cdef int num_events = len(dataset)
+    cdef np.ndarray particles
+    cdef int ievent
+    for ievent in range(num_events):
+        particles = dataset[ievent]
+        # convert numpy array into vector of pseudojets
+        array_to_pseudojets(particles.shape[0], <DTYPE_t*> particles.data,
+                            pseudojets, eta_max)
+        yield cluster_pseudojets(
+            pseudojets,
+            jet_size,
+            subjet_size_fraction,
+            subjet_pt_min_fraction,
+            subjet_dr_min,
+            trimmed_pt_min, trimmed_pt_max,
+            trimmed_mass_min, trimmed_mass_max,
+            shrink, shrink_mass,
+            compute_auxvars)
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def cluster_hepmc(HepMCInput hepmc_input, int n_events,
+def cluster_hepmc(HepMCInput hepmc_input,
                   float eta_max,
                   float jet_size,
                   float subjet_size_fraction,
@@ -149,12 +187,8 @@ def cluster_hepmc(HepMCInput hepmc_input, int n_events,
                   bool shrink, float shrink_mass,
                   bool compute_auxvars):
     cdef vector[PseudoJet] pseudojets
-    cdef int ievent = 0;
     # event loop 
-    while ievent < n_events:
-        if not hepmc_input.get_next_event():
-            # no more events in HepMC file
-            break
+    while hepmc_input.get_next_event():
         # convert generator output directly into pseudojets
         hepmc_input.to_pseudojet(pseudojets, eta_max)
         # yield jets
@@ -168,7 +202,6 @@ def cluster_hepmc(HepMCInput hepmc_input, int n_events,
             trimmed_mass_min, trimmed_mass_max,
             shrink, shrink_mass,
             compute_auxvars)
-        ievent += 1
     hepmc_input.finish()
 
 
