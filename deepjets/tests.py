@@ -2,16 +2,18 @@
 from nose.tools import (raises, assert_raises, assert_true,
                         assert_equal, assert_almost_equal)
 
-from deepjets.generate import generate, get_generator_input
+from deepjets.generate import generate_events, get_generator_input
+from deepjets.clustering import cluster
 
 
 def get_one_event(random_state=1, gen_params=None, **kwargs):
-    if gen_params is None:
-        gen_params = dict()
+    gen_params = gen_params or dict()
     gen_input = get_generator_input('pythia', 'w.config',
                                     random_state=random_state,
+                                    verbosity=0,
                                     **gen_params)
-    return list(generate(gen_input, events=1, **kwargs))[0]
+    particles = list(generate_events(gen_input, 1))[0]
+    return list(cluster(particles, **kwargs))[0]
 
 
 def test_generate_random_state():
@@ -26,17 +28,17 @@ def test_subjetiness():
         'PhaseSpace:pTHatMin': 250,
         'PhaseSpace:pTHatMax': 300}
 
-    event_noshrink = get_one_event(gen_params=dict(params_dict=params_dict),
-                                   compute_auxvars=True, shrink=False)
-    event_shrink = get_one_event(gen_params=dict(params_dict=params_dict),
-                                 compute_auxvars=True, shrink=True, shrink_mass=80)
+    event_noshrink = get_one_event(
+        gen_params=dict(params_dict=params_dict),
+        compute_auxvars=True, shrink=False)
+    event_shrink = get_one_event(
+        gen_params=dict(params_dict=params_dict),
+        compute_auxvars=True, shrink=True, shrink_mass=80)
 
-    # original jet should be the same
-    # shrinkage only affects the subjets
-    assert_equal(event_noshrink.jets[0]['pT'], event_shrink.jets[0]['pT'])
+    # shrinkage should only decrease pT
+    assert_true(event_noshrink.jets[0]['pT'] >= event_shrink.jets[0]['pT'])
 
-    # shrinkage does not affect nsubjetiness since it is calculated on the
-    # original clustering with fixed size
-    assert_equal(event_noshrink.tau_1, event_shrink.tau_1)
-    assert_equal(event_noshrink.tau_2, event_shrink.tau_2)
-    assert_equal(event_noshrink.tau_3, event_shrink.tau_3)
+    # shrinkage will change values of nsubjetiness
+    assert_true(event_noshrink.tau_1 != event_shrink.tau_1)
+    assert_true(event_noshrink.tau_2 != event_shrink.tau_2)
+    assert_true(event_noshrink.tau_3 != event_shrink.tau_3)

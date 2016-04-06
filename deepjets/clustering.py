@@ -1,6 +1,7 @@
 from ._libdeepjets import cluster_hepmc, cluster_numpy, cluster_hdf5
 from ._libdeepjets import HepMCInput
 import numpy as np
+import h5py as h5
 
 __all__ = [
     'cluster',
@@ -38,6 +39,10 @@ def cluster(inputs,
         cluster_func = cluster_hepmc
     else:
         cluster_func = cluster_hdf5
+        # handle case where input is just one event
+        if not isinstance(inputs, h5.Dataset):
+            # a hack, but it works!
+            inputs = [inputs]
 
     for event in cluster_func(inputs, **kwargs):
         yield event
