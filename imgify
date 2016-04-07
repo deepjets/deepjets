@@ -52,7 +52,7 @@ def imgify(filename, pix_size, image_size, zoom, suffix, multi, location):
 
     if 'weights' in h5_input:
         auxvars_arrays.append(h5_input['weights'][:])
-        auxvars_names.append(',weights')
+        auxvars_names += ',weights'
     
     auxvars = np.core.records.fromarrays(auxvars_arrays, names=auxvars_names)
     dset_auxvars = h5_output.create_dataset('auxvars', auxvars.shape, auxvars.dtype)
