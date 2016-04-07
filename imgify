@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
-def imgify(filename, normalize, pix_size, image_size, zoom):
+def imgify(filename, normalize, pix_size, image_size, zoom, suffix, multi, location):
     import os
+    import sys
     import numpy as np
     from deepjets.preprocessing import preprocess, pixel_edges
     from deepjets.utils import jet_mass
+    from deepjets.multi_progress import Writer
+    from progressbar import Bar, ETA, Percentage, FormatLabel, ProgressBar
     import h5py
     
     # read from the events file
@@ -33,16 +36,25 @@ def imgify(filename, normalize, pix_size, image_size, zoom):
     eta_edges, phi_edges = edges
 
     # create the output file
-    output = os.path.splitext(filename)[0] + '_images.h5'
+    output = os.path.splitext(filename)[0]
+    if suffix:
+        output += '_{0}'.format(suffix)
+    output += '_images.h5'
     h5_output = h5py.File(output, 'w')
     dset_images = h5_output.create_dataset(
         'images', (len(dset_subjets), image_size, image_size), dtype=np.double)
+
+    auxvars_arrays = [
+        dset_jet['pT'], dset_trimmed_jet['pT'],
+        dset_jet['mass'], dset_trimmed_jet['mass'],
+        dset_dr_subjets[:], dset_tau_1[:], dset_tau_2[:], dset_tau_3[:]]
+    auxvars_names = 'pt,pt_trimmed,mass,mass_trimmed,subjet_dr,tau_1,tau_2,tau_3'
+
+    if 'weights' in h5_input:
+        auxvars_arrays.append(h5_input['weights'][:])
+        auxvars_names.append(',weights')
     
-    auxvars = np.core.records.fromarrays(
-        [dset_jet['pT'], dset_trimmed_jet['pT'],
-         dset_jet['mass'], dset_trimmed_jet['mass'],
-         dset_dr_subjets[:], dset_tau_1[:], dset_tau_2[:], dset_tau_3[:]],
-        names='pt,pt_trimmed,mass,mass_trimmed,subjet_dr,tau_1,tau_2,tau_3')
+    auxvars = np.core.records.fromarrays(auxvars_arrays, names=auxvars_names)
     dset_auxvars = h5_output.create_dataset('auxvars', auxvars.shape, auxvars.dtype)
     dset_auxvars[:] = auxvars
 
@@ -54,9 +66,10 @@ def imgify(filename, normalize, pix_size, image_size, zoom):
     dset_eta_edges[0] = (eta_edges[0], eta_edges[-1])
     dset_phi_edges[0] = (phi_edges[0], phi_edges[-1])
 
-    print("imgify({0}) -> {1} ...".format(filename, output))
-
-    for event in xrange(len(dset_subjets)):
+    widgets = [FormatLabel(output), ' ', Percentage(), ' ', Bar('>'), ' ', ETA()]
+    writer = Writer(location) if multi else sys.stderr
+    pbar = ProgressBar(fd=writer, widgets=widgets, max_value=len(dset_subjets)).start()
+    for i, event in enumerate(xrange(len(dset_subjets))):
         subjets = dset_subjets[event]
         trimmed_constit = dset_trimmed_constit[event]
         image = preprocess(subjets, trimmed_constit, edges,
@@ -65,7 +78,8 @@ def imgify(filename, normalize, pix_size, image_size, zoom):
                            out_width=image_size)
         # save the jet mass, pT and image
         dset_images[event] = image
-
+        pbar.update(i)
+    pbar.finish()
     h5_output.close()
 
 
@@ -73,19 +87,30 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('-n', type=int, default=-1)
+    parser.add_argument('--jobs', '-n', type=int, default=-1)
     parser.add_argument('--normalize', default=False, action='store_true')
     parser.add_argument('--pix-size', default='0.1,0.1')
     parser.add_argument('--image-size', type=int, default=25)
     parser.add_argument('--no-zoom', default=False, action='store_true')
+    parser.add_argument('--suffix', default=None)
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
     
     from deepjets.parallel import map_pool, FuncWorker
+    from deepjets.multi_progress import term
+    from contextlib import contextmanager
+
+    @contextmanager                                                                 
+    def do_nothing(*args, **kwargs):                                                
+        yield
     
-    map_pool(
-        FuncWorker,
-        [(imgify, filename, args.normalize,
-          args.pix_size, args.image_size, not args.no_zoom)
-            for filename in args.files],
-        n_jobs=args.n)
+    multi = len(args.files) > 1 and args.jobs != 1 
+    context = term.fullscreen if multi else do_nothing
+    
+    with context():
+        map_pool(
+            FuncWorker,
+            [(imgify, filename, args.normalize,
+            args.pix_size, args.image_size, not args.no_zoom, args.suffix,
+            multi, (0, i)) for i, filename in enumerate(args.files)],
+            n_jobs=args.jobs)
