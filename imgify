@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-def imgify(filename, normalize, pix_size, image_size, zoom, suffix, multi, location):
+def imgify(filename, pix_size, image_size, zoom, suffix, multi, location):
     import os
     import sys
     import numpy as np
@@ -74,7 +74,7 @@ def imgify(filename, normalize, pix_size, image_size, zoom, suffix, multi, locat
         trimmed_constit = dset_trimmed_constit[event]
         image = preprocess(subjets, trimmed_constit, edges,
                            zoom=1. / dset_shrinkage[event] if zoom else False,
-                           normalize=normalize,
+                           normalize=True,
                            out_width=image_size)
         # save the jet mass, pT and image
         dset_images[event] = image
@@ -88,7 +88,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('--jobs', '-n', type=int, default=-1)
-    parser.add_argument('--normalize', default=False, action='store_true')
     parser.add_argument('--pix-size', default='0.1,0.1')
     parser.add_argument('--image-size', type=int, default=25)
     parser.add_argument('--no-zoom', default=False, action='store_true')
@@ -110,7 +109,7 @@ if __name__ == '__main__':
     with context():
         map_pool(
             FuncWorker,
-            [(imgify, filename, args.normalize,
+            [(imgify, filename,
             args.pix_size, args.image_size, not args.no_zoom, args.suffix,
             multi, (0, i)) for i, filename in enumerate(args.files)],
             n_jobs=args.jobs)
