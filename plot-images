@@ -10,17 +10,24 @@ def plot(input):
     from matplotlib import pyplot as plt
     import h5py
     
-    print("plotting {0} ...".format(input))
-
     h5file = h5py.File(input, 'r')
     dset_images = h5file['images']
-
+    weights = None
+    if 'auxvars' in h5file:
+        auxvars = h5file['auxvars']
+        if 'weights' in auxvars.dtype.names:
+            weights = auxvars['weights']
     output_prefix = os.path.splitext(input)[0]
+    
+    if weights is not None:
+        print("plotting weighted average image {0} ...".format(input))
+    else:
+        print("plotting average image {0} ...".format(input))
 
     # plot jet images
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    avg_image = dset_images[:].sum(axis=0) / len(dset_images)
+    avg_image = np.average(dset_images[:], weights=weights, axis=0)
     plot_jet_image(ax, avg_image, vmax=1e-2)
     fig.tight_layout()
     fig.savefig(output_prefix + '.png')
@@ -30,7 +37,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('-n', type=int, default=-1)
+    parser.add_argument('-n', '--jobs', type=int, default=-1)
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
 
@@ -38,4 +45,4 @@ if __name__ == '__main__':
 
     map_pool(
         FuncWorker, [(plot, filename) for filename in args.files],
-        n_jobs=args.n)
+        n_jobs=args.jobs)
