@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+"""
+Reconstruct detector response with Delphes on HepMC or HDF5 input
+"""
+import os
+import sys
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--output', '-o', default=None)
+parser.add_argument('-d', '--debug', action='store_true', default=False,       
+                    help="show stack trace in the event of "                
+                         "an uncaught exception")
+parser.add_argument('events_file', help="HDF5 or HepMC file")
+args = parser.parse_args()
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(os.path.basename(__file__))
+log.setLevel(logging.INFO)
+
+if args.output is None:
+    args.output = os.path.splitext(args.events_file)[0] + '_delphes.h5'
+
+from deepjets.samples import create_jets_datasets
+from deepjets.generate import get_generator_input
+from deepjets.delphes import reconstruct_events
+from fnmatch import fnmatch
+from progressbar import Bar, ETA, Percentage, ProgressBar
+import numpy as np
+import h5py
+
+output_exists = os.path.exists(args.output)
+h5output = h5py.File(args.output, 'w')
+
+hepmc = fnmatch(os.path.splitext(args.events_file)[1], '.hepmc*')
+if not hepmc:
+    h5input = h5py.File(args.events_file, 'r')
+
+try:
+    if hepmc:
+        delphes_input = get_generator_input('hepmc', args.events_file)
+        # assume we could be up to 20% wrong here
+        num_events = long(delphes_input.estimate_num_events() * 1.2)
+    else:
+        delphes_input = h5input['events'] 
+        num_events = len(delphes_input)
+    
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=num_events).start()
+
+    create_event_datasets(h5file, num_events, delphes=True)
+    dset_candidates = h5file['events']
+
+    ievent = 0
+    for event in reconstruct_events(delphes_input):
+        dset_candidates[ievent] = event
+        ievent += 1
+        pbar.update(ievent)
+
+    if hepmc and ievent < num_events:
+        # shrink tables
+        # the estimate of the number of events could have been too large
+        dset_particles.resize((ievent,))
+    pbar.finish()
+
+except KeyboardInterrupt:
+    pbar.finish()
+    log.info("Caught Ctrl-c ... cleaning up")
+    h5output.close()
+    if not hepmc:
+        h5input.close()
+    if not output_exists:
+        log.info("Removing {0}".format(args.output))
+        os.unlink(args.output)
+    sys.exit(1)
+except Exception as e:
+    #pbar.finish()
+    if args.debug:                        
+        # If in debug mode show full stack trace
+        import traceback
+        traceback.print_exception(*sys.exc_info())
+    log.error(str(e))
+    h5output.close()
+    if not hepmc:
+        h5input.close()
+    sys.exit(1)
+else:
+    h5output.close()
+    if not hepmc:
+        h5input.close()

@@ -12,10 +12,14 @@ dt_jet = np.dtype(
 dt_jets = h5py.special_dtype(vlen=dt_jet)
 dt_constit = h5py.special_dtype(vlen=np.dtype(
     [('ET', DTYPE), ('eta', DTYPE), ('phi', DTYPE)]))
-dt_particles = h5py.special_dtype(vlen=np.dtype(
+dt_particle = np.dtype(
     [('E', DTYPE), ('px', DTYPE), ('py', DTYPE), ('pz', DTYPE), ('mass', DTYPE),
      ('prodx', DTYPE), ('prody', DTYPE), ('prodz', DTYPE), ('prodt', DTYPE),
-     ('pdgid', DTYPE)]))
+     ('pdgid', DTYPE)])  # extra info needed by Delphes
+dt_particles = h5py.special_dtype(vlen=dt_particle)
+dt_candidate = np.dtype(
+    [('E', DTYPE), ('px', DTYPE), ('py', DTYPE), ('pz', DTYPE)])
+dt_candidates = h5py.special_dtype(vlen=dt_candidate)
 
 
 def create_jets_datasets(h5file, events, jet_size, subjet_size_fraction):
@@ -37,9 +41,10 @@ def create_jets_datasets(h5file, events, jet_size, subjet_size_fraction):
     dset_subjet_size_fraction[0] = subjet_size_fraction
 
 
-def create_event_datasets(h5file, events):
+def create_event_datasets(h5file, events, delphes=False):
+    dtype = dt_candidates if delphes else dt_particles
     h5file.create_dataset('events', (events,), maxshape=(events,),
-                          dtype=dt_particles, chunks=True)
+                          dtype=dtype, chunks=True)
 
 
 def get_images(generator_params, nevents, pt_min, pt_max,
