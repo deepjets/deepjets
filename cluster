@@ -81,7 +81,7 @@ try:
     dset_tau_2 = h5output['tau_2']
     dset_tau_3 = h5output['tau_3']
 
-    generator = cluster(
+    clustering_generator = cluster(
         cluster_input,
         jet_size=args.jet_size,
         subjet_size_fraction=args.subjet_size_fraction,
@@ -95,7 +95,7 @@ try:
         compute_auxvars=True) 
 
     ievent = 0
-    for event in generator:
+    for event in clustering_generator:
         dset_jet[ievent] = event.jets[0]
         dset_trimmed_jet[ievent] = event.jets[1]
         dset_subjets[ievent] = event.subjets
