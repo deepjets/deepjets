@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from deepjets.generate import generate, get_generator_input
+from deepjets.generate import generate_events, get_generator_input
+from deepjets.clustering import cluster
 from deepjets.preprocessing import *
 from deepjets.utils import plot_jet_image
 import numpy as np
@@ -10,7 +11,8 @@ gen_input = get_generator_input('pythia', 'w.config',
                                 params_dict={
                                     'PhaseSpace:pTHatMin': 250,
                                     'PhaseSpace:pTHatMax': 300})
-event = list(generate(gen_input, 1,
+event = list(cluster(
+    generate_events(gen_input), 1,
     jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
     trimmed_pt_min=200, trimmed_pt_max=500))[0]
@@ -115,7 +117,9 @@ from matplotlib.colors import LogNorm
 fig = plt.figure(figsize=(14, 7))
 
 nevents = 80
-events = list(generate(gen_input, nevents, jet_size=1.0, shrink=True,
+events = list(cluster(
+    generate_events(gen_input), nevents,
+    jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
     trimmed_pt_min=200, trimmed_pt_max=500))
 

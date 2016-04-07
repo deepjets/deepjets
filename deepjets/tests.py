@@ -12,8 +12,13 @@ def get_one_event(random_state=1, gen_params=None, **kwargs):
                                     random_state=random_state,
                                     verbosity=0,
                                     **gen_params)
-    particles = list(generate_events(gen_input, 1))[0]
-    return list(cluster(particles, **kwargs))[0]
+    return list(cluster(generate_events(gen_input), 1, **kwargs))[0]
+
+
+def test_cluster_generate_length():
+    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 1))), 1)
+    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 10))), 10)
+    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 100))), 100)
 
 
 def test_generate_random_state():

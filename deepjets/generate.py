@@ -1,4 +1,4 @@
-from ._libdeepjets import generate_events
+from ._libdeepjets import generate_events as _generate_events
 from ._libdeepjets import PythiaInput, HepMCInput
 import os
 
@@ -29,3 +29,10 @@ def get_generator_input(name, filename, **kwargs):
         raise ValueError(
             "no generator input available with name '{0}'".format(name))
     return gen_input
+
+
+def generate_events(gen_input, events=-1, **kwargs):
+    if isinstance(gen_input, basestring):
+        gen_input = get_generator_input('pythia', gen_input, **kwargs)
+    for event in _generate_events(gen_input, events):
+        yield event

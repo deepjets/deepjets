@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-def plot(input):
+def plot(filename):
     import os
     import numpy as np
     from deepjets import generate
@@ -9,26 +9,32 @@ def plot(input):
     from deepjets.utils import plot_jet_image, jet_mass
     from matplotlib import pyplot as plt
     import h5py
+    import dask.array as da
     
-    h5file = h5py.File(input, 'r')
+    h5file = h5py.File(filename, 'r')
     dset_images = h5file['images']
     weights = None
     if 'auxvars' in h5file:
         auxvars = h5file['auxvars']
         if 'weights' in auxvars.dtype.names:
-            weights = auxvars['weights']
-    output_prefix = os.path.splitext(input)[0]
+            weights = da.from_array(auxvars['weights'], chunks=1000)
+    output_prefix = os.path.splitext(filename)[0]
     
     if weights is not None:
-        print("plotting weighted average image {0} ...".format(input))
+        print("plotting weighted average image {0} ...".format(filename))
     else:
-        print("plotting average image {0} ...".format(input))
+        print("plotting average image {0} ...".format(filename))
+
+    images = da.from_array(dset_images, chunks=1000)
+    if weights is None:
+        avg_image = images.mean(axis=0).compute()
+    else:
+        avg_image = images.dot(weights).compute() / weights.sum().compute()
 
     # plot jet images
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    avg_image = np.average(dset_images[:], weights=weights, axis=0)
-    plot_jet_image(ax, avg_image, vmax=1e-2)
+    plot_jet_image(ax, avg_image, label_axes=False)
     fig.tight_layout()
     fig.savefig(output_prefix + '.png')
 

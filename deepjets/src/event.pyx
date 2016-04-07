@@ -57,6 +57,8 @@ def generate_events(GeneratorInput gen_input, int n_events):
     cdef GenEvent* event
     cdef vector[GenParticle*] particles
     cdef int ievent = 0;
+    if n_events < 0:
+        ievent = n_events - 1
     while ievent < n_events:
         if not gen_input.get_next_event():
             continue
@@ -66,7 +68,8 @@ def generate_events(GeneratorInput gen_input, int n_events):
         particles_to_array(particles, <DTYPE_t*> particle_array.data)
         yield particle_array
         del event
-        ievent += 1
+        if n_events > 0:
+            ievent += 1
     gen_input.finish()
 
 
@@ -172,6 +175,47 @@ def cluster_hdf5(dataset,
             trimmed_mass_min, trimmed_mass_max,
             shrink, shrink_mass,
             compute_auxvars)
+
+        
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cluster_iterable(iterable,
+                     int events,
+                     float eta_max,
+                     float jet_size,
+                     float subjet_size_fraction,
+                     float subjet_pt_min_fraction,
+                     float subjet_dr_min,
+                     float trimmed_pt_min, float trimmed_pt_max, 
+                     float trimmed_mass_min, float trimmed_mass_max,
+                     bool shrink, float shrink_mass,
+                     bool compute_auxvars):
+    """
+    Perform jet clustering on an array of particle arrays.
+    Yield the clustering for each event.
+    See cluster_pseudojets above.
+    """
+    cdef vector[PseudoJet] pseudojets
+    cdef np.ndarray particles
+    cdef int ievent = 0
+    for particles in iterable:
+        # convert numpy array into vector of pseudojets
+        array_to_pseudojets(particles.shape[0], <DTYPE_t*> particles.data,
+                            pseudojets, eta_max)
+        yield cluster_pseudojets(
+            pseudojets,
+            jet_size,
+            subjet_size_fraction,
+            subjet_pt_min_fraction,
+            subjet_dr_min,
+            trimmed_pt_min, trimmed_pt_max,
+            trimmed_mass_min, trimmed_mass_max,
+            shrink, shrink_mass,
+            compute_auxvars)
+        ievent += 1
+        if ievent == events:
+            # early termination
+            break
 
 
 @cython.boundscheck(False)

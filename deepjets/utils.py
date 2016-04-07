@@ -263,7 +263,7 @@ class MidPointNorm(Normalize):
 
 def plot_jet_image(
         ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity",
-        simple=False):
+        label_axes=True, show_colorbar=True):
     """Display jet image.
 
     Args:
@@ -288,12 +288,13 @@ def plot_jet_image(
     p = ax.imshow(
         image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
         interpolation='nearest', norm=norm, cmap=cmap)
-    if not simple:
+    if show_colorbar:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         cbar = plt.colorbar(p, cax=cax, ticks=ticks)
         cbar.set_label(title, rotation=90, fontsize=18)
         cbar.ax.tick_params(labelsize=12)
+    if label_axes:
         ax.set_xlabel(r'$x_1$', fontsize=18)
         ax.set_ylabel(r'$x_2$', fontsize=18)
         ax.tick_params(axis='both', which='major', labelsize=12)
@@ -382,10 +383,10 @@ def plot_gen_dists(
 
 def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=1):
     """Signal to background likelihood ratio for a single variable.
-    
+
     Ratio is regularised by binning such that the same number of background
     images is in each bin.
-    
+
     Args:
         Y_true: array of true classes (n*2).
         var: array of variable values.
@@ -420,10 +421,10 @@ def likelihood_ratio(Y_true, var, sample_weight=None, nb_per_bin=1):
 
 def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     """Signal to background likelihood ratio for a pair of variables.
-    
+
     Ratio is regularised by binning such that the same number of background
     images is in each bin.
-    
+
     Args:
         Y_true: array of true classes (n*2).
         var1: array of variable values.
@@ -439,10 +440,10 @@ def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     var1_s = var1[Y_true[:, 0] == 1]
     var1_b = var1[Y_true[:, 0] == 0]
     var2_s = var2[Y_true[:, 0] == 1]
-    var2_b = var2[Y_true[:, 0] == 0]  
+    var2_b = var2[Y_true[:, 0] == 0]
     argsort_b = var1_b.argsort()
     var1_b = var1_b[argsort_b]
-    var2_b = var2_b[argsort_b]  
+    var2_b = var2_b[argsort_b]
     if sample_weight is not None:
         weights_s = sample_weight[Y_true[:, 0] == 1]
         weights_b = sample_weight[Y_true[:, 0] == 0]
@@ -483,7 +484,7 @@ def likelihood_ratio2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
 
 def default_inv_roc_curve(Y_true, var, sample_weight=None):
     """Default ROC curve for a single variable.
-    
+
     Args:
         Y_true: array of true classes (n*2).
         var: array of variable values.
@@ -500,7 +501,7 @@ def default_inv_roc_curve(Y_true, var, sample_weight=None):
 
 def lklhd_inv_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a single variable.
-    
+
     Args:
         Y_true: array of true classes (n*2).
         var: array of variable values.
@@ -516,7 +517,7 @@ def lklhd_inv_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
 
 def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a pair of variables.
-    
+
     Args:
         Y_true: array of true classes (n*2).
         var1: array of variable values.
