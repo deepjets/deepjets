@@ -9,7 +9,7 @@ def plot(signal, background, outfilename):
     signal_h5file_events = h5py.File(signal, 'r')
     signal_dset_jet = signal_h5file_events['jet']
     signal_dset_trimmed_jet = signal_h5file_events['trimmed_jet']
-    signal_dset_dr_subjets = signal_h5file_events['dR_subjets']
+    signal_dset_dr_subjets = signal_h5file_events['subjet_dr']
     signal_dset_tau_1 = signal_h5file_events['tau_1']
     signal_dset_tau_2 = signal_h5file_events['tau_2']
     
