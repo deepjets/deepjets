@@ -47,8 +47,18 @@ def train_model(
         log_file = sys.stdout
     print("Using loss function for early stopping.", file=log_file)
     h5file = h5py.File(train_h5_file, 'r')
-    if verbose >= 1:
+    if verbose >= 1 or log_to_file:
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
+        print("epochs = {0}, ".format(epochs), file=log_file)
+        print("val_frac = {0}, ".format(val_frac), file=log_file)
+        print("patience = {0}, ".format(patience), file=log_file)
+        if custom_lr_schedule is None:
+            print("lr_init = {0}, ".format(lr_init), file=log_file)
+            print("lr_scale_factor = {0}, ".format(lr_scale_factor),
+                  file=log_file)
+        else:
+            print("Using custom learning rate schedule function.",
+                  file=log_file)
         sys.stdout.flush()
     if log_file is not sys.stdout:
         log_file.close()
@@ -84,7 +94,6 @@ def train_model(
     h5file.close()
     if log_to_file:
         log_file = open(model_name+'_log.txt', 'a')
-        print("\nTraining complete.", file=log_file)
         print("\nTraining history:\n", file=log_file)
         print(history.history, file=log_file)
         log_file.close()
@@ -130,11 +139,20 @@ def train_model_auc_score(
     best_score = 0
     print("Using ROC AUC for early stopping.", file=log_file)
     h5file = h5py.File(train_h5_file, 'r')
-    if verbose >= 1:
+    if verbose >= 1 or log_to_file:
         print("Training on {0} samples, ".format(len(h5file['X_train'])) + 
               "validating on {0} samples.".format(len(h5file['X_val'])),
               file=log_file)
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
+        print("epochs = {0}, ".format(epochs), file=log_file)
+        print("patience = {0}, ".format(patience), file=log_file)
+        if custom_lr_schedule is None:
+            print("lr_init = {0}, ".format(lr_init), file=log_file)
+            print("lr_scale_factor = {0}, ".format(lr_scale_factor),
+                  file=log_file)
+        else:
+            print("Using custom learning rate schedule function.",
+                  file=log_file)
         sys.stdout.flush()
     if log_file is not sys.stdout:
         log_file.close()

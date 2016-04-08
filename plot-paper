@@ -19,16 +19,17 @@ def plot(signal, background, nbins, filename):
     background_selection = slice(0, -1)
     
     if 'weights' in signal_aux.dtype.names:
-        signal_weights = signal_weights
+        signal_weights = signal_aux['weights']
     else:
         signal_weights = np.ones(len(signal_aux))
 
     if 'weights' in background_aux.dtype.names:
-        background_weights = background_weights
+        background_weights = background_aux['weights']
     else:
         background_weights = np.ones(len(background_aux))
 
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+    fig.suptitle(r'Pythia 8 $\sqrt{s}=13$ TeV', fontsize=16)
     
     vals1, _, _ = ax[0, 0].hist(signal_aux['pt_trimmed'], bins=np.linspace(240, 310, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
@@ -40,7 +41,6 @@ def plot(signal, background, nbins, filename):
     ax[0, 0].set_ylabel('Normalized to Unity')
     ax[0, 0].set_xlabel(r'Trimmed Jet $p_{T}$ [GeV]', fontsize=12)
     ax[0, 0].legend(frameon=False)
-    ax[0, 0].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
 
     vals1, _, _ = ax[0, 1].hist(signal_aux['mass_trimmed'], bins=np.linspace(60, 100, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
@@ -52,7 +52,6 @@ def plot(signal, background, nbins, filename):
     ax[0, 1].set_ylabel('Normalized to Unity')
     ax[0, 1].set_xlabel(r'Trimmed Jet Mass [GeV]', fontsize=12)
     ax[0, 1].legend(frameon=False)
-    ax[0, 1].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
     
     vals1, _, _ = ax[1, 0].hist(np.true_divide(signal_aux['tau_2'], signal_aux['tau_1'])[signal_selection], bins=np.linspace(0, 1, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
@@ -64,7 +63,6 @@ def plot(signal, background, nbins, filename):
     ax[1, 0].set_ylabel('Normalized to Unity')
     ax[1, 0].set_xlabel(r'Jet $\tau_{21}$', fontsize=12)
     ax[1, 0].legend(frameon=False)
-    ax[1, 0].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
 
     vals1, _, _ = ax[1, 1].hist(signal_aux['subjet_dr'][signal_selection], bins=np.linspace(0, 1, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
@@ -76,9 +74,9 @@ def plot(signal, background, nbins, filename):
     ax[1, 1].set_ylabel('Normalized to Unity')
     ax[1, 1].set_xlabel(r'$\Delta R$ between subjets', fontsize=12)
     ax[1, 1].legend(frameon=False)
-    ax[1, 1].set_title(r'Pythia 8 $\sqrt{s}=13$ TeV')
 
     fig.tight_layout()
+    plt.subplots_adjust(top=0.93)
     plt.savefig(filename)
     
 
