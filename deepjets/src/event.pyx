@@ -181,6 +181,7 @@ def cluster_hdf5(dataset,
 @cython.wraparound(False)
 def cluster_iterable(iterable,
                      int events,
+                     bool skip_failed,
                      float eta_max,
                      float jet_size,
                      float subjet_size_fraction,
@@ -198,11 +199,12 @@ def cluster_iterable(iterable,
     cdef vector[PseudoJet] pseudojets
     cdef np.ndarray particles
     cdef int ievent = 0
+    cdef object jets
     for particles in iterable:
         # convert numpy array into vector of pseudojets
         array_to_pseudojets(particles.shape[0], <DTYPE_t*> particles.data,
                             pseudojets, eta_max)
-        yield cluster_pseudojets(
+        jets = cluster_pseudojets(
             pseudojets,
             jet_size,
             subjet_size_fraction,
@@ -212,10 +214,13 @@ def cluster_iterable(iterable,
             trimmed_mass_min, trimmed_mass_max,
             shrink, shrink_mass,
             compute_auxvars)
-        ievent += 1
-        if ievent == events:
-            # early termination
-            break
+
+        if (not skip_failed) or (jets is not None):
+            yield jets
+            ievent += 1
+            if ievent == events:
+                # early termination
+                break
 
 
 @cython.boundscheck(False)
@@ -249,10 +254,9 @@ def cluster_hepmc(HepMCInput hepmc_input,
     hepmc_input.finish()
 
 
-## WIP
-#cdef run_delphes(GenEvent* event, string config,
-                 #int random_state=0,
-                 #string detector_objects="Calorimeter/towers"):
+#cdef run_delphes(np.ndarray particles, string config,
+                 #int random_state,
+                 #string objects="Calorimeter/towers"):
     #"""
     #Reconstruct detector-level objects with Delphes
     #"""

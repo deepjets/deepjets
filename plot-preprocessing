@@ -121,9 +121,6 @@ fig.patches.extend(arrows)
 fig.tight_layout()
 plt.savefig('show_preprocessing.pdf')
 
-import sys
-sys.exit()
-
 # animated plot showing building up of average jet image
 
 from matplotlib import animation
