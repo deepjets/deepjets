@@ -1,7 +1,6 @@
-from ._libdeepjets import (cluster_hepmc, cluster_numpy,
+from ._libdeepjets import (cluster_mc, cluster_numpy,
                            cluster_hdf5, cluster_iterable)
-from ._libdeepjets import HepMCInput
-import numpy as np
+from ._libdeepjets import MCInput
 import h5py as h5
 import inspect
 
@@ -22,7 +21,7 @@ def cluster(inputs,
             shrink=False, shrink_mass=-1,
             compute_auxvars=False):
     """
-    Cluster particles into jets. Inputs may be a HepMCInput, h5py Dataset,
+    Cluster particles into jets. Inputs may be an MCInput, h5py Dataset,
     an array of particles (single event) or a generator that yields events
     of particles.
 
@@ -47,8 +46,8 @@ def cluster(inputs,
         shrink_mass=shrink_mass,
         compute_auxvars=compute_auxvars)
 
-    if isinstance(inputs, HepMCInput):
-        cluster_func = cluster_hepmc
+    if isinstance(inputs, MCInput):
+        cluster_func = cluster_mc
     elif isinstance(inputs, h5.Dataset):
         cluster_func = cluster_hdf5
     else:

@@ -11,6 +11,8 @@
 
 #include "TObjArray.h"
 #include "TLorentzVector.h"
+#include "TDatabasePDG.h"
+#include "TParticlePDG.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,6 +114,64 @@ void pythia_to_delphes(Pythia8::Event& event, Delphes* delphes,
 }
 
 
+void hepmc_to_delphes(HepMC::GenEvent* event, TDatabasePDG* pdg,
+                      Delphes* delphes, TObjArray* all_particles,
+                      TObjArray* stable_particles, TObjArray* partons) {
+    DelphesFactory* factory = delphes->GetFactory();
+    Candidate* candidate;
+    HepMC::GenParticle* particle;
+    HepMC::FourVector momentum, prod_vertex;
+    HepMC_IsStateFinal isfinal;
+    TParticlePDG *pdgParticle;
+    int pdgid;
+    for (HepMC::GenEvent::particle_iterator p = event->particles_begin(); p != event->particles_end(); ++p) {
+        particle = *p;
+        pdgid = abs(particle->pdg_id());
+        if ((pdgid == 12) || (pdgid == 14) || (pdgid == 16)) continue; // neutrino
+        pdgParticle = pdg->GetParticle(particle->pdg_id());
+        momentum = particle->momentum();
+        prod_vertex = particle->production_vertex()->position();
+        candidate = factory->NewCandidate();
+        candidate->PID = particle->pdg_id();
+        candidate->Status = particle->status();
+        candidate->Charge = pdgParticle ? int(pdgParticle->Charge()/3.0) : -999;
+        candidate->Mass = momentum.m();
+        candidate->Momentum.SetPxPyPzE(momentum.px(), momentum.py(), momentum.pz(), momentum.e());
+        candidate->Position.SetXYZT(prod_vertex.x(), prod_vertex.y(), prod_vertex.z(), prod_vertex.t());
+        all_particles->Add(candidate);
+        if (isfinal(particle)) {
+            stable_particles->Add(candidate);
+        } else if (pdgid <= 5 || pdgid == 21 || pdgid == 15) {
+            partons->Add(candidate);
+        }
+    }
+}
+
+
+void array_to_delphes(int num_particles, double* particles, TDatabasePDG* pdg,
+                      Delphes* delphes, TObjArray* all_particles,
+                      TObjArray* stable_particles, TObjArray* partons) {
+    // Only stable particles
+    DelphesFactory* factory = delphes->GetFactory();
+    Candidate* candidate;
+    TParticlePDG *pdgParticle;
+    double* particle;
+    for (int iparticle = 0; iparticle < num_particles; ++iparticle) {
+        particle = &particles[iparticle * 10];
+        pdgParticle = pdg->GetParticle(particle[9]);
+        candidate = factory->NewCandidate();
+        candidate->PID = particle[9];
+        candidate->Status = 1;
+        candidate->Charge = pdgParticle ? int(pdgParticle->Charge()/3.0) : -999;
+        candidate->Mass = particle[4];
+        candidate->Momentum.SetPxPyPzE(particle[1], particle[2], particle[3], particle[0]);
+        candidate->Position.SetXYZT(particle[5], particle[6], particle[7], particle[8]);
+        all_particles->Add(candidate);
+        stable_particles->Add(candidate);
+    }
+}
+
+
 void delphes_to_pseudojet(TObjArray* input_array, std::vector<fastjet::PseudoJet>& output) {
     // Based on code here:
     // https://cp3.irmp.ucl.ac.be/projects/delphes/browser/examples/ExternalFastJet/ExternalFastJetBasic.cpp
@@ -132,6 +192,22 @@ void delphes_to_pseudojet(TObjArray* input_array, std::vector<fastjet::PseudoJet
 }
 
 
+void delphes_to_array(TObjArray* input_array, double* array) {
+    TIterator* input_iterator = input_array->MakeIterator();
+    Candidate* candidate;
+    TLorentzVector momentum;
+    unsigned int icand = 0;
+    while((candidate = static_cast<Candidate*>(input_iterator->Next()))) {
+        momentum = candidate->Momentum;
+        array[icand * 4 + 0] = momentum.E();
+        array[icand * 4 + 1] = momentum.Px();
+        array[icand * 4 + 2] = momentum.Py();
+        array[icand * 4 + 3] = momentum.Pz();
+        ++icand;
+    }
+}
+
+
 HepMC::GenEvent* pythia_to_hepmc(Pythia8::Pythia* pythia) {
     HepMC::Pythia8ToHepMC py2hepmc;
     HepMC::GenEvent* event = new HepMC::GenEvent();
@@ -144,6 +220,7 @@ HepMC::GenEvent* pythia_to_hepmc(Pythia8::Pythia* pythia) {
 
 
 void particles_to_array(std::vector<HepMC::GenParticle*>& particles, double* array) {
+  // particles should only contain finalstate particles
   HepMC::GenParticle* particle;
   HepMC::FourVector momentum, prod_vertex;
   for (unsigned int i = 0; i < particles.size(); ++i) {
@@ -164,12 +241,15 @@ void particles_to_array(std::vector<HepMC::GenParticle*>& particles, double* arr
 }
 
 
-void array_to_pseudojets(unsigned int size, double* array, std::vector<fastjet::PseudoJet>& output, double eta_max) {
+void array_to_pseudojets(unsigned int size, unsigned int fields, double* array,
+                         std::vector<fastjet::PseudoJet>& output, double eta_max) {
     output.clear();
     fastjet::PseudoJet pseudojet;
+    double* fourvect;
     for (unsigned int i = 0; i < size; ++i) {
+        fourvect = &array[i * fields];
         // px, py, pz, E
-        pseudojet = fastjet::PseudoJet(array[i * 10 + 1], array[i * 10 + 2], array[i * 10 + 3], array[i * 10 + 0]);
+        pseudojet = fastjet::PseudoJet(fourvect[1], fourvect[2], fourvect[3], fourvect[0]);
         if (abs(pseudojet.pseudorapidity()) > eta_max) {
             continue;
         }

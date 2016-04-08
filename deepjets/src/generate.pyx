@@ -1,7 +1,7 @@
 import os
 
 
-cdef class GeneratorInput:
+cdef class MCInput:
     cdef bool get_next_event(self) except *:
         return False
     
@@ -21,7 +21,7 @@ cdef class GeneratorInput:
         pass
 
 
-cdef class PythiaInput(GeneratorInput):
+cdef class PythiaInput(MCInput):
     cdef Pythia* pythia
     cdef int cut_on_pdgid
     cdef float pdgid_pt_min
@@ -85,30 +85,32 @@ cdef class PythiaInput(GeneratorInput):
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         pythia_to_pseudojet(self.pythia.event, particles, eta_max)
         
-    cdef void to_delphes(self, Delphes* modular_delphes,
-                         TObjArray* delphes_all_particles,
-                         TObjArray* delphes_stable_particles,
-                         TObjArray* delphes_partons):
+    cdef void to_delphes(self, Delphes* delphes,
+                         TObjArray* all_particles,
+                         TObjArray* stable_particles,
+                         TObjArray* partons):
         # convert Pythia particles into Delphes candidates
-        pythia_to_delphes(self.pythia.event, modular_delphes,
-                          delphes_all_particles,
-                          delphes_stable_particles,
-                          delphes_partons)
+        pythia_to_delphes(self.pythia.event, delphes,
+                          all_particles,
+                          stable_particles,
+                          partons)
 
     cdef void finish(self):
         if self.verbosity > 0:
             self.pythia.stat()
 
 
-cdef class HepMCInput(GeneratorInput):
+cdef class HepMCInput(MCInput):
     cdef string filename
     cdef IO_GenEvent* hepmc_reader
     cdef GenEvent* event
+    cdef TDatabasePDG *pdg
 
     def __cinit__(self, string filename):
         self.filename = filename
         self.hepmc_reader = get_hepmc_reader(filename)
         self.event = NULL
+        self.pdg = TDatabasePDG_Instance()
 
     def __dealloc__(self):
         del self.event
@@ -127,6 +129,17 @@ cdef class HepMCInput(GeneratorInput):
         hepmc_to_pseudojet(self.event[0], particles, eta_max)
         del self.event
         self.event = NULL
+    
+    cdef void to_delphes(self, Delphes* delphes,
+                         TObjArray* all_particles,
+                         TObjArray* stable_particles,
+                         TObjArray* partons):
+        # convert Pythia particles into Delphes candidates
+        hepmc_to_delphes(self.event, self.pdg,
+                         delphes,
+                         all_particles,
+                         stable_particles,
+                         partons)
 
     def estimate_num_events(self, int sample_size=1000):
         """
@@ -154,3 +167,30 @@ cdef class HepMCInput(GeneratorInput):
             else:
                 return num_found
         return long(filesize / np.average(sizes))
+
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def generate_events(MCInput gen_input, int n_events):
+    """
+    Generate events (or read HepMC) and yield numpy arrays of particles
+    """
+    cdef np.ndarray particle_array
+    cdef GenEvent* event
+    cdef vector[GenParticle*] particles
+    cdef int ievent = 0;
+    if n_events < 0:
+        ievent = n_events - 1
+    while ievent < n_events:
+        if not gen_input.get_next_event():
+            continue
+        event = gen_input.get_hepmc()
+        hepmc_finalstate_particles(event, particles)
+        particle_array = np.empty((particles.size(),), dtype=dtype_particle)
+        particles_to_array(particles, <DTYPE_t*> particle_array.data)
+        yield particle_array
+        del event
+        if n_events > 0:
+            ievent += 1
+    gen_input.finish()

@@ -78,7 +78,7 @@ else:
 libdeepjets = Extension(
     'deepjets._libdeepjets',
     sources=['deepjets/src/_libdeepjets.pyx'],
-    depends=['deepjets/src/deepjets.h'],
+    depends=glob('deepjets/src/*.h'),
     language='c++',
     include_dirs=[
         np.get_include(),

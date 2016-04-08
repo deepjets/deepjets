@@ -22,10 +22,17 @@ cdef extern from "clustering.h":
 cdef extern from "utils.h":
     IO_GenEvent* get_hepmc_reader(string)
     void hepmc_to_pseudojet(GenEvent&, vector[PseudoJet]&, double)
+    void hepmc_to_delphes(GenEvent* event, TDatabasePDG* pdg,
+                          Delphes* delphes, TObjArray* all_particles,
+                          TObjArray* stable_particles, TObjArray* partons) 
     void pythia_to_pseudojet(Event&, vector[PseudoJet]&, double)
     void pythia_to_delphes(Event&, Delphes*, TObjArray*, TObjArray*, TObjArray*)
     void delphes_to_pseudojet(TObjArray*, vector[PseudoJet]&)
+    void delphes_to_array(TObjArray* input_array, double* array)
     GenEvent* pythia_to_hepmc(Pythia*)
     void hepmc_finalstate_particles(GenEvent*, vector[GenParticle*]&)
-    void particles_to_array(vector[GenParticle*]& particles, double*) 
-    void array_to_pseudojets(unsigned int size, double* array, vector[PseudoJet]& output, double eta_max)
+    void particles_to_array(vector[GenParticle*]& particles, double*)
+    void array_to_delphes(int num_particles, double* particles, TDatabasePDG* pdg,
+                          Delphes* delphes, TObjArray* all_particles,
+                          TObjArray* stable_particles, TObjArray* partons) 
+    void array_to_pseudojets(unsigned int size, unsigned int fields, double* array, vector[PseudoJet]& output, double eta_max)

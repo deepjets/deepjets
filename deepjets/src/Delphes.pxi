@@ -1,4 +1,9 @@
 
+cdef extern from "TDatabasePDG.h":
+    cdef cppclass TDatabasePDG:
+        pass
+    cdef TDatabasePDG* TDatabasePDG_Instance "TDatabasePDG::Instance"()
+
 cdef extern from "TObjArray.h":
     cdef cppclass TObjArray:
         int GetEntries()
