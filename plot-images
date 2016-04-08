@@ -24,12 +24,12 @@ def plot(filename):
         print("plotting weighted average image {0} ...".format(filename))
     else:
         print("plotting average image {0} ...".format(filename))
-
-    images = da.from_array(dset_images, chunks=1000)
+    
+    images = da.from_array(dset_images, chunks=(1000, 25, 25))
     if weights is None:
         avg_image = images.mean(axis=0).compute()
     else:
-        avg_image = images.dot(weights).compute() / weights.sum().compute()
+        avg_image = da.tensordot(images, weights, axes=(0, 0)).compute() / weights.sum().compute()
 
     # plot jet images
     fig = plt.figure(figsize=(6, 5))

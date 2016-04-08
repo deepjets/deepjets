@@ -7,7 +7,7 @@ from deepjets.utils import plot_jet_image
 import numpy as np
 
 # generate one event
-gen_input = get_generator_input('pythia', 'w.config',
+gen_input = get_generator_input('pythia', 'w.config', random_state=7,
                                 params_dict={
                                     'PhaseSpace:pTHatMin': 250,
                                     'PhaseSpace:pTHatMax': 300})
@@ -15,7 +15,8 @@ event = list(cluster(
     generate_events(gen_input), 1,
     jet_size=1.0, shrink=True,
     shrink_mass=80.385, subjet_dr_min=0.3,
-    trimmed_pt_min=200, trimmed_pt_max=500))[0]
+    trimmed_pt_min=250, trimmed_pt_max=300,
+    trimmed_mass_min=65, trimmed_mass_max=95))[0]
 
 edges = pixel_edges(
         jet_size=1.0,
@@ -45,12 +46,17 @@ def simple_axes(ax):
 for ax in axes:
     simple_axes(ax)
 
-
 translate(event.trimmed_constit, event.subjets)
 axes[0].scatter(event.trimmed_constit['eta'], event.trimmed_constit['phi'],
-        marker='o', s=event.trimmed_constit['ET'] * 5)
-axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
-      fontsize=18, fontweight='bold', va='top')
+    marker='o', s=event.trimmed_constit['ET'] * 5)
+axes[0].text(0.02, 0.98, "Particles", transform=axes[0].transAxes,
+    fontsize=18, fontweight='bold', va='top')
+axes[0].text(.02,.5,r'$\phi$',
+    va='center', ha='left', fontsize=20,
+    transform=axes[0].transAxes)
+axes[0].text(.5,.02,r'$\eta$',
+    va='bottom', ha='center', fontsize=20,
+    transform=axes[0].transAxes)
 
 image = pixelize(event.trimmed_constit, edges)
 
@@ -58,56 +64,65 @@ width, height = image.T.shape
 dw, dh = 1./width, 1./height
 axes[1].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-    interpolation='nearest', cmap='jet')
-axes[1].text(0.05, 0.95, "Pixelize", transform=axes[1].transAxes,
-      color='white', fontsize=18, fontweight='bold', va='top')
+    interpolation='nearest', cmap='Reds')
+axes[1].text(0.05, 0.95, "Pixelise", transform=axes[1].transAxes,
+      color='black', fontsize=18, fontweight='bold', va='top')
+axes[1].text(.02,.5,r'$\phi$',
+    va='center', ha='left', fontsize=20, color='black',
+    transform=axes[1].transAxes)
+axes[1].text(.5,.02,r'$\eta$',
+    va='bottom', ha='center', fontsize=20, color='black',
+    transform=axes[1].transAxes)
 
 image = rotate_image(image, event.subjets)
 axes[2].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-    interpolation='nearest', cmap='jet')
+    interpolation='nearest', cmap='Reds')
 axes[2].text(0.05, 0.95, "Rotate", transform=axes[2].transAxes,
-      color='white', fontsize=18, fontweight='bold', va='top')
+      color='black', fontsize=18, fontweight='bold', va='top')
 
 image = reflect_image(image, event.subjets)
 axes[3].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-    interpolation='nearest', cmap='jet')
+    interpolation='nearest', cmap='Reds')
 axes[3].text(0.05, 0.95, "Reflect", transform=axes[3].transAxes,
-      color='white', fontsize=18, fontweight='bold', va='top')
+      color='black', fontsize=18, fontweight='bold', va='top')
 
 image = zoom_image(image, 1. / event.shrinkage, 25)
 axes[4].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-    interpolation='nearest', cmap='jet')
+    interpolation='nearest', cmap='Reds')
 axes[4].text(0.05, 0.95, "Zoom", transform=axes[4].transAxes,
-      color='white', fontsize=18, fontweight='bold', va='top')
+      color='black', fontsize=18, fontweight='bold', va='top')
 
 from matplotlib.patches import FancyArrowPatch
 
 tr = fig.transFigure
 
 arrows = [
-FancyArrowPatch(posA=(0.45, 0.75), posB=(0.55, 0.75),
-                arrowstyle='simple', mutation_scale=50,
-      transform=tr, facecolor='white', edgecolor='none'),
+#FancyArrowPatch(posA=(0.45, 0.75), posB=(0.55, 0.75),
+#                arrowstyle='simple', mutation_scale=50,
+#      transform=tr, facecolor='black', edgecolor='none'),
 
 FancyArrowPatch(posA=(0.7, 0.75), posB=(0.8, 0.75),
                 arrowstyle='simple', mutation_scale=50,
-      transform=tr, facecolor='white', edgecolor='none'),
+      transform=tr, facecolor='black', edgecolor='none'),
 
 FancyArrowPatch(posA=(0.8, 0.6), posB=(0.7, 0.4),
                 arrowstyle='simple', mutation_scale=50,
-      transform=tr, facecolor='white', edgecolor='none'),
+      transform=tr, facecolor='black', edgecolor='none'),
 
 FancyArrowPatch(posA=(0.7, 0.25), posB=(0.8, 0.25),
                 arrowstyle='simple', mutation_scale=50,
-      transform=tr, facecolor='white', edgecolor='none'),
+      transform=tr, facecolor='black', edgecolor='none'),
 ]
 fig.patches.extend(arrows) 
 
 fig.tight_layout()
-plt.savefig('show_preprocessing.png')
+plt.savefig('show_preprocessing.pdf')
+
+import sys
+sys.exit()
 
 # animated plot showing building up of average jet image
 
