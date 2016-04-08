@@ -185,6 +185,7 @@ def train_model_auc_score(
         # Calculate AUC for custom early stopping
         Y_prob = model.predict_proba(
             X_val, batch_size=batch_size, verbose=0)
+        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         lklhd_rat, bins = likelihood_ratio(
             Y_val, Y_prob[:, 0], weights_val)
         scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
@@ -283,6 +284,7 @@ def test_model(
             sample_weight=weights_test)
         Y_prob = model.predict_proba(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
+        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
     # Calculate inverse ROC curve and AUC
