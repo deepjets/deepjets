@@ -49,12 +49,12 @@ def train_model(
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1 or log_to_file:
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
-        print("epochs = {0}, ".format(epochs), file=log_file)
-        print("val_frac = {0}, ".format(val_frac), file=log_file)
-        print("patience = {0}, ".format(patience), file=log_file)
+        print("epochs = {0}".format(epochs), file=log_file)
+        print("val_frac = {0}".format(val_frac), file=log_file)
+        print("patience = {0}".format(patience), file=log_file)
         if custom_lr_schedule is None:
-            print("lr_init = {0}, ".format(lr_init), file=log_file)
-            print("lr_scale_factor = {0}, ".format(lr_scale_factor),
+            print("lr_init = {0}".format(lr_init), file=log_file)
+            print("lr_scale_factor = {0}".format(lr_scale_factor),
                   file=log_file)
         else:
             print("Using custom learning rate schedule function.",
@@ -144,11 +144,11 @@ def train_model_auc_score(
               "validating on {0} samples.".format(len(h5file['X_val'])),
               file=log_file)
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
-        print("epochs = {0}, ".format(epochs), file=log_file)
-        print("patience = {0}, ".format(patience), file=log_file)
+        print("epochs = {0}".format(epochs), file=log_file)
+        print("patience = {0}".format(patience), file=log_file)
         if custom_lr_schedule is None:
-            print("lr_init = {0}, ".format(lr_init), file=log_file)
-            print("lr_scale_factor = {0}, ".format(lr_scale_factor),
+            print("lr_init = {0}".format(lr_init), file=log_file)
+            print("lr_scale_factor = {0}".format(lr_scale_factor),
                   file=log_file)
         else:
             print("Using custom learning rate schedule function.",
@@ -185,6 +185,7 @@ def train_model_auc_score(
         # Calculate AUC for custom early stopping
         Y_prob = model.predict_proba(
             X_val, batch_size=batch_size, verbose=0)
+        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         lklhd_rat, bins = likelihood_ratio(
             Y_val, Y_prob[:, 0], weights_val)
         scores = lklhd_rat[np.digitize(Y_prob[:, 0], bins) - 1]
@@ -283,6 +284,7 @@ def test_model(
             sample_weight=weights_test)
         Y_prob = model.predict_proba(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
+        Y_prob /= Y_prob.sum(axis=1)[:, np.newaxis]
         Y_pred = model.predict_classes(
             h5file[X_dataset], batch_size=batch_size, verbose=0)
     # Calculate inverse ROC curve and AUC
