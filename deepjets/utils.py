@@ -515,7 +515,8 @@ def lklhd_inv_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
     return default_inv_roc_curve(Y_true, scores, sample_weight)
 
 
-def lklhd_roc_curve2d(Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
+def lklhd_inv_roc_curve2d(
+        Y_true, var1, var2, sample_weight=None, nb_per_bin=1):
     """Likelihood ratio ROC curve for a pair of variables.
 
     Args:
