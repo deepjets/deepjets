@@ -113,7 +113,7 @@ cdef class HepMCInput(MCInput):
         self.pdg = TDatabasePDG_Instance()
 
     def __dealloc__(self):
-        del self.event
+        #del self.event
         del self.hepmc_reader
 
     cdef bool get_next_event(self):

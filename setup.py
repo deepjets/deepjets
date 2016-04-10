@@ -103,5 +103,8 @@ setup(
     name='deepjets',
     version='0.0.1',
     packages=['deepjets'],
+    package_data={
+        'deepjets': ['testdata/*.hepmc'],
+    },
     ext_modules=cythonize([libdeepjets]),
 )

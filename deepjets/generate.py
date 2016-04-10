@@ -1,6 +1,7 @@
 from ._libdeepjets import generate_events as _generate_events
 from ._libdeepjets import PythiaInput, HepMCInput
 import os
+from fnmatch import fnmatch
 
 __all__ = [
     'generate_events',
@@ -33,6 +34,9 @@ def get_generator_input(name, filename, **kwargs):
 
 def generate_events(gen_input, events=-1, **kwargs):
     if isinstance(gen_input, basestring):
-        gen_input = get_generator_input('pythia', gen_input, **kwargs)
+        if fnmatch(os.path.splitext(gen_input)[1], '.hepmc*'):
+            gen_input = get_generator_input('hepmc', gen_input, **kwargs)
+        else:
+            gen_input = get_generator_input('pythia', gen_input, **kwargs)
     for event in _generate_events(gen_input, events):
         yield event

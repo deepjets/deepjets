@@ -62,7 +62,7 @@ try:
     if hepmc and ievent < num_events:
         # shrink tables
         # the estimate of the number of events could have been too large
-        dset_particles.resize((ievent,))
+        dset_candidates.resize((ievent,))
     pbar.finish()
 
 except KeyboardInterrupt:

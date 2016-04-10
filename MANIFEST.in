@@ -1,0 +1,3 @@
+recursive-include deepjets *.h *.cpp *.pyx *.pxi *.hepmc
+include *.py
+include README.rst
