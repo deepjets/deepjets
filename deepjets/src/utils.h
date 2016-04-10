@@ -130,14 +130,18 @@ void hepmc_to_delphes(HepMC::GenEvent* event, TDatabasePDG* pdg,
         if ((pdgid == 12) || (pdgid == 14) || (pdgid == 16)) continue; // neutrino
         pdgParticle = pdg->GetParticle(particle->pdg_id());
         momentum = particle->momentum();
-        prod_vertex = particle->production_vertex()->position();
         candidate = factory->NewCandidate();
         candidate->PID = particle->pdg_id();
         candidate->Status = particle->status();
         candidate->Charge = pdgParticle ? int(pdgParticle->Charge()/3.0) : -999;
         candidate->Mass = momentum.m();
         candidate->Momentum.SetPxPyPzE(momentum.px(), momentum.py(), momentum.pz(), momentum.e());
-        candidate->Position.SetXYZT(prod_vertex.x(), prod_vertex.y(), prod_vertex.z(), prod_vertex.t());
+        if (particle->production_vertex() == NULL) {
+            candidate->Position.SetXYZT(0, 0, 0, 0);
+        } else {
+            prod_vertex = particle->production_vertex()->position();
+            candidate->Position.SetXYZT(prod_vertex.x(), prod_vertex.y(), prod_vertex.z(), prod_vertex.t());
+        }
         all_particles->Add(candidate);
         if (isfinal(particle)) {
             stable_particles->Add(candidate);
