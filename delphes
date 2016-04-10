@@ -23,9 +23,9 @@ log.setLevel(logging.INFO)
 if args.output is None:
     args.output = os.path.splitext(args.events_file)[0] + '_delphes.h5'
 
-from deepjets.samples import create_jets_datasets
+from deepjets.samples import create_event_datasets
 from deepjets.generate import get_generator_input
-from deepjets.delphes import reconstruct_events
+from deepjets.detector import reconstruct
 from fnmatch import fnmatch
 from progressbar import Bar, ETA, Percentage, ProgressBar
 import numpy as np
@@ -50,11 +50,11 @@ try:
     widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
     pbar = ProgressBar(widgets=widgets, max_value=num_events).start()
 
-    create_event_datasets(h5file, num_events, delphes=True)
-    dset_candidates = h5file['events']
+    create_event_datasets(h5output, num_events, delphes=True)
+    dset_candidates = h5output['events']
 
     ievent = 0
-    for event in reconstruct_events(delphes_input):
+    for event in reconstruct(delphes_input):
         dset_candidates[ievent] = event
         ievent += 1
         pbar.update(ievent)
