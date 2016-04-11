@@ -96,6 +96,8 @@ try:
 
     ievent = 0
     for event in clustering_generator:
+        if event is None:
+            continue
         dset_jet[ievent] = event.jets[0]
         dset_trimmed_jet[ievent] = event.jets[1]
         dset_subjets[ievent] = event.subjets
@@ -109,9 +111,10 @@ try:
         ievent += 1
         pbar.update(ievent)
 
-    if hepmc and ievent < num_events:
-        # shrink tables
+    if ievent < num_events:
+        # shrink tables:
         # the estimate of the number of events could have been too large
+        # or some events didn't pass jet-level cuts
         dset_jet.resize((ievent,))
         dset_trimmed_jet.resize((ievent,))
         dset_subjets.resize((ievent,))
