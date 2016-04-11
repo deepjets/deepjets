@@ -7,7 +7,7 @@ def full_sequence_maxout(
         sig_file='/data/edawe/public/deepjets/events/pythia/weighted_masswindow_shrinkage/w_noshrink_zoom_images.h5',
         bkd_file='/data/edawe/public/deepjets/events/pythia/weighted_masswindow_shrinkage/qcd_noshrink_zoom_images.h5',
         dataset_name='datasets/test', model_name='models/test',
-        batch_size=100, epochs=1, val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.)
+        batch_size=100, epochs=1, val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.):
     """Prepares datasets, trains and tests model."""
     h5_files = prepare_datasets(
         sig_file, bkd_file, dataset_name, n_sig=n_images, n_bkd=n_images,
