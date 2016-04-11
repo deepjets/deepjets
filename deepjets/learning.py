@@ -13,7 +13,7 @@ from sklearn.metrics import auc, roc_curve
 def train_model(
         model, train_h5_file, model_name='model', batch_size=100, epochs=100,
         val_frac=0.1, patience=10, lr_init=0.001, lr_scale_factor=1.,
-        custom_lr_schedule=None, verbose=1, log_to_file=False,
+        custom_lr_schedule=None, verbose=2, log_to_file=False,
         read_into_ram=False):
     """Train model. Save model with best score.
     
@@ -241,7 +241,7 @@ def train_model_auc_score(
 
 def test_model(
         model, test_h5_file, model_name='model', batch_size=100, verbose=2,
-        log_to_file=False, show_roc_curve=True, X_dataset='X_test',
+        log_to_file=False, show_roc_curve=False, X_dataset='X_test',
         Y_dataset='Y_test'):
     """Test model. Display ROC curve.
     

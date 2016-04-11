@@ -48,7 +48,7 @@ def load_images(image_h5_file, n_images=-1, shuffle_seed=1):
 
 def prepare_datasets(
         sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
-        test_frac=0.1, val_frac=0.1, n_folds=2, shuffle=True, shuffle_seed=1):
+        test_frac=0.1, val_frac=0., n_folds=1, shuffle=True, shuffle_seed=1):
     """Prepare datasets for network training.
 
     Combine signal and background images; k-fold into training, validation,
@@ -59,8 +59,9 @@ def prepare_datasets(
                                   background images.
         dataset_name: base filename to use for saving datasets.
         n_sig, n_bkd: number of signal, background images to load.
-        test_frac, val_frac: proportion of images to save for testing,
-                             validation
+        test_frac: proportion of images to save for testing.
+        val_frac: proportion of images to save for validation. Leave at zero
+                  unless using ROC AUC scoring.
         n_folds: number of k-folds.
         auxvars: list of auxvar field names to load.
         shuffle: if True shuffle images before k-folding.
