@@ -3,7 +3,7 @@
 PYTHON := $(shell which python)
 NOSETESTS := $(shell which nosetests)
 
-output := /data/edawe/public/deepjets/events/pythia_masswindow
+output := /data/edawe/public/deepjets/events/pythia/raw
 setup := cd /data/edawe/private/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
 WMASS := 80.385
 
@@ -87,6 +87,15 @@ events-stanford:
 	done
 
 all-events: events events-no-shrink events-stanford
+
+raw-events:
+	mkdir -p $(output)/log
+	for chunk in $$(seq 1 1 14); do \
+		echo "$(setup) ./generate w.config --output $(output)/w_events_$${chunk}.h5 --events 1000000 --random-state $${chunk} --params \"PhaseSpace:pTHatMin = 150;PhaseSpace:pTHatMax = 550\"" | qsub -e $(output)/log -o $(output)/log -N w_events_$${chunk} -l nodes=1:ppn=1; \
+	done
+	for chunk in $$(seq 1 1 14); do \
+		echo "$(setup) ./generate qcd.config --output $(output)/qcd_events_$${chunk}.h5 --events 1000000 --random-state $${chunk} --params \"PhaseSpace:pTHatMin = 150;PhaseSpace:pTHatMax = 550\"" | qsub -e $(output)/log -o $(output)/log -N qcd_events_$${chunk} -l nodes=1:ppn=1; \
+	done
 
 w-images-no-batch:
 	mkdir -p $(output)/log
