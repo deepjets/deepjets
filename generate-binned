@@ -36,15 +36,14 @@ name = os.path.splitext(os.path.basename(args.config))[0] + '_events'
 pt_bin_edges = np.linspace(args.pt_min, args.pt_max, args.pt_bins + 1)
 setup_cmd = "cd {0}; source setup.sh;".format(os.path.dirname(os.path.realpath(__file__)))
 
+print "mkdir -p " + os.path.join(args.output_dir, 'log')
 if not args.dry:
     mkdir_p(os.path.join(args.output_dir, 'log'))
-else:
-    print "mkdir -p " + os.path.join(args.output_dir, 'log')
 
 random_state = 1 + args.random_state_offset
 for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):
     cmd = (
-        'echo "{setup} ./generate {config} --output {output_dir}/{name}_{random_state}.h5 '
+        'echo "{setup} ./generate {config} --output {output_dir}/{name}_{random_state}_{pt_lo}_{pt_hi}.h5 '
         '--events {events} --random-state {random_state} '
         '--params \\"PhaseSpace:pTHatMin = {pt_lo};PhaseSpace:pTHatMax = {pt_hi}\\"" | '
         'qsub -e {output_dir}/log -o {output_dir}/log -N {name}_{random_state} -l nodes=1:ppn=1 -q {queue};'.format(
@@ -52,12 +51,11 @@ for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):
             random_state=random_state,
             output_dir=args.output_dir,
             config=args.config,
-            pt_lo=pt_lo - 20, pt_hi=pt_hi + 20,
+            pt_lo=int(pt_lo - 20), pt_hi=int(pt_hi + 20),
             queue=args.queue,
             events=args.events_per_bin,
             name=name))
-    if args.dry:
-        print cmd
-    else:
+    print cmd
+    if not args.dry:
         subprocess.call(cmd, shell=True)
     random_state += 1
