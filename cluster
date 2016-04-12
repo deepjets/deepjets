@@ -2,70 +2,43 @@
 """
 Perform jet clustering on HepMC or HDF5 input
 """
-import os
-import sys
-from argparse import ArgumentParser
 
-parser = ArgumentParser()
-parser.add_argument('--output', '-o', default=None)
-parser.add_argument('--jet-size', type=float, default=1.0)
-parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
-parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
-parser.add_argument('--shrink', default=False, action='store_true')
-parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
-parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
-parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
-parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
-parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
-parser.add_argument('-d', '--debug', action='store_true', default=False,       
-                    help="show stack trace in the event of "                
-                         "an uncaught exception")
-parser.add_argument('events_file', help="HDF5 or HepMC file")
-args = parser.parse_args()
+def cluster_file(filename, args, multi, location):
+    import sys
+    from deepjets.samples import create_jets_datasets
+    from deepjets.generate import get_generator_input
+    from deepjets.clustering import cluster
+    from deepjets.detector import reconstruct
+    from fnmatch import fnmatch
+    from deepjets.multi_progress import Writer
+    from progressbar import Bar, ETA, Percentage, FormatLabel, ProgressBar
+    import numpy as np
+    import h5py
+    
+    suffix = '_jets.h5'
+    if args.delphes:
+        suffix = '_delphes' + suffix
+    output = os.path.splitext(filename)[0] + suffix
+    h5output = h5py.File(output, 'w')
 
-import logging
+    hepmc = fnmatch(os.path.splitext(filename)[1], '.hepmc*')
+    if not hepmc:
+        h5input = h5py.File(filename, 'r')
 
-logging.basicConfig()
-log = logging.getLogger(os.path.basename(__file__))
-log.setLevel(logging.INFO)
-
-if args.output is None:
-    args.output = os.path.splitext(args.events_file)[0] + '_jets.h5'
-
-if args.shrink_mass == 'jet':
-    # shrink with jet mass
-    args.shrink_mass = -1
-elif args.shrink_mass == 'wmass':
-    args.shrink_mass = 80.385
-else:
-    raise ValueError("this should not happen")
-
-from deepjets.samples import create_jets_datasets
-from deepjets.generate import get_generator_input
-from deepjets.clustering import cluster
-from fnmatch import fnmatch
-from progressbar import Bar, ETA, Percentage, ProgressBar
-import numpy as np
-import h5py
-
-output_exists = os.path.exists(args.output)
-h5output = h5py.File(args.output, 'w')
-
-hepmc = fnmatch(os.path.splitext(args.events_file)[1], '.hepmc*')
-if not hepmc:
-    h5input = h5py.File(args.events_file, 'r')
-
-try:
     if hepmc:
-        cluster_input = get_generator_input('hepmc', args.events_file)
+        cluster_input = get_generator_input('hepmc', filename)
         # assume we could be up to 20% wrong here
         num_events = long(cluster_input.estimate_num_events() * 1.2)
     else:
         cluster_input = h5input['events'] 
         num_events = len(cluster_input)
+
+    if args.delphes:
+        cluster_input = reconstruct(cluster_input)
     
-    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
-    pbar = ProgressBar(widgets=widgets, max_value=num_events).start()
+    widgets = [FormatLabel(output), ' ', Percentage(), ' ', Bar('>'), ' ', ETA()]
+    writer = Writer(location) if multi else sys.stderr
+    pbar = ProgressBar(fd=writer, widgets=widgets, max_value=num_events).start()
 
     create_jets_datasets(h5output, num_events,
                          args.jet_size, args.subjet_size_fraction)
@@ -127,29 +100,56 @@ try:
         dset_tau_3.resize((ievent,))
 
     pbar.finish()
+    h5output.close()
+    if not hepmc:
+        h5input.close()
 
-except KeyboardInterrupt:
-    pbar.finish()
-    log.info("Caught Ctrl-c ... cleaning up")
-    h5output.close()
-    if not hepmc:
-        h5input.close()
-    if not output_exists:
-        log.info("Removing {0}".format(args.output))
-        os.unlink(args.output)
-    sys.exit(1)
-except Exception as e:
-    #pbar.finish()
-    if args.debug:                        
-        # If in debug mode show full stack trace
-        import traceback
-        traceback.print_exception(*sys.exc_info())
-    log.error(str(e))
-    h5output.close()
-    if not hepmc:
-        h5input.close()
-    sys.exit(1)
-else:
-    h5output.close()
-    if not hepmc:
-        h5input.close()
+
+if __name__ == '__main__':
+
+    import os
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--jobs', '-n', type=int, default=-1)
+    parser.add_argument('--jet-size', type=float, default=1.0)
+    parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+    parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
+    parser.add_argument('--shrink', default=False, action='store_true')
+    parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
+    parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
+    parser.add_argument('--trimmed-mass-max', type=float, default=-1.)
+    parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
+    parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
+    parser.add_argument('--delphes', action='store_true', default=False)
+    parser.add_argument('-d', '--debug', action='store_true', default=False,       
+                        help="show stack trace in the event of "                
+                            "an uncaught exception")
+    parser.add_argument('files', nargs='+', help="HDF5 or HepMC file")
+    args = parser.parse_args()
+
+    if args.shrink_mass == 'jet':
+        # shrink with jet mass
+        args.shrink_mass = -1
+    elif args.shrink_mass == 'wmass':
+        args.shrink_mass = 80.385
+    else:
+        raise ValueError("invalid --shrink-mass option")
+
+    from deepjets.parallel import map_pool, FuncWorker
+    from deepjets.multi_progress import term
+    from contextlib import contextmanager
+
+    @contextmanager                                                                 
+    def do_nothing(*args, **kwargs):                                                
+        yield
+    
+    multi = len(args.files) > 1 and args.jobs != 1 
+    context = term.fullscreen if multi else do_nothing
+    
+    with context():
+        map_pool(
+            FuncWorker,
+            [(cluster_file, filename, args, multi, (0, i))
+                for i, filename in enumerate(args.files)],
+            n_jobs=args.jobs)

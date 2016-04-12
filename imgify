@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-def imgify(filename, pix_size, image_size, zoom, suffix, multi, location):
+def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, location):
     import os
     import sys
     import numpy as np
@@ -72,8 +72,13 @@ def imgify(filename, pix_size, image_size, zoom, suffix, multi, location):
     for i, event in enumerate(xrange(len(dset_subjets))):
         subjets = dset_subjets[event]
         trimmed_constit = dset_trimmed_constit[event]
+        if auto_zoom:
+            actual_size = 2 * 80.385 / dset_jet[event]['pT'];
+            zoom_factor = jet_size / actual_size 
+        else:
+            zoom_factor = 1. / dset_shrinkage[event] if zoom else False
         image = preprocess(subjets, trimmed_constit, edges,
-                           zoom=1. / dset_shrinkage[event] if zoom else False,
+                           zoom=zoom_factor,
                            normalize=True,
                            out_width=image_size)
         # save the jet mass, pT and image
@@ -91,6 +96,8 @@ if __name__ == '__main__':
     parser.add_argument('--pix-size', default='0.1,0.1')
     parser.add_argument('--image-size', type=int, default=25)
     parser.add_argument('--no-zoom', default=False, action='store_true')
+    # temp feature requested by James:
+    parser.add_argument('--auto-zoom', default=False, action='store_true')
     parser.add_argument('--suffix', default=None)
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
@@ -110,6 +117,6 @@ if __name__ == '__main__':
         map_pool(
             FuncWorker,
             [(imgify, filename,
-            args.pix_size, args.image_size, not args.no_zoom, args.suffix,
+            args.pix_size, args.image_size, not args.no_zoom, args.auto_zoom, args.suffix,
             multi, (0, i)) for i, filename in enumerate(args.files)],
             n_jobs=args.jobs)
