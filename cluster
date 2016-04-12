@@ -15,10 +15,15 @@ def cluster_file(filename, args, multi, location):
     import numpy as np
     import h5py
     
-    suffix = '_jets.h5'
+    suffix = '_j{0:.1f}_sj{1:.2f}'.format(
+        args.jet_size, args.subjet_size_fraction * args.jet_size).replace('.', 'p')
+    if args.shrink:
+        suffix += '_shrink'
     if args.delphes:
-        suffix = '_delphes' + suffix
-    output = os.path.splitext(filename)[0] + suffix
+        suffix += '_delphes'
+    suffix += '_jets'
+
+    output = os.path.splitext(filename)[0] + suffix + '.h5'
     h5output = h5py.File(output, 'w')
 
     hepmc = fnmatch(os.path.splitext(filename)[1], '.hepmc*')
