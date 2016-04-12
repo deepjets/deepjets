@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """
-Generate weighted or unweighted PYTHIA events and save HDF5 file containing
-particles.
+Generate PYTHIA events and save an HDF5 file containing final state particles.
 """
 import os
 import sys

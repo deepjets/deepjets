@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+"""
+Generate PYTHIA events in pT bins.
+"""
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--events-per-bin', type=int, default=1000)
+parser.add_argument('--random-state-offset', type=int, default=0)
+parser.add_argument('--pt-min', type=float, default=200)
+parser.add_argument('--pt-max', type=float, default=500)
+parser.add_argument('--pt-bins', type=float, default=10)
+parser.add_argument('--queue', default='long')
+parser.add_argument('--dry', action='store_true', default=False)
+parser.add_argument('config')
+parser.add_argument('output_dir')
+args = parser.parse_args()
+
+import os
+import subprocess
+import numpy as np
+import errno    
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+args.output_dir = os.path.normpath(args.output_dir)
+name = os.path.splitext(os.path.basename(args.config))[0] + '_events'
+pt_bin_edges = np.linspace(args.pt_min, args.pt_max, args.pt_bins + 1)
+setup_cmd = "cd {0}; source setup.sh;".format(os.path.dirname(os.path.realpath(__file__)))
+
+if not args.dry:
+    mkdir_p(os.path.join(args.output_dir, 'log'))
+else:
+    print "mkdir -p " + os.path.join(args.output_dir, 'log')
+
+random_state = 1 + args.random_state_offset
+for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):
+    cmd = (
+        'echo "{setup} ./generate {config} --output {output_dir}/{name}_{random_state}.h5 '
+        '--events {events} --random-state {random_state} '
+        '--params \\"PhaseSpace:pTHatMin = {pt_lo};PhaseSpace:pTHatMax = {pt_hi}\\"" | '
+        'qsub -e {output_dir}/log -o {output_dir}/log -N {name}_{random_state} -l nodes=1:ppn=1 -q {queue};'.format(
+            setup=setup_cmd,
+            random_state=random_state,
+            output_dir=args.output_dir,
+            config=args.config,
+            pt_lo=pt_lo - 20, pt_hi=pt_hi + 20,
+            queue=args.queue,
+            events=args.events_per_bin,
+            name=name))
+    if args.dry:
+        print cmd
+    else:
+        subprocess.call(cmd, shell=True)
+    random_state += 1

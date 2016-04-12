@@ -12,11 +12,14 @@ def plot(signal, background, nbins, filename):
     background_h5file_events = h5py.File(background, 'r')
     background_aux = background_h5file_events['auxvars']
 
-    #signal_selection = (signal_aux['mass_trimmed'] > 65) & (signal_aux['mass_trimmed'] < 95)
-    #background_selection = (background_aux['mass_trimmed'] > 65) & (background_aux['mass_trimmed'] < 95)
+    signal_selection = (signal_aux['mass_trimmed'] > 65) & (signal_aux['mass_trimmed'] < 95)
+    background_selection = (background_aux['mass_trimmed'] > 65) & (background_aux['mass_trimmed'] < 95)
+    
+    print (signal_selection & ((signal_aux['pt_trimmed'] > 250) & (signal_aux['pt_trimmed'] < 300))).sum()
+    print (background_selection & ((background_aux['pt_trimmed'] > 250) & (background_aux['pt_trimmed'] < 300))).sum()
 
-    signal_selection = slice(0, -1)
-    background_selection = slice(0, -1)
+    #signal_selection = slice(0, -1)
+    #background_selection = slice(0, -1)
     
     if 'weights' in signal_aux.dtype.names:
         signal_weights = signal_aux['weights']
@@ -30,24 +33,26 @@ def plot(signal, background, nbins, filename):
 
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
     fig.suptitle(r'Pythia 8 $\sqrt{s}=13$ TeV', fontsize=16)
-    
-    vals1, _, _ = ax[0, 0].hist(signal_aux['pt_trimmed'], bins=np.linspace(240, 310, nbins),
+   
+    pt_min, pt_max = 100, 500
+
+    vals1, _, _ = ax[0, 0].hist(signal_aux['pt_trimmed'][signal_selection], bins=np.linspace(pt_min, pt_max, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
-               label=r'$W\rightarrow qq\prime$', weights=signal_weights)
-    vals2, _, _ = ax[0, 0].hist(background_aux['pt_trimmed'], bins=np.linspace(240, 310, nbins),
+               label=r'$W\rightarrow qq\prime$', weights=signal_weights[signal_selection])
+    vals2, _, _ = ax[0, 0].hist(background_aux['pt_trimmed'][background_selection], bins=np.linspace(pt_min, pt_max, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
-               label='QCD jets', weights=background_weights)
+               label='QCD jets', weights=background_weights[background_selection])
     ax[0, 0].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
     ax[0, 0].set_ylabel('Normalized to Unity')
     ax[0, 0].set_xlabel(r'Trimmed Jet $p_{T}$ [GeV]', fontsize=12)
     ax[0, 0].legend(frameon=False)
 
-    vals1, _, _ = ax[0, 1].hist(signal_aux['mass_trimmed'], bins=np.linspace(60, 100, nbins),
+    vals1, _, _ = ax[0, 1].hist(signal_aux['mass_trimmed'][signal_selection], bins=np.linspace(60, 100, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
-               label=r'$W\rightarrow qq\prime$', weights=signal_weights)
-    vals2, _, _ = ax[0, 1].hist(background_aux['mass_trimmed'], bins=np.linspace(60, 100, nbins),
+               label=r'$W\rightarrow qq\prime$', weights=signal_weights[signal_selection])
+    vals2, _, _ = ax[0, 1].hist(background_aux['mass_trimmed'][background_selection], bins=np.linspace(60, 100, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='red', normed=1,
-               label='QCD jets', weights=background_weights)
+               label='QCD jets', weights=background_weights[background_selection])
     ax[0, 1].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
     ax[0, 1].set_ylabel('Normalized to Unity')
     ax[0, 1].set_xlabel(r'Trimmed Jet Mass [GeV]', fontsize=12)
