@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+
+def get_suffix(args):
+    suffix = ''
+    if args.suffix:
+        suffix += '_{0}'.format(args.suffix)
+    suffix += '_images'
+    return suffix
+
+
 def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, location):
     import os
     import sys
@@ -10,6 +19,23 @@ def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, locat
     from progressbar import Bar, ETA, Percentage, FormatLabel, ProgressBar
     import h5py
     
+    suffix = get_suffix(args)
+    output = os.path.splitext(filename)[0] + suffix + '.h5'
+
+    # check if output already exists and is finished
+    if os.path.exists(output):
+        try:
+            h5py.File(output, 'r')
+        except:
+            print "{0} exists but is not complete. Will overwrite it.".format(output)
+            pass
+        else:
+            print "{0} exists and is complete. Nothing to do.".format(output)
+            return
+
+    # create the output file
+    h5_output = h5py.File(output, 'w')
+
     # read from the events file
     h5_input = h5py.File(filename, 'r')
     dset_jet = h5_input['jet']
@@ -35,13 +61,7 @@ def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, locat
         subjet_size=subjet_size,
         pix_size=(eta_size, phi_size))
     eta_edges, phi_edges = edges
-
-    # create the output file
-    output = os.path.splitext(filename)[0]
-    if suffix:
-        output += '_{0}'.format(suffix)
-    output += '_images.h5'
-    h5_output = h5py.File(output, 'w')
+    
     dset_images = h5_output.create_dataset(
         'images', (len(dset_subjets), image_size, image_size), dtype=np.double)
 
@@ -100,13 +120,56 @@ if __name__ == '__main__':
     # temp feature requested by James:
     parser.add_argument('--auto-zoom', default=False, action='store_true')
     parser.add_argument('--suffix', default=None)
+    parser.add_argument('--batch', default=None)
+    parser.add_argument('--dry', action='store_true', default=False)
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
     
     from deepjets.parallel import map_pool, FuncWorker
     from deepjets.multi_progress import term
     from contextlib import contextmanager
+    import os
     import sys
+    
+    if args.batch is not None:
+        # call me again but in a batch job for each input file
+        import subprocess
+        from deepjets.path_utils import mkdir_p
+
+        cmd = sys.argv[:]
+        # remove batch option
+        idx = cmd.index('--batch')
+        cmd.pop(idx)
+        cmd.pop(idx)
+        # remove filenames
+        for filename in args.files:
+            cmd.remove(filename)
+        output_dir = os.getcwd()
+        setup_cmd = "source {0}/setup.sh; cd {1};".format(
+            os.path.dirname(os.path.realpath(__file__)),
+            output_dir)
+        log_path = os.path.join(output_dir, 'log')
+        if args.dry:
+            print "mkdir -p {0}".format(log_path)
+        else:
+            mkdir_p(log_path)
+        # call self in batch job once per file
+        for filename in args.files:
+            name = os.path.splitext(os.path.basename(filename))[0] + get_suffix(args)
+            cmd_file = ' '.join(cmd + [filename])
+            cmd_batch = (
+                'echo "{setup} {cmd_file}" | '
+                'qsub -e {output_dir}/log -o {output_dir}/log '
+                '-N {name} -l nodes=1:ppn=1 -q {queue};').format(
+                    setup=setup_cmd,
+                    cmd_file=cmd_file,
+                    output_dir=output_dir,
+                    queue=args.batch,
+                    name=name)
+            print cmd_batch
+            if not args.dry:
+                subprocess.call(cmd_batch, shell=True)
+        sys.exit(0)
 
     @contextmanager                                                                 
     def do_nothing(*args, **kwargs):                                                

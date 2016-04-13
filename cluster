@@ -157,10 +157,10 @@ if __name__ == '__main__':
     import sys
 
     if args.batch is not None:
+        # call me again but in a batch job for each input file
         import subprocess
         from deepjets.path_utils import mkdir_p
 
-        # call me again but in a batch job for each input file
         cmd = sys.argv[:]
         # remove batch option
         idx = cmd.index('--batch')
