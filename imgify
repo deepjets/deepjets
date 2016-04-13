@@ -9,7 +9,7 @@ def get_suffix(args):
     return suffix
 
 
-def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, location):
+def imgify(filename, args, multi=False, location=None):
     import os
     import sys
     import numpy as np
@@ -18,7 +18,12 @@ def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, locat
     from deepjets.multi_progress import Writer
     from progressbar import Bar, ETA, Percentage, FormatLabel, ProgressBar
     import h5py
-    
+
+    pix_size = args.pix_size
+    image_size = args.image_size
+    zoom = not args.no_zoom
+    auto_zoom = args.auto_zoom
+
     suffix = get_suffix(args)
     output = os.path.splitext(filename)[0] + suffix + '.h5'
 
@@ -95,7 +100,7 @@ def imgify(filename, pix_size, image_size, zoom, auto_zoom, suffix, multi, locat
         trimmed_constit = dset_trimmed_constit[event]
         if auto_zoom:
             actual_size = 2 * 80.385 / dset_jet[event]['pT'];
-            zoom_factor = jet_size / actual_size 
+            zoom_factor = max(jet_size / actual_size, 1.)
         else:
             zoom_factor = 1. / dset_shrinkage[event] if zoom else False
         image = preprocess(subjets, trimmed_constit, edges,
@@ -127,7 +132,6 @@ if __name__ == '__main__':
     
     from deepjets.parallel import map_pool, FuncWorker
     from deepjets.multi_progress import term
-    from contextlib import contextmanager
     import os
     import sys
     
@@ -171,17 +175,21 @@ if __name__ == '__main__':
                 subprocess.call(cmd_batch, shell=True)
         sys.exit(0)
 
-    @contextmanager                                                                 
-    def do_nothing(*args, **kwargs):                                                
-        yield
-    
-    multi = len(args.files) > 1 and args.jobs != 1 and sys.stdout.isatty() 
-    context = term.fullscreen if multi else do_nothing
-    
-    with context():
-        map_pool(
-            FuncWorker,
-            [(imgify, filename,
-            args.pix_size, args.image_size, not args.no_zoom, args.auto_zoom, args.suffix,
-            multi, (0, i)) for i, filename in enumerate(args.files)],
-            n_jobs=args.jobs)
+    if len(args.files) == 1:
+        imgify(args.files[0], args)
+    else:
+        from contextlib import contextmanager
+        
+        @contextmanager                                                                 
+        def do_nothing(*args, **kwargs):                                                
+            yield 
+
+        multi = len(args.files) > 1 and args.jobs != 1 and sys.stdout.isatty() 
+        context = term.fullscreen if multi else do_nothing
+
+        with context():
+            map_pool(
+                FuncWorker,
+                [(imgify, filename, args, multi, (0, i))
+                    for i, filename in enumerate(args.files)],
+                    n_jobs=args.jobs)

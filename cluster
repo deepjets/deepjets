@@ -14,7 +14,7 @@ def get_suffix(args):
     return suffix
 
 
-def cluster_file(filename, args, multi, location):
+def cluster_file(filename, args, multi=False, location=None):
     import os
     import sys
     from deepjets.samples import create_jets_datasets
@@ -206,18 +206,22 @@ if __name__ == '__main__':
 
     from deepjets.parallel import map_pool, FuncWorker
     from deepjets.multi_progress import term
-    from contextlib import contextmanager
 
-    @contextmanager                                                                 
-    def do_nothing(*args, **kwargs):                                                
-        yield
-    
-    multi = len(args.files) > 1 and args.jobs != 1 and sys.stdout.isatty()
-    context = term.fullscreen if multi else do_nothing
-    
-    with context():
-        map_pool(
-            FuncWorker,
-            [(cluster_file, filename, args, multi, (0, i))
-                for i, filename in enumerate(args.files)],
-            n_jobs=args.jobs)
+    if len(args.files) == 1:
+        cluster_file(args.files[0], args)
+    else:
+        from contextlib import contextmanager
+        
+        @contextmanager                                                                 
+        def do_nothing(*args, **kwargs):                                                
+            yield 
+
+        multi = len(args.files) > 1 and args.jobs != 1 and sys.stdout.isatty()
+        context = term.fullscreen if multi else do_nothing
+
+        with context():
+            map_pool(
+                FuncWorker,
+                [(cluster_file, filename, args, multi, (0, i))
+                    for i, filename in enumerate(args.files)],
+                    n_jobs=args.jobs)
