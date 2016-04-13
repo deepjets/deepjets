@@ -28,8 +28,19 @@ def cluster_file(filename, args, multi, location):
     import h5py
     
     suffix = get_suffix(args)
-
     output = os.path.splitext(filename)[0] + suffix + '.h5'
+
+    # check if output already exists and is finished
+    if os.path.exists(output):
+        try:
+            h5py.File(output, 'r')
+        except:
+            print "{0} exists but is not complete. Will overwrite it.".format(output)
+            pass
+        else:
+            print "{0} exists and is complete. Nothing to do.".format(output)
+            return
+
     h5output = h5py.File(output, 'w')
 
     hepmc = fnmatch(os.path.splitext(filename)[1], '.hepmc*')
