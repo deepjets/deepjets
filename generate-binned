@@ -19,26 +19,17 @@ args = parser.parse_args()
 import os
 import subprocess
 import numpy as np
-import errno    
-
-
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
+from deepjets.path_utils import mkdir_p
 
 args.output_dir = os.path.normpath(args.output_dir)
 name = os.path.splitext(os.path.basename(args.config))[0] + '_events'
 pt_bin_edges = np.linspace(args.pt_min, args.pt_max, args.pt_bins + 1)
 setup_cmd = "cd {0}; source setup.sh;".format(os.path.dirname(os.path.realpath(__file__)))
 
-print "mkdir -p " + os.path.join(args.output_dir, 'log')
+log_path = os.path.join(args.output_dir, 'log')
+print "mkdir -p {0}".format(log_path)
 if not args.dry:
-    mkdir_p(os.path.join(args.output_dir, 'log'))
+    mkdir_p(log_path)
 
 random_state = 1 + args.random_state_offset
 for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):

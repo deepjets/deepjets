@@ -3,7 +3,19 @@
 Perform jet clustering on HepMC or HDF5 input
 """
 
+def get_suffix(args):
+    suffix = '_j{0:.1f}_sj{1:.2f}'.format(
+        args.jet_size, args.subjet_size).replace('.', 'p')
+    if args.shrink:
+        suffix += '_shrink'
+    if args.delphes:
+        suffix += '_delphes'
+    suffix += '_jets'
+    return suffix
+
+
 def cluster_file(filename, args, multi, location):
+    import os
     import sys
     from deepjets.samples import create_jets_datasets
     from deepjets.generate import get_generator_input
@@ -15,13 +27,7 @@ def cluster_file(filename, args, multi, location):
     import numpy as np
     import h5py
     
-    suffix = '_j{0:.1f}_sj{1:.2f}'.format(
-        args.jet_size, args.subjet_size).replace('.', 'p')
-    if args.shrink:
-        suffix += '_shrink'
-    if args.delphes:
-        suffix += '_delphes'
-    suffix += '_jets'
+    suffix = get_suffix(args)
 
     output = os.path.splitext(filename)[0] + suffix + '.h5'
     h5output = h5py.File(output, 'w')
@@ -113,7 +119,6 @@ def cluster_file(filename, args, multi, location):
 
 if __name__ == '__main__':
 
-    import os
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
@@ -129,11 +134,56 @@ if __name__ == '__main__':
     parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
     parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
     parser.add_argument('--delphes', action='store_true', default=False)
+    parser.add_argument('--batch', default=None)
+    parser.add_argument('--dry', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False,       
                         help="show stack trace in the event of "                
                             "an uncaught exception")
     parser.add_argument('files', nargs='+', help="HDF5 or HepMC file")
     args = parser.parse_args()
+
+    import os
+    import sys
+
+    if args.batch is not None:
+        import subprocess
+        from deepjets.path_utils import mkdir_p
+
+        # call me again but in a batch job for each input file
+        cmd = sys.argv[:]
+        # remove batch option
+        idx = cmd.index('--batch')
+        cmd.pop(idx)
+        cmd.pop(idx)
+        # remove filenames
+        for filename in args.files:
+            cmd.remove(filename)
+        output_dir = os.getcwd()
+        setup_cmd = "source {0}/setup.sh; cd {1};".format(
+            os.path.dirname(os.path.realpath(__file__)),
+            output_dir)
+        log_path = os.path.join(output_dir, 'log')
+        if args.dry:
+            print "mkdir -p {0}".format(log_path)
+        else:
+            mkdir_p(log_path)
+        # call self in batch job once per file
+        for filename in args.files:
+            name = os.path.splitext(os.path.basename(filename))[0] + get_suffix(args)
+            cmd_file = ' '.join(cmd + [filename])
+            cmd_batch = (
+                'echo "{setup} {cmd_file}" | '
+                'qsub -e {output_dir}/log -o {output_dir}/log '
+                '-N {name} -l nodes=1:ppn=1 -q {queue};').format(
+                    setup=setup_cmd,
+                    cmd_file=cmd_file,
+                    output_dir=output_dir,
+                    queue=args.batch,
+                    name=name)
+            print cmd_batch
+            if not args.dry:
+                subprocess.call(cmd_batch, shell=True)
+        sys.exit(0)
 
     if args.shrink_mass == 'jet':
         # shrink with jet mass
@@ -146,7 +196,6 @@ if __name__ == '__main__':
     from deepjets.parallel import map_pool, FuncWorker
     from deepjets.multi_progress import term
     from contextlib import contextmanager
-    import sys
 
     @contextmanager                                                                 
     def do_nothing(*args, **kwargs):                                                

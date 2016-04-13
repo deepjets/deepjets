@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import h5py
 import math
 import matplotlib.pyplot as plt
