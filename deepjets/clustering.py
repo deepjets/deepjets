@@ -13,7 +13,7 @@ def cluster(inputs,
             events=-1,
             skip_failed=True,
             eta_max=5.,
-            jet_size=1.0, subjet_size_fraction=0.5,
+            jet_size=1.0, subjet_size=0.5,
             subjet_pt_min_fraction=0.05,
             subjet_dr_min=0.,
             trimmed_pt_min=-1., trimmed_pt_max=-1.,
@@ -29,13 +29,13 @@ def cluster(inputs,
     inputs is a generator function.
     """
 
-    if subjet_size_fraction <= 0 or subjet_size_fraction > 0.5:
-        raise ValueError("subjet_size_fraction must be in the range (0, 0.5]")
+    if subjet_size <= 0 or subjet_size > 0.5:
+        raise ValueError("subjet_size must be in the range (0, 0.5]")
 
     kwargs = dict(
         eta_max=eta_max,
         jet_size=jet_size,
-        subjet_size_fraction=subjet_size_fraction,
+        subjet_size=subjet_size,
         subjet_pt_min_fraction=subjet_pt_min_fraction,
         subjet_dr_min=subjet_dr_min,
         trimmed_pt_min=trimmed_pt_min,

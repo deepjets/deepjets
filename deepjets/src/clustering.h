@@ -87,7 +87,7 @@ bool keep_pythia_event(Pythia8::Event& event, int cut_on_pdgid, double pt_min, d
 
 
 Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
-                 double jet_size, double subjet_size_fraction,
+                 double jet_size, double subjet_size,
                  double subjet_pt_min_fraction,
                  double subjet_dr_min,
                  double trimmed_pt_min, double trimmed_pt_max,
@@ -95,12 +95,10 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
                  bool shrink, double shrink_mass,
                  bool compute_auxvars) {
   /*
-   * Find leading pT jet in event with anti-kt algorithm (params jet_size, jet_pt_min).
-   * Find subjets by re-cluster jet using kt algorith (params subjet_size_fraction * jet_size, subjet_size_fraction).
+   * Find leading pT jet in event with anti-kt algorithm (R = jet_size).
+   * Find subjets by re-cluster jet using kt algorith (R = subjet_size).
    * Return a Result struct
    */
-
-  double original_jet_size = jet_size;
 
   std::unique_ptr<fastjet::ClusterSequence> sequence, shrunk_sequence;
 
@@ -129,17 +127,14 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
         return NULL;
       }
     }
-    actual_size = 2 * shrink_mass / jet.perp();
-    if (actual_size > jet_size) {
-      // Original clustering must have been too small?
-      // Skip event
-      return NULL;
-    }
+    actual_size = std::min(2 * shrink_mass / jet.perp(), jet_size);
     shrinkage = actual_size / jet_size;
     jet_size = actual_size;
+    subjet_size = shrinkage * subjet_size;
 
-    if (jet_size < original_jet_size) {
+    if (shrinkage < 1.) {
       // Redo clustering on the jet constituents with the smaller jet size
+      // only if the cone is actually smaller
       fastjet::JetDefinition shrunk_jet_def(fastjet::genkt_algorithm, jet_size, -1);
       shrunk_sequence.reset(new fastjet::ClusterSequence(jet_constituents, shrunk_jet_def)); // anti-kt
       sorted_jets = sorted_by_pt(shrunk_sequence->inclusive_jets());
@@ -151,7 +146,7 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
     }
   }
 
-  fastjet::Filter filter(fastjet::JetDefinition(fastjet::genkt_algorithm, subjet_size_fraction * jet_size, 1), // kt
+  fastjet::Filter filter(fastjet::JetDefinition(fastjet::genkt_algorithm, subjet_size, 1), // kt
                          fastjet::SelectorPtFractionMin(subjet_pt_min_fraction));
   fastjet::PseudoJet trimmed_jet = filter(jet);
   std::vector<fastjet::PseudoJet> sorted_subjets(sorted_by_pt(trimmed_jet.pieces()));
@@ -201,7 +196,7 @@ Result* get_jets(std::vector<fastjet::PseudoJet>& jet_inputs,
 
   if (compute_auxvars) {
     // Compute n-subjetiness ratio tau_21
-    fastjet::contrib::NormalizedCutoffMeasure normalized_measure(1, original_jet_size, 1000000);
+    fastjet::contrib::NormalizedCutoffMeasure normalized_measure(1, jet_size, 1000000);
     fastjet::contrib::WTA_KT_Axes wta_kt_axes;
     fastjet::contrib::Nsubjettiness tau1(1, wta_kt_axes, normalized_measure);
     fastjet::contrib::Nsubjettiness tau2(2, wta_kt_axes, normalized_measure);

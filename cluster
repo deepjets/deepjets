@@ -16,7 +16,7 @@ def cluster_file(filename, args, multi, location):
     import h5py
     
     suffix = '_j{0:.1f}_sj{1:.2f}'.format(
-        args.jet_size, args.subjet_size_fraction * args.jet_size).replace('.', 'p')
+        args.jet_size, args.subjet_size * args.jet_size).replace('.', 'p')
     if args.shrink:
         suffix += '_shrink'
     if args.delphes:
@@ -46,7 +46,7 @@ def cluster_file(filename, args, multi, location):
     pbar = ProgressBar(fd=writer, widgets=widgets, max_value=num_events).start()
 
     create_jets_datasets(h5output, num_events,
-                         args.jet_size, args.subjet_size_fraction)
+                         args.jet_size, args.subjet_size)
 
     dset_jet = h5output['jet']
     dset_trimmed_jet = h5output['trimmed_jet']
@@ -62,7 +62,7 @@ def cluster_file(filename, args, multi, location):
     clustering_generator = cluster(
         cluster_input,
         jet_size=args.jet_size,
-        subjet_size_fraction=args.subjet_size_fraction,
+        subjet_size=args.subjet_size,
         subjet_pt_min_fraction=args.subjet_pt_min_fraction,
         subjet_dr_min=args.subjet_dr_min,
         trimmed_pt_min=args.trimmed_pt_min,
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--jobs', '-n', type=int, default=-1)
     parser.add_argument('--jet-size', type=float, default=1.0)
-    parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
+    parser.add_argument('--subjet-size', type=float, default=0.5)
     parser.add_argument('--subjet-pt-min-fraction', type=float, default=0.05)
     parser.add_argument('--subjet-dr-min', type=float, default=0.)
     parser.add_argument('--shrink', default=False, action='store_true')
