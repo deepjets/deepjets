@@ -63,6 +63,7 @@ def cluster_file(filename, args, multi, location):
         cluster_input,
         jet_size=args.jet_size,
         subjet_size_fraction=args.subjet_size_fraction,
+        subjet_pt_min_fraction=args.subjet_pt_min_fraction,
         subjet_dr_min=args.subjet_dr_min,
         trimmed_pt_min=args.trimmed_pt_min,
         trimmed_pt_max=args.trimmed_pt_max,
@@ -119,7 +120,8 @@ if __name__ == '__main__':
     parser.add_argument('--jobs', '-n', type=int, default=-1)
     parser.add_argument('--jet-size', type=float, default=1.0)
     parser.add_argument('--subjet-size-fraction', type=float, default=0.5)
-    parser.add_argument('--subjet-dr-min', type=float, default=0.3) # 3 pixels 
+    parser.add_argument('--subjet-pt-min-fraction', type=float, default=0.05)
+    parser.add_argument('--subjet-dr-min', type=float, default=0.)
     parser.add_argument('--shrink', default=False, action='store_true')
     parser.add_argument('--shrink-mass', default='wmass', choices=['jet', 'wmass'])
     parser.add_argument('--trimmed-mass-min', type=float, default=-1.)
