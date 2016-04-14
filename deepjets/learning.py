@@ -85,6 +85,8 @@ def train_model(
         monitor='val_loss', patience=patience, verbose=verbose, mode='auto')
     if custom_lr_schedule is None:
         lr_s = lambda i: float(lr_init*(lr_scale_factor**i))
+    else:
+        lr_s = custom_lr_schedule
     scheduler = callbacks.LearningRateScheduler(lr_s)
     callback_list = [checkpointer, earlystopper, scheduler]
     history = model.fit(
@@ -97,7 +99,8 @@ def train_model(
         print("\nTraining history:\n", file=log_file)
         print(history.history, file=log_file)
         log_file.close()
-    return history
+    model = load_model(model_name)
+    return model, history
     
     
 def train_model_auc_score(
@@ -176,6 +179,8 @@ def train_model_auc_score(
     Y_val = h5file['Y_val'][:]
     if custom_lr_schedule is None:
         lr_s = lambda i: float(lr_init*(lr_scale_factor**i))
+    else:
+        lr_s = custom_lr_schedule
     while epoch < epochs:
         # Fitting and validation
         model.optimizer.lr.set_value(lr_s(epoch))
@@ -236,6 +241,7 @@ def train_model_auc_score(
                 best_score),
             file=log_file)
         sys.stdout.flush()
+    model = load_model(model_name)
     return model
 
 
