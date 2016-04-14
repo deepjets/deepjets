@@ -61,17 +61,20 @@ for i, filename in enumerate(args.files):
     if args.pt_bins is not None:
         low, high = args.pt_bins[i], args.pt_bins[i + 1]
         selection = (auxvars['pt_trimmed'] >= low) & (auxvars['pt_trimmed'] < high)
-    else:
-        if args.trimmed_mass_bounds is not None:
-            low, high = args.trimmed_mass_bounds
-            selection = (auxvars['mass_trimmed'] >= low) & (auxvars['mass_trimmed'] < high)
-        if args.trimmed_pt_bounds is not None:
-            low, high = args.trimmed_pt_bounds
-            cut = (auxvars['pt_trimmed'] >= low) & (auxvars['pt_trimmed'] < high)
-            if selection is not None:
-                selection &= cut
-            else:
-                selection = cut
+    if args.trimmed_mass_bounds is not None:
+        low, high = args.trimmed_mass_bounds
+        cut = (auxvars['mass_trimmed'] >= low) & (auxvars['mass_trimmed'] < high)
+        if selection is not None:
+            selection &= cut
+        else:
+            selection = cut
+    if args.trimmed_pt_bounds is not None:
+        low, high = args.trimmed_pt_bounds
+        cut = (auxvars['pt_trimmed'] >= low) & (auxvars['pt_trimmed'] < high)
+        if selection is not None:
+            selection &= cut
+        else:
+            selection = cut
     
     if selection is not None:
         images = np.take(images, np.where(selection), axis=0)[0]
