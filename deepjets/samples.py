@@ -211,18 +211,25 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20):
 def dataset_append(filename, datasetname, data):
     """ Append an array to an HDF5 dataset
     """
-    with h5py.File(filename, 'a') as h5file:
-        if datasetname not in h5file:
-            dset = h5file.create_dataset(
-                datasetname, data.shape,
-                maxshape=[None,] + list(data.shape)[1:],
-                dtype=data.dtype)
-            prev_size = 0
-        else:
-            dset = h5file[datasetname]
-            prev_size = dset.shape[0]
-            dset.resize(prev_size + data.shape[0], axis=0)
-        dset[prev_size:] = data
+    if isinstance(filename, basestring):
+        h5file = h5py.File(filename, 'a')
+        own_file = True
+    else:
+        own_file = False
+        h5file = filename
+    if datasetname not in h5file:
+        dset = h5file.create_dataset(
+            datasetname, data.shape,
+            maxshape=[None,] + list(data.shape)[1:],
+            dtype=data.dtype)
+        prev_size = 0
+    else:
+        dset = h5file[datasetname]
+        prev_size = dset.shape[0]
+        dset.resize(prev_size + data.shape[0], axis=0)
+    dset[prev_size:] = data
+    if own_file:
+        h5file.close()
 
 
 def get_flat_events(h5file, generator_params, nevents_per_pt_bin,

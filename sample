@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+    
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--pt-bins', default=None)
+parser.add_argument('--num-weight-bins', type=int, default=4)
+parser.add_argument('--trimmed-mass-bounds', default=None)
+parser.add_argument('--trimmed-pt-bounds', default=None)
+parser.add_argument('--output', '-o')
+parser.add_argument('files', nargs='+')
+args = parser.parse_args()
+
+import h5py as h5
+import numpy as np
+from numpy.lib.recfunctions import append_fields
+import os
+import sys
+
+# check if output already exists and is finished
+if os.path.exists(args.output):
+    try:
+        h5py.File(args.output, 'r')
+    except:
+        print "{0} exists but is not complete. Will overwrite it.".format(args.output)
+        pass
+    else:
+        print "{0} exists and is complete. Nothing to do.".format(args.output)
+        sys.exit(1)
+
+if args.pt_bins is not None:
+    # format: "low:high:bins"
+    args.pt_bins = map(int, args.pt_bins.split(':'))
+    if len(args.pt_bins) != 3:
+        raise ValueError("--pt-bins must have the format low:high:bins")
+    if args.pt_bins[-1] != len(args.files):
+        raise ValueError("--pt-bins number of bins must match the number of files")
+    args.pt_bins[-1] += 1
+    args.pt_bins = np.linspace(*args.pt_bins)
+
+if args.trimmed_mass_bounds is not None:
+    args.trimmed_mass_bounds = map(float, args.trimmed_mass_bounds.split('-'))
+    if len(args.trimmed_mass_bounds) != 2:
+        raise ValueError("--trimmed-mass-bounds must have the format low-high")
+if args.trimmed_pt_bounds is not None:
+    args.trimmed_pt_bounds = map(float, args.trimmed_pt_bounds.split('-'))
+    if len(args.trimmed_pt_bounds) != 2:
+        raise ValueError("--trimmed-pt-bounds must have the format low-high")
+
+from deepjets.samples import dataset_append, get_flat_weights
+
+h5output = h5.File(args.output, 'w')
+
+for i, filename in enumerate(args.files):
+    print "appending {0} ...".format(filename)
+    h5input = h5.File(filename, 'r')
+    images = h5input['images']
+    auxvars = h5input['auxvars']
+
+    selection = None
+    if args.pt_bins is not None:
+        low, high = args.pt_bins[i], args.pt_bins[i + 1]
+        selection = (auxvars['pt_trimmed'] >= low) & (auxvars['pt_trimmed'] < high)
+    else:
+        if args.trimmed_mass_bounds is not None:
+            low, high = args.trimmed_mass_bounds
+            selection = (auxvars['mass_trimmed'] >= low) & (auxvars['mass_trimmed'] < high)
+        if args.trimmed_pt_bounds is not None:
+            low, high = args.trimmed_pt_bounds
+            cut = (auxvars['pt_trimmed'] >= low) & (auxvars['pt_trimmed'] < high)
+            if selection is not None:
+                selection &= cut
+            else:
+                selection = cut
+    
+    if selection is not None:
+        images = np.take(images, selection, axis=0)
+        auxvars = auxvars[selection]
+    
+    if 'weights' in auxvars.dtype.names:
+        print "WARNING: existing weights in {0} will be overwritten".format(filename)
+    else:
+        auxvars = append_fields(auxvars, 'weights', data=np.ones(auxvars.shape[0], dtype=np.double))
+
+    # append to output
+    dataset_append(h5output, 'images', images)
+    dataset_append(h5output, 'auxvars', auxvars)
+    h5output.flush()
+
+# finally create weights that flatten pT
+pt_bins = args.num_weight_bins
+if args.pt_bins is not None:
+    pt_bins *= args.pt_bins.shape[0] - 1
+    pt_min, pt_max = args.pt_bins[0], args.pt_bins[-1]
+else:
+    pt_min, pt_max = 200, 500
+weights = get_flat_weights(h5output['auxvars']['pt_trimmed'], pt_min, pt_max, pt_bins)
+h5output['auxvars']['pt_trimmed'] = weights
+h5output.close()
