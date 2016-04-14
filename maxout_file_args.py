@@ -16,8 +16,6 @@ patience = 10
 lr_init = 0.001
 lr_scale_factor = 1.
 
-print sig_file, bkd_file
-
 h5_files = prepare_datasets(
    sig_file, bkd_file, dataset_name, n_sig=n_images, n_bkd=n_images,
    test_frac=test_frac, shuffle=True)

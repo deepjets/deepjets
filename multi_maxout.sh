@@ -10,9 +10,6 @@ python maxout_file_args.py $path/w_events_j1p0_sj0p50_jets_images.h5 \
 python maxout_file_args.py $path/w_events_j1p0_sj0p50_jets_zoomed_images.h5 \
                            $path/qcd_events_j1p0_sj0p50_jets_zoomed_images.h5 \
                            datasets/w_mwin_1-0p5_z models/w_mwin_1-0p5_z &
-python maxout_file_args.py $path/w_events_j1p0_sj0p50_shrink_jets_images.h5 \
-                           $path/qcd_events_j1p0_sj0p50_shrink_jets_images.h5 \
-                           datasets/w_mwin_1-0p5_sz models/w_mwin_1-0p5_sz &
 
 python maxout_file_args.py $path/w_events_j1p0_sj0p30_jets_images.h5 \
                            $path/qcd_events_j1p0_sj0p30_jets_images.h5 \
@@ -20,9 +17,6 @@ python maxout_file_args.py $path/w_events_j1p0_sj0p30_jets_images.h5 \
 python maxout_file_args.py $path/w_events_j1p0_sj0p30_jets_zoomed_images.h5 \
                            $path/qcd_events_j1p0_sj0p30_jets_zoomed_images.h5 \
                            datasets/w_mwin_1-0p3_z models/w_mwin_1-0p3_z &
-python maxout_file_args.py $path/w_events_j1p0_sj0p30_shrink_jets_images.h5 \
-                           $path/qcd_events_j1p0_sj0p30_shrink_jets_images.h5 \
-                           datasets/w_mwin_1-0p3_sz models/w_mwin_1-0p3_sz &
 
 python maxout_file_args.py $path/w_events_j1p2_sj0p20_jets_images.h5 \
                            $path/qcd_events_j1p2_sj0p20_jets_images.h5 \
@@ -30,6 +24,3 @@ python maxout_file_args.py $path/w_events_j1p2_sj0p20_jets_images.h5 \
 python maxout_file_args.py $path/w_events_j1p2_sj0p20_jets_zoomed_images.h5 \
                            $path/qcd_events_j1p2_sj0p20_jets_zoomed_images.h5 \
                            datasets/w_mwin_1p2-0p2_z models/w_mwin_1p2-0p2_z &
-python maxout_file_args.py $path/w_events_j1p2_sj0p20_shrink_jets_images.h5 \
-                           $path/qcd_events_j1p2_sj0p20_shrink_jets_images.h5 \
-                           datasets/w_mwin_1p2-0p2_sz models/w_mwin_1p2-0p2_sz &
