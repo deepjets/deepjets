@@ -2,7 +2,7 @@
 cd /home/jbarnard/deepjets
 source /data/edawe/public/setup.sh
 
-path=/coepp/cephfs/mel/edawe/deepjets/events/pythia/raw
+path=/coepp/cephfs/mel/edawe/deepjets/events/pythia/binned
 
 python maxout_file_args.py $path/w_events_j1p0_sj0p50_jets_images.h5 \
                            $path/qcd_events_j1p0_sj0p50_jets_images.h5 \
