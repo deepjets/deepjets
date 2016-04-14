@@ -38,6 +38,7 @@ def train_model(
         read_into_ram: if True images read into RAM, otherwise h5 dataset
                        passed directly to keras.
     Returns:
+        model: highest scoring model.
         history: keras object containing model and training history.
     """
     save_model(model, model_name)
@@ -130,7 +131,7 @@ def train_model_auc_score(
         read_into_ram: if True images read into RAM, otherwise h5 dataset
                        passed directly to keras.
     Returns:
-        model: model at final point in training (usually not the best model).
+        model: highest scoring model.
     """
     save_model(model, model_name)
     if log_to_file:
