@@ -8,14 +8,51 @@ parser.add_argument('--num-weight-bins', type=int, default=4)
 parser.add_argument('--trimmed-mass-bounds', default=None)
 parser.add_argument('--trimmed-pt-bounds', default=None)
 parser.add_argument('--output', '-o')
+parser.add_argument('--batch', default=None)
+parser.add_argument('--dry', action='store_true', default=False)
 parser.add_argument('files', nargs='+')
 args = parser.parse_args()
+
+import os
+import sys
+
+if args.batch is not None:
+    # call me again but in a batch job for each input file
+    import subprocess
+    from deepjets.path_utils import mkdir_p
+
+    cmd = sys.argv[:]
+    # remove batch option
+    idx = cmd.index('--batch')
+    cmd.pop(idx)
+    cmd.pop(idx)
+    cmd = ' '.join(cmd)
+    output_dir = os.getcwd()
+    setup_cmd = "source {0}/setup.sh; cd {1};".format(
+        os.path.dirname(os.path.realpath(__file__)),
+        output_dir)
+    log_path = os.path.join(output_dir, 'log')
+    if args.dry:
+        print "mkdir -p {0}".format(log_path)
+    else:
+        mkdir_p(log_path)
+    cmd_batch = (
+        'echo "{setup} {cmd}" | '
+        'qsub -e {output_dir}/log -o {output_dir}/log '
+        '-N {name} -l nodes=1:ppn=1 -l mem=6GB -q {queue};').format(
+            setup=setup_cmd,
+            cmd=cmd,
+            output_dir=output_dir,
+            queue=args.batch,
+            name=args.output)
+    print cmd_batch
+    if not args.dry:
+        subprocess.call(cmd_batch, shell=True)
+    sys.exit(0)
 
 import h5py as h5
 import numpy as np
 from numpy.lib.recfunctions import append_fields
-import os
-import sys
 
 # check if output already exists and is finished
 if os.path.exists(args.output):
@@ -48,6 +85,11 @@ if args.trimmed_pt_bounds is not None:
         raise ValueError("--trimmed-pt-bounds must have the format low-high")
 
 from deepjets.samples import dataset_append, get_flat_weights
+
+print "will append tables in this order:"
+for filename in args.files:
+    print filename
+print
 
 h5output = h5.File(args.output, 'w')
 
@@ -96,7 +138,11 @@ if args.pt_bins is not None:
     pt_bins *= args.pt_bins.shape[0] - 1
     pt_min, pt_max = args.pt_bins[0], args.pt_bins[-1]
 else:
-    pt_min, pt_max = 200, 500
+    if args.trimmed_pt_bounds is not None:
+        pt_min, pt_max = args.trimmed_pt_bounds
+    else:
+        pt_min, pt_max = h5output['auxvars']['pt_trimmed'].min(), h5output['auxvars']['pt_trimmed'].max()
+
 weights = get_flat_weights(h5output['auxvars']['pt_trimmed'], pt_min, pt_max, pt_bins)
 h5output['auxvars']['weights'] = weights
 h5output.close()
