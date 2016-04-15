@@ -15,11 +15,13 @@ def plot(signal, background, nbins, filename):
     signal_selection = (signal_aux['mass_trimmed'] > 65) & (signal_aux['mass_trimmed'] < 95)
     background_selection = (background_aux['mass_trimmed'] > 65) & (background_aux['mass_trimmed'] < 95)
     
+    print signal_selection.sum()
+    print background_selection.sum()
     print (signal_selection & ((signal_aux['pt_trimmed'] > 250) & (signal_aux['pt_trimmed'] < 300))).sum()
     print (background_selection & ((background_aux['pt_trimmed'] > 250) & (background_aux['pt_trimmed'] < 300))).sum()
 
-    #signal_selection = slice(0, -1)
-    #background_selection = slice(0, -1)
+    signal_selection = slice(0, None)
+    background_selection = slice(0, None)
     
     if 'weights' in signal_aux.dtype.names:
         signal_weights = signal_aux['weights']
@@ -34,7 +36,7 @@ def plot(signal, background, nbins, filename):
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
     fig.suptitle(r'Pythia 8 $\sqrt{s}=13$ TeV', fontsize=16)
    
-    pt_min, pt_max = 100, 500
+    pt_min, pt_max = 150, 550
 
     vals1, _, _ = ax[0, 0].hist(signal_aux['pt_trimmed'][signal_selection], bins=np.linspace(pt_min, pt_max, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,

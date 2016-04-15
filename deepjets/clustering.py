@@ -29,8 +29,12 @@ def cluster(inputs,
     inputs is a generator function.
     """
 
-    if subjet_size <= 0 or subjet_size > 0.5:
-        raise ValueError("subjet_size must be in the range (0, 0.5]")
+    if jet_size <= 0:
+        raise ValueError("jet_size must be greater than zero")
+
+    if subjet_size <= 0 or subjet_size > 0.5 * jet_size:
+        raise ValueError(
+            "subjet_size must be in the range (0, 0.5 * jet_size]")
 
     kwargs = dict(
         eta_max=eta_max,
