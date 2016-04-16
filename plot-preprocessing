@@ -21,7 +21,7 @@ event = list(cluster(
 edges = pixel_edges(
         jet_size=1.0,
         subjet_size_fraction=0.5,
-        pix_size=(0.1, 0.1))
+        pixel_size=(0.1, 0.1))
 eta_edges, phi_edges = edges
 
 import matplotlib.pyplot as plt

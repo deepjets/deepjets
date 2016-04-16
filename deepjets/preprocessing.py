@@ -17,13 +17,14 @@ def translate(jet_csts, subjets):
     subjets['phi'] = np.mod(subjets['phi'] + np.pi, 2*np.pi) - np.pi
 
 
-def pixel_edges(jet_size=1.0, subjet_size=0.5, pix_size=(0.1,0.1),
-                border_size=1):
+def pixel_edges(jet_size=1.0, pixel_size=(0.1,0.1), border_size=0.25):
     """Return pixel edges required to contain all subjets.
+
+    border_size is interpreted as a fraction of the jet_size
     """
-    im_edge  = (1+(1+border_size)*(subjet_size / float(jet_size)))*jet_size
-    return (np.arange(-im_edge, im_edge+pix_size[0], pix_size[0]),
-            np.arange(-im_edge, im_edge+pix_size[1], pix_size[1]))
+    im_edge = (1. + border_size) * jet_size
+    return (np.arange(-im_edge, im_edge+pixel_size[0], pixel_size[0]),
+            np.arange(-im_edge, im_edge+pixel_size[1], pixel_size[1]))
 
 
 def pixelize(jet_csts, edges, cutoff=0.1):
