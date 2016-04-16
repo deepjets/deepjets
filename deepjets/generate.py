@@ -17,9 +17,9 @@ def get_generator_input(name, filename, **kwargs):
     """
     name = name.lower().strip()
     if name == 'pythia':
-        xmldoc = os.path.join(
+        xmldoc = os.environ.get('PYTHIA8DATA', os.path.join(
             os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
-            'share/Pythia8/xmldoc')
+            'share/Pythia8/xmldoc'))
         gen_input = PythiaInput(filename, xmldoc, **kwargs)
     elif name == 'hepmc':
         gen_input = HepMCInput(filename)

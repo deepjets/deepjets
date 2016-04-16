@@ -91,8 +91,8 @@ libdeepjets = Extension(
         '/usr/local/lib',
         os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
-    libraries=('pythia8 fastjet fastjetcontribfragile '
-               'CGAL gmp HepMC DelphesNoFastJet').split(),
+    libraries=('pythia8 vincia mg4helas fastjet fastjetcontribfragile '
+               'CGAL gmp HepMC DelphesNoFastJet gfortran').split(),
     extra_compile_args=root_cflags + [
         '-Wno-unused-function',
         '-Wno-write-strings',

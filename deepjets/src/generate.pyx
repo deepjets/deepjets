@@ -23,6 +23,7 @@ cdef class MCInput:
 
 cdef class PythiaInput(MCInput):
     cdef Pythia* pythia
+    cdef VinciaPlugin* vincia_plugin
     cdef int cut_on_pdgid
     cdef float pdgid_pt_min
     cdef float pdgid_pt_max
@@ -32,7 +33,9 @@ cdef class PythiaInput(MCInput):
                   int random_state=0, float beam_ecm=13000.,
                   int cut_on_pdgid=0,
                   float pdgid_pt_min=-1, float pdgid_pt_max=-1,
-                  object params_dict=None, int verbosity=1):
+                  object params_dict=None, int verbosity=1,
+                  bool vincia=False,
+                  **kwargs):
         self.pythia = new Pythia(xmldoc, False)
         if verbosity > 0:
             self.pythia.readString("Init:showProcesses = on")
@@ -52,14 +55,25 @@ cdef class PythiaInput(MCInput):
             self.pythia.readString("Next:numberShowInfo = 0")
             self.pythia.readString("Next:numberShowProcess = 0")
             self.pythia.readString("Next:numberShowEvent = 0")
-        self.pythia.readFile(config)  # read user config after options above
+        # read user config after options above
+        if vincia:
+            self.vincia_plugin = new VinciaPlugin(self.pythia, config)
+        else:
+            self.pythia.readFile(config)
+            self.vincia_plugin = NULL
         self.pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
         self.pythia.readString('Random:setSeed = on')
         self.pythia.readString('Random:seed = {0}'.format(random_state))
         if params_dict is not None:
             for param, value in params_dict.items():
                 self.pythia.readString('{0} = {1}'.format(param, value))
-        self.pythia.init()
+        for param, value in kwargs.items():
+            self.pythia.readString('{0} = {1}'.format(param.replace('_', ':'), value))
+        if vincia:
+            # vincia calls pythia's init
+            self.vincia_plugin.init()
+        else:
+            self.pythia.init()
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
@@ -67,6 +81,7 @@ cdef class PythiaInput(MCInput):
 
     def __dealloc__(self):
         del self.pythia
+        del self.vincia_plugin
 
     cdef bool get_next_event(self):
         # generate event and quit if failure
