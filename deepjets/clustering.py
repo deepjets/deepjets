@@ -56,10 +56,10 @@ def cluster(inputs,
         cluster_func = cluster_hdf5
     else:
         cluster_func = cluster_iterable
-        if inspect.isgenerator(inputs):
-            kwargs['events'] = events
-            kwargs['skip_failed'] = skip_failed
-        else:
+        kwargs['events'] = events
+        kwargs['skip_failed'] = skip_failed
+
+        if not inspect.isgenerator(inputs) and not isinstance(inputs, list):
             # handle case where input is just one event
             inputs = [inputs]
 

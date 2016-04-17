@@ -31,9 +31,9 @@ def reconstruct(particles, events=-1,
         reco_func = reconstruct_hdf5
     else:
         reco_func = reconstruct_iterable
-        if inspect.isgenerator(particles):
-            kwargs['events'] = events
-        else:
+        kwargs['events'] = events
+
+        if not inspect.isgenerator(particles) and not isinstance(particles, list):
             # handle case where input is just one event
             particles = [particles]
 

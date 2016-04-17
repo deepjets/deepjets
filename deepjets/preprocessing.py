@@ -17,7 +17,7 @@ def translate(jet_csts, subjets):
     subjets['phi'] = np.mod(subjets['phi'] + np.pi, 2*np.pi) - np.pi
 
 
-def pixel_edges(jet_size=1.0, pixel_size=(0.1,0.1), border_size=0.25):
+def pixel_edges(jet_size=1.0, pixel_size=(0.1, 0.1), border_size=0.25):
     """Return pixel edges required to contain all subjets.
 
     border_size is interpreted as a fraction of the jet_size
@@ -99,8 +99,6 @@ def reflect_image(image, subjets):
 
 def zoom_image_fixed_size(image, zoom):
     """Return rescaled and cropped image array.
-
-    Expansion interpolates with cubic spline.
     """
     if zoom < 1:
         raise ValueError("Zoom scale factor must be at least 1.")
@@ -122,23 +120,23 @@ def zoom_image_fixed_size(image, zoom):
 
 def zoom_image(image, zoom, out_width=25):
     """Return rescaled and cropped image array with width out_width.
-
-    Expansion interpolates with cubic spline.
     """
     if zoom < 1:
         raise ValueError("Zoom scale factor must be at least 1.")
 
     width, height = image.shape
-    out_height = int(np.rint(float(out_width*height)/width))
-    t_width = int(np.rint(out_width*zoom))
-    t_height = int(np.rint(out_height*zoom))
-    if t_width//2 != out_width//2:
+    out_height = int(np.rint(float(out_width * height) / width))
+    t_width = int(np.rint(out_width * zoom))
+    t_height = int(np.rint(out_height * zoom))
+    if t_width // 2 != out_width // 2:
         t_width += 1
-    if t_height//2 != out_height//2:
+    if t_height // 2 != out_height // 2:
         t_height += 1
+    # zoom with cubic interpolation
     t_image = transform.resize(image, (t_width, t_height), order=3)
-    return t_image[(t_width-out_width)/2:(t_width+out_width)/2,
-                   (t_height-out_height)/2:(t_height+out_height)/2]
+    # crop
+    return t_image[(t_width - out_width) / 2:(t_width + out_width) / 2,
+                   (t_height - out_height) / 2:(t_height + out_height) / 2]
 
 
 def normalize_image(image):
@@ -147,42 +145,20 @@ def normalize_image(image):
     return image / np.sum(image**2)
 
 
-def preprocess_fixed_size(subjets, constit, edges,
-                          cutoff=0.1,
-                          rotate=True,
-                          reflect=True,
-                          zoom=False,
-                          normalize=False):
-    translate(constit, subjets)
-    image = pixelize(constit, edges, cutoff)
-    if rotate:
-        image = rotate_image(image, subjets)
-    if reflect:
-        image = reflect_image(image, subjets)
-    if zoom is not False:
-        image = zoom_image_fixed_size(image, zoom)
-    if normalize:
-        image = normalize_image(image)
-    return image
-
-
 def preprocess(subjets, constits, edges,
                cutoff=0.1,
                rotate=True,
                reflect=True,
                zoom=False,
                out_width=25,
-               normalize=False):
+               normalize=True):
     translate(constits, subjets)
     image = pixelize(constits, edges)
     if rotate:
         image = rotate_image(image, subjets)
     if reflect:
         image = reflect_image(image, subjets)
-    if zoom is not False:
-        image = zoom_image(image, zoom, out_width)
-    else:
-        image = zoom_image(image, 1., out_width)
+    image = zoom_image(image, zoom if zoom is not False else 1., out_width)
     if normalize:
         image = normalize_image(image)
     return image

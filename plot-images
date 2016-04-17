@@ -6,7 +6,7 @@ def plot(filename):
     import numpy as np
     from deepjets import generate
     from deepjets.preprocessing import preprocess
-    from deepjets.utils import plot_jet_image, jet_mass
+    from deepjets.utils import plot_jet_image
     from matplotlib import pyplot as plt
     import h5py
     import dask.array as da
