@@ -11,7 +11,7 @@ params_dict = {
 
 # generate 10k events
 from deepjets.generate import generate_events
-events = list(generate_events('w.config', 10000, params_dict=params_dict))
+events = list(generate_events('qcd.config', 10000, params_dict=params_dict))
 
 from deepjets.clustering import cluster
 from deepjets.preprocessing import pixel_edges, preprocess
@@ -68,8 +68,8 @@ for i, R in enumerate(Rs):
     if i == 0:
         plt.setp(ax[3, i].get_yticklabels()[0], visible=False)
         plt.setp(ax[3, i].get_yticklabels()[-1], visible=False)
-        ax[3, i].set_ylabel(r'$2m_W/p_T$')
-        ax[3, i].set_xlabel(r'$\Delta R$ subjets')
+        ax[3, i].set_xlabel(r'$2m_W/p_T$')
+        ax[3, i].set_ylabel(r'$\Delta R$ subjets')
     else:
         ax[3, i].yaxis.set_ticklabels([])
 
@@ -87,8 +87,8 @@ for i, R in enumerate(Rs):
     if i == 0:
         plt.setp(ax[4, i].get_yticklabels()[0], visible=False)
         plt.setp(ax[4, i].get_yticklabels()[-1], visible=False)
-        ax[4, i].set_ylabel(r'$2m_W/p_T$ trimmed')
-        ax[4, i].set_xlabel(r'$\Delta R$ subjets')
+        ax[4, i].set_xlabel(r'$2m_W/p_T$ trimmed')
+        ax[4, i].set_ylabel(r'$\Delta R$ subjets')
     else:
         ax[4, i].yaxis.set_ticklabels([])
 
