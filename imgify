@@ -5,6 +5,8 @@ def get_suffix(args):
     suffix = ''
     if args.suffix:
         suffix += '_{0}'.format(args.suffix)
+    if args.zoom:
+        suffix += '_zoomed'
     suffix += '_images'
     return suffix
 
@@ -21,8 +23,7 @@ def imgify(filename, args, multi=False, location=None):
 
     pixel_size = args.pixel_size
     image_size = args.image_size
-    zoom = not args.no_zoom
-    auto_zoom = args.auto_zoom
+    zoom = args.zoom
 
     suffix = get_suffix(args)
     output = os.path.splitext(filename)[0] + suffix + '.h5'
@@ -54,8 +55,6 @@ def imgify(filename, args, multi=False, location=None):
     dset_tau_3 = h5_input['tau_3']
 
     jet_size = h5_input['jet_size'][0]
-    subjet_size = h5_input['subjet_size_fraction'][0]  # NOTE: this is no longer a fraction!!!
-    # WILL CHANGE THAT NAME LATER
     
     eta, phi = pixel_size.split(',')
     eta_size = float(eta) 
@@ -63,8 +62,8 @@ def imgify(filename, args, multi=False, location=None):
 
     edges = pixel_edges(
         jet_size=jet_size,
-        subjet_size=subjet_size,
-        pixel_size=(eta_size, phi_size))
+        pixel_size=(eta_size, phi_size),
+        border_size=1 if zoom else 0)
     eta_edges, phi_edges = edges
     
     dset_images = h5_output.create_dataset(
@@ -95,21 +94,22 @@ def imgify(filename, args, multi=False, location=None):
     widgets = [FormatLabel(output), ' ', Percentage(), ' ', Bar('>'), ' ', ETA()]
     writer = Writer(location) if multi else sys.stderr
     pbar = ProgressBar(fd=writer, widgets=widgets, max_value=len(dset_subjets)).start()
-    for i, event in enumerate(xrange(len(dset_subjets))):
-        subjets = dset_subjets[event]
-        trimmed_constit = dset_trimmed_constit[event]
-        if auto_zoom:
-            actual_size = 2 * 80.385 / dset_jet[event]['pT'];
+    for ievent in xrange(len(dset_subjets)):
+        subjets = dset_subjets[ievent]
+        trimmed_constit = dset_trimmed_constit[ievent]
+        if zoom:
+            # 2 * mW / pT
+            actual_size = 2 * 80.385 / dset_jet[ievent]['pT'];
             zoom_factor = max(jet_size / actual_size, 1.)
         else:
-            zoom_factor = 1. / dset_shrinkage[event] if zoom else False
+            zoom_factor = 1.
         image = preprocess(subjets, trimmed_constit, edges,
                            zoom=zoom_factor,
                            normalize=True,
                            out_width=image_size)
         # save the jet mass, pT and image
-        dset_images[event] = image
-        pbar.update(i)
+        dset_images[ievent] = image
+        pbar.update(ievent)
     pbar.finish()
     h5_output.close()
 
@@ -121,9 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('--jobs', '-n', type=int, default=-1)
     parser.add_argument('--pixel-size', default='0.1,0.1')
     parser.add_argument('--image-size', type=int, default=25)
-    parser.add_argument('--no-zoom', default=False, action='store_true')
-    # temp feature requested by James:
-    parser.add_argument('--auto-zoom', default=False, action='store_true')
+    parser.add_argument('--zoom', default=False, action='store_true')
     parser.add_argument('--suffix', default=None)
     parser.add_argument('--batch', default=None)
     parser.add_argument('--dry', action='store_true', default=False)
