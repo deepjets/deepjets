@@ -23,10 +23,18 @@ def save_model(model, model_name, overwrite=True):
     model.save_weights('{0}_weights.h5'.format(model_name), overwrite)
 
 
-def load_model(model_name):
+def load_model(model_name, compile=True, **kwargs):
     """Load model architecture and weights."""
     model = model_from_json(open('{0}_arch.json'.format(model_name)).read())
     model.load_weights('{0}_weights.h5'.format(model_name))
+    if compile:
+        compile_model(model, **kwargs)
+    return model
+
+
+def compile_model(model, loss='categorical_crossentropy', optimizer=Adam, optimizer_kwargs={}):
+    optimizer = optimizer(**optimizer_kwargs)
+    model.compile(loss=loss, optimizer=optimizer)
     return model
 
 

@@ -44,12 +44,13 @@ def load_images(image_h5_file, n_images=-1, shuffle_seed=1):
         else:
             images = h5file['images'][:]
             auxvars = h5file['auxvars'][:]
-        return (images, auxvars)
+    return images, auxvars
 
 
 def prepare_datasets(
         sig_h5_file, bkd_h5_file, dataset_name='dataset', n_sig=-1, n_bkd=-1,
-        test_frac=0.1, val_frac=0., n_folds=1, shuffle=True, shuffle_seed=1):
+        test_frac=0.1, val_frac=0., n_folds=1,
+        shuffle=True, shuffle_seed=1, balance=True):
     """Prepare datasets for network training.
 
     Combine signal and background images; k-fold into training, validation,
@@ -75,6 +76,13 @@ def prepare_datasets(
     # Load images
     sig_images, sig_auxvars = load_images(sig_h5_file, n_sig)
     bkd_images, bkd_auxvars = load_images(bkd_h5_file, n_bkd)
+    if balance:
+        # crop to same size
+        n = min(len(sig_images), len(bkd_images))
+        sig_images = sig_images[:n]
+        sig_auxvars = sig_auxvars[:n]
+        bkd_images = bkd_images[:n]
+        bkd_auxvars = bkd_auxvars[:n]
     n_sig = len(sig_images)
     n_bkd = len(bkd_images)
     n_images = n_sig + n_bkd

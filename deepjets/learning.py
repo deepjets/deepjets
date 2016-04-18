@@ -16,7 +16,7 @@ def train_model(
         custom_lr_schedule=None, verbose=2, log_to_file=False,
         read_into_ram=False):
     """Train model. Save model with best score.
-    
+
     Args:
         model: keras model to train.
         train_h5_file: name of h5 file containing 'X_train', 'Y_train',
@@ -90,10 +90,13 @@ def train_model(
         lr_s = custom_lr_schedule
     scheduler = callbacks.LearningRateScheduler(lr_s)
     callback_list = [checkpointer, earlystopper, scheduler]
+    import time
+    t0 = time.time()
     history = model.fit(
         X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
         validation_split=val_frac, verbose=verbose,
         sample_weight=weights_train, shuffle=shuffle, callbacks=callback_list)
+    print(time.time() - t0)
     h5file.close()
     if log_to_file:
         log_file = open(model_name+'_log.txt', 'a')
@@ -102,15 +105,15 @@ def train_model(
         log_file.close()
     model = load_model(model_name)
     return model, history
-    
-    
+
+
 def train_model_auc_score(
         model, train_h5_file, model_name='model', batch_size=100, epochs=100,
         patience=10, lr_init=0.0001, lr_scale_factor=1.,
         custom_lr_schedule=None, verbose=2, log_to_file=False,
         read_into_ram=False):
     """Train model. Save model with best ROC AUC score.
-    
+
     Args:
         model: keras model to train.
         train_h5_file: name of h5 file containing 'X_train', 'Y_train',
@@ -144,7 +147,7 @@ def train_model_auc_score(
     print("Using ROC AUC for early stopping.", file=log_file)
     h5file = h5py.File(train_h5_file, 'r')
     if verbose >= 1 or log_to_file:
-        print("Training on {0} samples, ".format(len(h5file['X_train'])) + 
+        print("Training on {0} samples, ".format(len(h5file['X_train'])) +
               "validating on {0} samples.".format(len(h5file['X_val'])),
               file=log_file)
         print("Datasets from {0}.".format(train_h5_file), file=log_file)
@@ -251,7 +254,7 @@ def test_model(
         log_to_file=False, show_roc_curve=False, X_dataset='X_test',
         Y_dataset='Y_test'):
     """Test model. Display ROC curve.
-    
+
     Args:
         model: keras model to test.
         test_h5_file: name of h5 file containing test datasets.
@@ -328,17 +331,17 @@ def test_model(
 
 def train_test_star_cv(kwargs):
     """Helper function for cross validating in parallel.
-    
+
     Train and test model on k-fold. Return test results."""
     ikf = kwargs['ikf']
     train_h5_file = kwargs['train_h5_file']
     model_name = kwargs['model_name']
     train_kwargs = kwargs['train_kwargs']
-    
+
     model = load_model(model_name+'_base')
     model_name_ikf = model_name+'_kf{0}'.format(ikf)
     train_model(model, train_h5_file, model_name_ikf, **train_kwargs)
-    model = load_model(model_name_ikf)
+    #model = load_model(model_name_ikf)
     return test_model(
         model, train_h5_file, model_name_ikf,
         batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],
@@ -351,7 +354,7 @@ def cross_validate_model(
         custom_lr_schedule=None, verbose=1, log_to_file=False,
         read_into_ram=False, max_jobs=1):
     """Cross validate model using k-folded datasets.
-    
+
     Args:
         model: keras model to train.
         train_h5_files: list of h5 files containing k-folds to train on. Each
@@ -375,7 +378,7 @@ def cross_validate_model(
                        passed directly to keras.
         max_jobs: number of processors to utilise.
     Returns:
-        dict of test results listed by k-fold. 
+        dict of test results listed by k-fold.
     """
     if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
         print("Number of k-folds must be > 1.")
@@ -428,14 +431,14 @@ def cross_validate_model(
 
 def compile_model_star_gs(kwargs):
     """Helper function for grid searching in parallel.
-    
+
     Compiles and saves models for all values of optimizer parameters."""
     model_name_igp = kwargs['model_name_igp']
     get_model = kwargs['get_model']
     get_model_args = kwargs['get_model_args']
     optimizer = kwargs['optimizer']
     optimizer_kwargs = kwargs['optimizer_kwargs']
-    
+
     model_igp = get_model(
         *get_model_args, optimizer=optimizer,
         optimizer_kwargs=optimizer_kwargs)
@@ -444,7 +447,7 @@ def compile_model_star_gs(kwargs):
 
 def train_test_star_gs(kwargs):
     """Helper function for grid searching in parallel.
-    
+
     Train and test model on grid point, k-fold. Return test results,
     grid point and k-fold indices."""
     igp = kwargs['igp']
@@ -453,7 +456,7 @@ def train_test_star_gs(kwargs):
     train_h5_file = kwargs['train_h5_file']
     model_name_igp = kwargs['model_name_igp']
     train_kwargs = kwargs['train_kwargs']
-    
+
     if train_kwargs['verbose'] >= 2 and not(train_kwargs['log_to_file']):
         print("Optimizer parameters = {0}, k-fold = {1}".format(
             optimizer_kwargs, ikf))
@@ -479,7 +482,7 @@ def optimizer_grid_search(
         custom_lr_schedule=None, verbose=1, log_to_file=False,
         read_into_ram=False, max_jobs=1):
     """Perform cross-validated grid search on optimizer kwargs.
-    
+
     Args:
         get_model: function to generate keras models.
         get_model_args: list of arguments to pass to get_model.
@@ -507,7 +510,7 @@ def optimizer_grid_search(
                        passed directly to keras.
         max_jobs: number of processors to utilise.
     Returns:
-        list of dicts of goptimizer parameters, test results listed by k-fold. 
+        list of dicts of goptimizer parameters, test results listed by k-fold.
     """
     if isinstance(train_h5_files, str) or len(train_h5_files) < 2:
         print("Number of k-folds must be > 1.")
@@ -597,7 +600,7 @@ def optimizer_grid_search(
 
 def select_best_model(grid_search_results, metric='score', max_is_best=False):
     """Select parameter values giving best value for metric.
-    
+
     Args:
         grid_search_results: results from optimizer_grid_search function.
         metric: name of metric to order results by.
