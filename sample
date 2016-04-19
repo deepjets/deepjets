@@ -39,7 +39,7 @@ def merge(args):
     h5output = h5.File(args.output, 'w')
 
     for i, filename in enumerate(args.files):
-        print "appending {0} ...".format(filename)
+        print "reading in {0} ...".format(filename)
         h5input = h5.File(filename, 'r')
         images = h5input['images']
         auxvars = h5input['auxvars']
@@ -71,8 +71,15 @@ def merge(args):
             print "WARNING: existing weights in {0} will be overwritten".format(filename)
         else:
             auxvars = append_fields(auxvars, 'weights', data=np.ones(auxvars.shape[0], dtype=np.double))
+        
+        # convert to float32
+        print "converting to float32 ..."
+        images = images.astype(np.float32)
+        dtype = np.dtype([(name, np.float32) for name in auxvars.dtype.names])
+        auxvars = auxvars.astype(dtype)
 
         # append to output
+        print "appending to output ..."
         dataset_append(h5output, 'images', images)
         dataset_append(h5output, 'auxvars', auxvars)
 
@@ -94,7 +101,6 @@ def merge(args):
 
 def create(args):
     # loop over files
-    # convert everything to float32
     # perform random shuffle
     # merge into one file
     import h5py as h5
@@ -108,13 +114,7 @@ def create(args):
         h5input = h5.File(filename, 'r')
         images = h5input['images'].value
         auxvars = h5input['auxvars'].value
-
-        # convert to float32
-        print "converting to float32 ..."
-        images = images.astype(np.float32)
-        dtype = np.dtype([(name, np.float32) for name in auxvars.dtype.names])
-        auxvars = auxvars.astype(dtype)
-
+        
         # shuffle
         print "performing random shuffle ..."
         permute_idx = np.random.permutation(len(images))
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         # call me again but in a batch job for each input file
         import subprocess
         from deepjets.path_utils import mkdir_p
-
+        
         cmd = sys.argv[:]
         # remove batch option
         idx = cmd.index('--batch')
@@ -174,7 +174,7 @@ if __name__ == '__main__':
         cmd_batch = (
             'echo "{setup} {cmd}" | '
             'qsub -e {output_dir}/log -o {output_dir}/log '
-            '-N {name} -l nodes=1:ppn=1 -l mem=6GB -q {queue};').format(
+            '-N {name} -l nodes=1:ppn=1 -l mem=10GB -q {queue};').format(
                 setup=setup_cmd,
                 cmd=cmd,
                 output_dir=output_dir,
