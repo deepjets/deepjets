@@ -19,3 +19,4 @@ build
 *.nfs*
 *.DS_Store
 .ipynb_checkpoints
+*.hepmc

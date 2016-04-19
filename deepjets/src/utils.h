@@ -37,6 +37,12 @@ HepMC::IO_GenEvent* get_hepmc_reader(std::string filename) {
 }
 
 
+HepMC::IO_GenEvent* get_hepmc_writer(std::string filename) {
+  HepMC::IO_GenEvent* ascii_out = new HepMC::IO_GenEvent(filename, std::ios::out);
+  return ascii_out;
+}
+
+
 void hepmc_finalstate_particles(HepMC::GenEvent* event, std::vector<HepMC::GenParticle*>& particles) {
   int pdgid;
   HepMC_IsStateFinal isfinal;

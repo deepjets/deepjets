@@ -187,20 +187,25 @@ cdef class HepMCInput(MCInput):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def generate_events(MCInput gen_input, int n_events):
+def generate_events(MCInput gen_input, int n_events, string write_to):
     """
     Generate events (or read HepMC) and yield numpy arrays of particles
     """
     cdef np.ndarray particle_array
     cdef GenEvent* event
+    cdef IO_GenEvent* hepmc_writer = NULL
     cdef vector[GenParticle*] particles
     cdef int ievent = 0;
     if n_events < 0:
         ievent = n_events - 1
+    if not write_to.empty():
+        hepmc_writer = get_hepmc_writer(write_to)
     while ievent < n_events:
         if not gen_input.get_next_event():
             continue
         event = gen_input.get_hepmc()
+        if hepmc_writer != NULL:
+            hepmc_writer.write_event(event)
         hepmc_finalstate_particles(event, particles)
         particle_array = np.empty((particles.size(),), dtype=dtype_particle)
         particles_to_array(particles, <DTYPE_t*> particle_array.data)
@@ -209,3 +214,4 @@ def generate_events(MCInput gen_input, int n_events):
         if n_events > 0:
             ievent += 1
     gen_input.finish()
+    del hepmc_writer

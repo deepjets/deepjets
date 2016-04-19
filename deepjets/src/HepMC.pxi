@@ -37,3 +37,4 @@ cdef extern from "HepMC/GenParticle.h" namespace "HepMC":
 cdef extern from "HepMC/IO_GenEvent.h" namespace "HepMC":
     cdef cppclass IO_GenEvent:
         GenEvent* read_next_event()
+        void write_event(GenEvent*)

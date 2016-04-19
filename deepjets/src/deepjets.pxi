@@ -21,6 +21,7 @@ cdef extern from "clustering.h":
 
 cdef extern from "utils.h":
     IO_GenEvent* get_hepmc_reader(string)
+    IO_GenEvent* get_hepmc_writer(string)
     void hepmc_to_pseudojet(GenEvent&, vector[PseudoJet]&, double)
     void hepmc_to_delphes(GenEvent* event, TDatabasePDG* pdg,
                           Delphes* delphes, TObjArray* all_particles,
