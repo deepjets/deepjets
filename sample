@@ -116,7 +116,7 @@ def create(args):
 
         # shuffle
         print "performing random shuffle ..."
-        permute_idx = np.random.permutation()
+        permute_idx = np.random.permutation(len(images))
         images = images[permute_idx]
         auxvars = auxvars[permute_idx]
 
