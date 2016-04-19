@@ -220,6 +220,8 @@ void delphes_to_array(TObjArray* input_array, double* array) {
 
 HepMC::GenEvent* pythia_to_hepmc(Pythia8::Pythia* pythia) {
     HepMC::Pythia8ToHepMC py2hepmc;
+    // Suppress warnings with Vincia shower
+    py2hepmc.set_print_inconsistency(false);
     HepMC::GenEvent* event = new HepMC::GenEvent();
     if (!py2hepmc.fill_next_event(*pythia, event)) {
         delete event;
