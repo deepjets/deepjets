@@ -64,7 +64,6 @@ def merge(args):
                 selection = cut
         
         if selection is not None:
-            images = np.take(images.value, np.where(selection), axis=0)[0]
             auxvars = auxvars[selection]
         
         if 'weights' in auxvars.dtype.names:
@@ -74,13 +73,14 @@ def merge(args):
         
         # convert to float32
         print "converting to float32 ..."
-        images = images.astype(np.float32)
         dtype = np.dtype([(name, np.float32) for name in auxvars.dtype.names])
         auxvars = auxvars.astype(dtype)
 
         # append to output
         print "appending to output ..."
-        dataset_append(h5output, 'images', images)
+        dataset_append(h5output, 'images', images,
+                       dtype=np.float32, chunked_read=1024**3,
+                       selection=selection)
         dataset_append(h5output, 'auxvars', auxvars)
 
     # finally create weights that flatten pT

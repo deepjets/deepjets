@@ -208,7 +208,9 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20):
     return images, weights
 
 
-def dataset_append(h5output, datasetname, data):
+def dataset_append(h5output, datasetname, data,
+                   dtype=None, chunked_read=False,
+                   selection=None):
     """ Append an array to an HDF5 dataset
     """
     if isinstance(h5output, basestring):
@@ -217,17 +219,55 @@ def dataset_append(h5output, datasetname, data):
     else:
         own_file = False
         h5file = h5output
+    if dtype is None:
+        dtype = data.dtype
+        convert_type = False
+    else:
+        convert_type = True
     if datasetname not in h5file:
         dset = h5file.create_dataset(
             datasetname, data.shape,
             maxshape=[None,] + list(data.shape)[1:],
-            dtype=data.dtype)
+            dtype=dtype, chunks=True)
         prev_size = 0
     else:
         dset = h5file[datasetname]
         prev_size = dset.shape[0]
-    dset.resize(prev_size + data.shape[0], axis=0)
-    dset[prev_size:] = data
+    if selection is not None:
+        dset.resize(prev_size + selection.sum(), axis=0)
+    else:
+        dset.resize(prev_size + data.shape[0], axis=0)
+    if chunked_read and isinstance(data, h5py.Dataset):
+        # read dataset in chunks of size chunked_read
+        if len(data.shape) > 1:
+            elem_size = np.prod(data.shape[1:]) * data.dtype.itemsize
+        else:
+            elem_size = data.dtype.itemsize
+        chunk_size = int(chunked_read) / int(elem_size)
+        if chunk_size == 0:
+            raise RuntimeError(
+                "chunked_read is smaller than a single "
+                "element along first axis of input")
+        start = 0
+        offset = prev_size
+        while start < len(data):
+            stop = min(len(data), start + chunk_size)
+            data_chunk = data[start:stop]
+            if selection is not None:
+                data_chunk = np.take(data_chunk,
+                                     np.where(selection[start:stop]),
+                                     axis=0)[0]
+            if convert_type:
+                data_chunk = data_chunk.astype(dtype)
+            dset[offset:offset + data_chunk.shape[0]] = data_chunk
+            start = stop
+            offset += data_chunk.shape[0]
+    else:
+        if selection is not None:
+            data = np.take(data, np.where(selection), axis=0)[0]
+        if convert_type:
+            data = data.astype(dtype)
+        dset[prev_size:] = data
     if own_file:
         h5file.close()
     else:
