@@ -119,7 +119,7 @@ for i, filename in enumerate(args.files):
             selection = cut
     
     if selection is not None:
-        images = np.take(images, np.where(selection), axis=0)[0]
+        images = np.take(images.value, np.where(selection), axis=0)[0]
         auxvars = auxvars[selection]
     
     if 'weights' in auxvars.dtype.names:
@@ -130,7 +130,6 @@ for i, filename in enumerate(args.files):
     # append to output
     dataset_append(h5output, 'images', images)
     dataset_append(h5output, 'auxvars', auxvars)
-    h5output.flush()
 
 # finally create weights that flatten pT
 pt_bins = args.num_weight_bins
