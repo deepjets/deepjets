@@ -65,7 +65,7 @@ for i, R in enumerate(Rs):
     images_zoom_pt_trimmed = images_zoom_pt_trimmed.mean(axis=0)
     """
 
-    ax[0, i].set_title('{0:.1f};{1:.1f}'.format(1, R))
+    ax[0, i].set_title('R = {0:.1f}, r = {1:.1f}'.format(1, R))
     # plot jet images
     plot_jet_image(ax[0, i], images, label_axes=False, show_colorbar=False)
     plot_jet_image(ax[1, i], images_zoom_pt, label_axes=False, show_colorbar=False)
@@ -86,8 +86,8 @@ for i, R in enumerate(Rs):
     else:
         ax[2, i].yaxis.set_ticklabels([])
 
-    ax[2, i].text(0.05, 0.95, 'C = {0:.2f}%'.format(corr_pt[0, 1] * 100.),
-        verticalalignment='top', horizontalalignment='left',
+    ax[2, i].text(0.05, 0.05, 'C = {0:.2f}%'.format(corr_pt[0, 1] * 100.),
+        verticalalignment='bottom', horizontalalignment='left',
         transform=ax[2, i].transAxes)
     
     """
@@ -111,15 +111,18 @@ for i, R in enumerate(Rs):
         transform=ax[4, i].transAxes)
     """
 
-    vals1, _, _ = ax[3, i].hist(jet_mass, bins=np.linspace(65, 95, 50), label='Mass',
-                  histtype='stepfilled', facecolor='none', edgecolor='red', normed=1)
+    vals1, _, _ = ax[3, i].hist(jet_mass, bins=np.linspace(65, 95, 50), label='Mass', linestyle='dotted',
+                  histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1)
     vals2, _, _ = ax[3, i].hist(jet_mass_trimmed, bins=np.linspace(65, 95, 50), label='Trimmed Mass',
                   histtype='stepfilled', facecolor='none', edgecolor='black', normed=1)
-    ax[3, i].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2))))
+    ax[3, i].set_ylim((0, 1.35 * max(np.max(vals1), np.max(vals2))))
     if i == 0:
         ax[3, i].set_xlabel(r'Jet Mass [GeV]')
         ax[3, i].set_ylabel('Normalized to Unity')
-        ax[3, i].legend(frameon=False)
+        p1, = ax[3, i].plot([0, 0], color='blue', linestyle='dotted')
+        p2, = ax[3, i].plot([0, 0], color='black')
+        ax[3, i].legend([p1, p2], ['Mass', 'Trimmed Mass'], frameon=False, handlelength=3)
+        ax[3, i].set_xlim((65, 95))
 
 # get maximum y-axis range in mass plots
 y_max = max([ax[3, i].get_ylim()[1] for i in range(5)])
