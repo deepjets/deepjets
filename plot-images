@@ -36,6 +36,7 @@ def plot(filename):
     ax = fig.add_subplot(111)
     plot_jet_image(ax, avg_image, label_axes=False)
     fig.tight_layout()
+    fig.savefig(output_prefix + '.pdf')
     fig.savefig(output_prefix + '.png')
 
 
