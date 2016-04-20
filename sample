@@ -174,7 +174,7 @@ if __name__ == '__main__':
         cmd_batch = (
             'echo "{setup} {cmd}" | '
             'qsub -e {output_dir}/log -o {output_dir}/log '
-            '-N {name} -l nodes=1:ppn=1 -l mem=10GB -q {queue};').format(
+            '-N {name} -l nodes=1:ppn=1 -q {queue};').format(
                 setup=setup_cmd,
                 cmd=cmd,
                 output_dir=output_dir,
