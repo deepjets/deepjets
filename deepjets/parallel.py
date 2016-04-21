@@ -26,6 +26,20 @@ class FuncWorker(Worker):
         return self.func(*self.args, **self.kwargs)
 
 
+class GPUWorker(FuncWorker):
+    def __init__(self, func, *args, **kwargs):
+        self.gpu_id = None
+        super(GPUWorker, self).__init__(func, *args, **kwargs)
+
+    def work(self):
+        if self.gpu_id is None:
+            raise RuntimeError(
+                "attempted to start GPUWorker without first setting gpu_id")
+        import theano.sandbox.cuda
+        theano.sandbox.cuda.use('gpu{0}'.format(self.gpu_id))
+        return super(GPUWorker, self).work()
+
+
 def run_pool(workers, n_jobs=-1, sleep=0.1):
     # defensive copy
     workers = workers[:]
@@ -52,9 +66,51 @@ def run_pool(workers, n_jobs=-1, sleep=0.1):
         raise
 
 
+def run_gpu_pool(workers, n_gpus=-1, sleep=0.1):
+    # defensive copy
+    workers = workers[:]
+    if n_gpus < 1:
+        # determine number of GPUs available
+        from pycuda import driver
+        driver.init()
+        n_gpus = driver.Device.count()
+    processes = []
+    gpus = list(range(n_gpus))
+    p = None
+    try:
+        while True:
+            active = multiprocessing.active_children()
+            # collect gpu_ids from finished workers
+            for p in processes:
+                if not p.is_alive():
+                    gpus.append(p.gpu_id)
+            while len(workers) > 0 and len(gpus) > 0:
+                # get available gpu_id
+                p = workers.pop(0)
+                p.gpu_id = gpus.pop(0)
+                p.start()
+                processes.append(p)
+                active = multiprocessing.active_children()
+            if len(workers) == 0 and len(active) == 0:
+                break
+            time.sleep(sleep)
+    except KeyboardInterrupt, SystemExit:
+        if p is not None:
+            p.terminate()
+        for p in processes:
+            p.terminate()
+        raise
+
+
 def map_pool(process, args, n_jobs=-1, **kwargs):
     procs = [process(*arg, **kwargs) for arg in args]
     run_pool(procs, n_jobs=n_jobs)
+    return [p.output for p in procs]
+
+
+def map_gpu_pool(process, args, n_gpus=-1, **kwargs):
+    procs = [process(*arg, **kwargs) for arg in args]
+    run_gpu_pool(procs, n_gpus=n_gpus)
     return [p.output for p in procs]
 
 
