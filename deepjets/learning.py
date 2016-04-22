@@ -338,7 +338,7 @@ def train_test_star_cv(kwargs):
     model = load_model(model_name+'_base')
     model_name_ikf = model_name+'_kf{0}'.format(ikf)
     train_model(model, train_h5_file, model_name_ikf, **train_kwargs)
-    #model = load_model(model_name_ikf)
+    model = load_model(model_name_ikf)
     return test_model(
         model, train_h5_file, model_name_ikf,
         batch_size=train_kwargs['batch_size'], verbose=train_kwargs['verbose'],

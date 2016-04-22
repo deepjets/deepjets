@@ -51,8 +51,11 @@ def bayesian_optimization(model_name, train_files, epochs):
     seed(12345)
     bounds = [(0.0001, 0.001), (32, 1024)]
     objective = ObjectiveFunction(model_name, train_files, epochs)
-    bo = GPyOpt.methods.BayesianOptimization(f=objective, bounds=bounds)
-    bo.run_optimization(max_iter=50, eps=1e-5)
+    bo = GPyOpt.methods.BayesianOptimization(f=objective, bounds=bounds, exact_feval=True)
+    bo.run_optimization(max_iter=30, eps=1e-5, n_inbatch=4, n_procs=1,
+                        batch_method='predictive',
+                        acqu_optimize_method='fast_random',
+                        verbose=True)
     print bo.x_opt
     print bo.fx_opt
 
