@@ -1,5 +1,6 @@
 import multiprocessing
 import time
+from .tasksystem import AsyncTask
 
 
 class Worker(multiprocessing.Process):
@@ -26,18 +27,21 @@ class FuncWorker(Worker):
         return self.func(*self.args, **self.kwargs)
 
 
-class GPUWorker(FuncWorker):
+class GPUWorker(AsyncTask):
     def __init__(self, func, *args, **kwargs):
         self.gpu_id = None
-        super(GPUWorker, self).__init__(func, *args, **kwargs)
+        self.args = args
+        super(GPUWorker, self).__init__(func, must_exec=True, **kwargs)
 
-    def work(self):
+    def start(self):
         if self.gpu_id is None:
             raise RuntimeError(
                 "attempted to start GPUWorker without first setting gpu_id")
-        import theano.sandbox.cuda
-        theano.sandbox.cuda.use('gpu{0}'.format(self.gpu_id))
-        return super(GPUWorker, self).work()
+        ret = super(GPUWorker, self).start()
+        self.conn.send(self.gpu_id)
+        for arg in self.args:
+            self.conn.send(arg)
+        return ret
 
 
 def run_pool(workers, n_jobs=-1, sleep=0.1):
@@ -79,19 +83,20 @@ def run_gpu_pool(workers, n_gpus=-1, sleep=0.1):
     p = None
     try:
         while True:
-            active = multiprocessing.active_children()
             # collect gpu_ids from finished workers
+            finished = []
             for p in processes:
                 if not p.is_alive():
                     gpus.append(p.gpu_id)
+                    finished.append(p)
+            processes = [p for p in processes if p not in finished]
             while len(workers) > 0 and len(gpus) > 0:
                 # get available gpu_id
                 p = workers.pop(0)
                 p.gpu_id = gpus.pop(0)
                 p.start()
                 processes.append(p)
-                active = multiprocessing.active_children()
-            if len(workers) == 0 and len(active) == 0:
+            if len(workers) == 0 and len(processes) == 0:
                 break
             time.sleep(sleep)
     except KeyboardInterrupt, SystemExit:
@@ -111,7 +116,7 @@ def map_pool(process, args, n_jobs=-1, **kwargs):
 def map_gpu_pool(process, args, n_gpus=-1, **kwargs):
     procs = [process(*arg, **kwargs) for arg in args]
     run_gpu_pool(procs, n_gpus=n_gpus)
-    return [p.output for p in procs]
+    return [p.conn.recv() for p in procs]
 
 
 def map_pool_kwargs(process, kwargs, n_jobs=-1):

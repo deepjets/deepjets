@@ -22,3 +22,5 @@ if [ "$(uname)" == "Darwin" ]; then
 else
     export LD_LIBRARY_PATH=${DEEPJETS_SFT_DIR}/lib:${LD_LIBRARY_PATH}
 fi
+
+export PYTHONPATH=${DIR_DEEPJETS_SETUP}:${PYTHONPATH}

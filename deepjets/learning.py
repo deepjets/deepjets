@@ -90,13 +90,10 @@ def train_model(
         lr_s = custom_lr_schedule
     scheduler = callbacks.LearningRateScheduler(lr_s)
     callback_list = [checkpointer, earlystopper, scheduler]
-    import time
-    t0 = time.time()
     history = model.fit(
         X_train, Y_train, batch_size=batch_size, nb_epoch=epochs,
         validation_split=val_frac, verbose=verbose,
         sample_weight=weights_train, shuffle=shuffle, callbacks=callback_list)
-    print(time.time() - t0)
     h5file.close()
     if log_to_file:
         log_file = open(model_name+'_log.txt', 'a')
