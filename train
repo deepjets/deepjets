@@ -7,6 +7,7 @@ parser.add_argument('--sig', dest='signal_file')
 parser.add_argument('--bkg', dest='background_file')
 parser.add_argument('--events', type=int, default=-1)
 parser.add_argument('--epochs', type=int, default=100)
+parser.add_argument('--max-iter', type=int, default=30)
 parser.add_argument('--name')
 parser.add_argument('--nfolds', type=int, default=5)
 parser.add_argument('--test-fraction', type=float, default=0.2)
@@ -29,4 +30,4 @@ h5_files = prepare_datasets(
     shuffle=True, balance=True,
     n_sig=args.events, n_bkd=args.events)
 
-bayesian_optimization(model_name, h5_files['train'], epochs=args.epochs)
+bayesian_optimization(model_name, h5_files['train'], max_iter=args.max_iter, epochs=args.epochs)

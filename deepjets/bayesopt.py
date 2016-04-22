@@ -45,17 +45,18 @@ class ObjectiveFunction(object):
             n_gpus=-1))[:,np.newaxis]
 
 
-def bayesian_optimization(model_name, train_files, epochs):
+def bayesian_optimization(model_name, train_files, max_iter, epochs):
     import GPyOpt
     from numpy.random import seed
     seed(12345)
     bounds = [(0.0001, 0.001), (32, 1024)]
     objective = ObjectiveFunction(model_name, train_files, epochs)
     bo = GPyOpt.methods.BayesianOptimization(f=objective, bounds=bounds, exact_feval=True)
-    bo.run_optimization(max_iter=30, eps=1e-5, n_inbatch=4, n_procs=1,
+    bo.run_optimization(max_iter=max_iter, eps=1e-5, n_inbatch=4, n_procs=1,
                         batch_method='predictive',
                         acqu_optimize_method='fast_random',
                         verbose=True)
     print bo.x_opt
     print bo.fx_opt
-
+    bo.plot_acquisition(filename='bo_acquisition.pdf')
+    bo.plot_convergence(filename='bo_convergence.pdf')
