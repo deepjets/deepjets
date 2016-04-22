@@ -7,6 +7,7 @@ def train_one_point(task):
 
     model_name = task.conn.recv()
     files = task.conn.recv()
+    epochs = task.conn.recv()
     learning_rate = task.conn.recv()
     batch_size = task.conn.recv()
 
@@ -20,7 +21,7 @@ def train_one_point(task):
     vals = cross_validate_model(
         model, files,
         model_name=model_name + "_{0}_lr{1}_bs{2}".format(uuid.uuid4().hex, learning_rate, batch_size),
-        batch_size=batch_size, epochs=10,
+        batch_size=batch_size, epochs=epochs,
         val_frac=0.1, patience=10,
         lr_init=learning_rate, lr_scale_factor=1.0,
         log_to_file=True, read_into_ram=True, max_jobs=1)
@@ -28,28 +29,30 @@ def train_one_point(task):
 
 
 class ObjectiveFunction(object):
-    def __init__(self, model_name, train_files):
+    def __init__(self, model_name, train_files, epochs):
         self.model_name = model_name
         self.train_files = train_files
+        self.epochs = epochs
 
     def __call__(self, args):
         from .parallel import map_gpu_pool, GPUWorker
         import numpy as np
         return np.array(map_gpu_pool(
             GPUWorker,
-            [(train_one_point, self.model_name, self.train_files, learning_rate, batch_size)
+            [(train_one_point, self.model_name, self.train_files,
+                epochs, learning_rate, batch_size)
                 for learning_rate, batch_size in args],
-            n_gpus=-1))
+            n_gpus=-1))[:,np.newaxis]
 
 
-def bayesian_optimization(model_name, train_files):
+def bayesian_optimization(model_name, train_files, epochs):
     import GPyOpt
     from numpy.random import seed
     seed(12345)
     bounds = [(0.0001, 0.001), (32, 1024)]
-    objective = ObjectiveFunction(model_name, train_files)
+    objective = ObjectiveFunction(model_name, train_files, epochs)
     bo = GPyOpt.methods.BayesianOptimization(f=objective, bounds=bounds)
-    bo.run_optimization(max_iter=10, eps=10e-6)
+    bo.run_optimization(max_iter=50, eps=1e-5)
     print bo.x_opt
     print bo.fx_opt
 
