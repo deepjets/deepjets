@@ -40,7 +40,7 @@ class ObjectiveFunction(object):
         return np.array(map_gpu_pool(
             GPUWorker,
             [(train_one_point, self.model_name, self.train_files,
-                epochs, learning_rate, batch_size)
+                self.epochs, learning_rate, batch_size)
                 for learning_rate, batch_size in args],
             n_gpus=-1))[:,np.newaxis]
 
