@@ -8,6 +8,10 @@ from keras import callbacks
 from multiprocessing import Pool, cpu_count
 from sklearn.grid_search import ParameterGrid
 from sklearn.metrics import auc, roc_curve
+import logging
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 def train_model(
@@ -64,21 +68,25 @@ def train_model(
     if log_file is not sys.stdout:
         log_file.close()
     if read_into_ram:
-        shuffle = False
+        shuffle = True
         X_train = h5file['X_train'][:]
         Y_train = h5file['Y_train'][:]
         try:
             weights_train = h5file['auxvars_train']['weights'][:]
+            log.info("will train with weights")
         except KeyError:
             weights_train = None
+            log.warning("no training weights found!")
     else:
         shuffle = 'batch'
         X_train = h5file['X_train']
         Y_train = h5file['Y_train']
         try:
             weights_train = h5file['auxvars_train']['weights']
+            log.info("will train with weights")
         except KeyError:
             weights_train = None
+            log.warning("no training weights found!")
     checkpointer = callbacks.ModelCheckpoint(
         '{0}_weights.h5'.format(model_name), monitor='val_loss',
         verbose=verbose, save_best_only=True, mode='auto')
@@ -161,7 +169,7 @@ def train_model_auc_score(
     if log_file is not sys.stdout:
         log_file.close()
     if read_into_ram:
-        shuffle = False
+        shuffle = True
         X_train = h5file['X_train'][:]
         X_val = h5file['X_val'][:]
     else:

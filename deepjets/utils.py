@@ -85,6 +85,7 @@ def prepare_datasets(
         bkd_auxvars = bkd_auxvars[:n]
     n_sig = len(sig_images)
     n_bkd = len(bkd_images)
+    print("collected {0} signal and {1} background images".format(n_sig, n_bkd))
     n_images = n_sig + n_bkd
     images = np.concatenate((sig_images, bkd_images))
     images = images.reshape(-1, images.shape[1] * images.shape[2])
