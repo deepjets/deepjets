@@ -71,7 +71,12 @@ def bayesian_optimization(model_name, train_files, max_iter, epochs, val_frac):
     seed(12345)
     bounds = [(0.0001, 0.001), (30, 1000)]
     objective = ObjectiveFunction(model_name, train_files, epochs, val_frac)
-    bo = GPyOpt.methods.BayesianOptimization(f=objective, bounds=bounds, exact_feval=True)
+    bo = GPyOpt.methods.BayesianOptimization(
+        f=objective, bounds=bounds,)
+        #exact_feval=True,
+        #acquisition='LCB', # Lower confidence bound method
+        #acquisition_par=2, # Set parameter psi=2
+        #normalize=True)    # Normalize the acquisition funtction
     bo.run_optimization(max_iter=max_iter, eps=1e-5, n_inbatch=4, n_procs=1,
                         batch_method='predictive',
                         acqu_optimize_method='fast_random',
