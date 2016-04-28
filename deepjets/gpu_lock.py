@@ -8,6 +8,7 @@ http://homepages.inf.ed.ac.uk/imurray2/code/gpu_monitoring/gpu_lock/
 """
 
 import os, os.path
+import time
 
 _dev_prefix = '/dev/nvidia'
 #URL = 'http://www.cs.toronto.edu/~murray/code/gpu_monitoring/'
@@ -60,7 +61,7 @@ def _launch_reaper(id, pid):
     Popen([reaper_cmd, str(pid), me, '--free', str(id)],
         stdout=open('/dev/null', 'w'))
 
-def obtain_lock_id(pid = None):
+def obtain_lock_id(pid=None, block=False):
     """
     Finds a free id, locks it and returns integer id, or -1 if none free.
 
@@ -68,7 +69,7 @@ def obtain_lock_id(pid = None):
     process pid (by default the current python process) terminates.
     """
     id = -1
-    id = obtain_lock_id_to_hog()
+    id = obtain_lock_id_to_hog(block=block)
     try:
         if id >= 0:
             if pid is None:
@@ -79,15 +80,19 @@ def obtain_lock_id(pid = None):
         id = -1
     return id
 
-def obtain_lock_id_to_hog():
+def obtain_lock_id_to_hog(block=False):
     """
     Finds a free id, locks it and returns integer id, or -1 if none free.
 
     * Lock must be freed manually *
     """
-    for id in board_ids():
-        if _obtain_lock(id):
-            return id
+    while True:
+        for id in board_ids():
+            if _obtain_lock(id):
+                return id
+        if not block:
+            break
+        time.sleep(1)
     return -1
 
 def free_lock(id):
