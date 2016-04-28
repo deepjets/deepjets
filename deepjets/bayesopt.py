@@ -1,17 +1,6 @@
 
-
-def train_one_point(task):
-    gpu_id = task.conn.recv()
-    import theano.sandbox.cuda
-    theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
-
-    model_name = task.conn.recv()
-    files = task.conn.recv()
-    epochs = task.conn.recv()
-    val_frac = task.conn.recv()
-    learning_rate = task.conn.recv()
-    batch_size = task.conn.recv()
-
+def _train_one_point_helper(model_name, files, epochs, val_frac,
+                            learning_rate, batch_size):
     from .learning import train_model, cross_validate_model
     from .models import get_maxout
     import numpy as np
@@ -31,20 +20,38 @@ def train_one_point(task):
             model_name=model_name,
             batch_size=batch_size, epochs=epochs,
             val_frac=val_frac, patience=10,
-            lr_init=learning_rate, lr_scale_factor=1.0,
+            lr_init=learning_rate, lr_scale_factor=0.98,
             log_to_file=True, read_into_ram=True)
-        task.conn.send(min(history.history['val_loss']))
-    else:
-        # CV
-        # do not run CV in parallel
-        vals = cross_validate_model(
-            model, files,
-            model_name=model_name,
-            batch_size=batch_size, epochs=epochs,
-            val_frac=val_frac, patience=10,
-            lr_init=learning_rate, lr_scale_factor=1.0,
-            log_to_file=True, read_into_ram=True, max_jobs=1)
-        task.conn.send(-1 * np.array(vals['AUC']).mean())
+        return min(history.history['val_loss'])
+
+    # CV
+    # do not run CV in parallel
+    vals = cross_validate_model(
+        model, files,
+        model_name=model_name,
+        batch_size=batch_size, epochs=epochs,
+        val_frac=val_frac, patience=10,
+        lr_init=learning_rate, lr_scale_factor=0.98,
+        log_to_file=True, read_into_ram=True, max_jobs=1)
+    return -1 * np.array(vals['AUC']).mean()
+
+
+def train_one_point(task):
+    gpu_id = task.conn.recv()
+    model_name = task.conn.recv()
+    files = task.conn.recv()
+    epochs = task.conn.recv()
+    val_frac = task.conn.recv()
+    learning_rate = task.conn.recv()
+    batch_size = task.conn.recv()
+
+    import theano.sandbox.cuda
+    theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
+
+    result = _train_one_point_helper(
+        model_name=model_name, files=files, epochs=epochs, val_frac=val_frac,
+        learning_rate=learning_rate, batch_size=batch_size)
+    task.conn.send(result)
 
 
 class ObjectiveFunction(object):

@@ -13,11 +13,14 @@ parser.add_argument('--nfolds', type=int, default=1)
 parser.add_argument('--test-fraction', type=float, default=0.2)
 parser.add_argument('--val-fraction', type=float, default=0.1)
 parser.add_argument('--use-existing-datasets', action='store_true', default=False)
+parser.add_argument('--batch-size', type=int, default=None)
+parser.add_argument('--learning-rate', type=float, default=None)
 args = parser.parse_args()
 
+import os
 from deepjets.utils import prepare_datasets
 from deepjets.path_utils import mkdir_p
-from deepjets.bayesopt import bayesian_optimization
+from deepjets.bayesopt import bayesian_optimization, _train_one_point_helper
 
 mkdir_p('datasets')
 mkdir_p('models')
@@ -26,7 +29,7 @@ dataset_name = 'datasets/' + args.name
 model_name = 'models/' + args.name
 
 # Prepare datasets once for all trainings
-if args.use_existing_datasets:
+if args.use_existing_datasets and os.path.exists(dataset_name + '_test.h5'):
     h5_files = {'test': dataset_name + '_test.h5'}
     if args.nfolds > 1:
         h5_files['train'] = [
@@ -42,6 +45,19 @@ else:
         shuffle=True, balance=True,
         n_sig=args.events, n_bkd=args.events)
 
-bayesian_optimization(
-    model_name, h5_files['train'], max_iter=args.max_iter,
-    epochs=args.epochs, val_frac=args.val_fraction)
+if args.batch_size is not None and args.learning_rate is not None:
+    from deepjets.gpu_lock import obtain_lock_id
+    gpu_id = obtain_lock_id(block=True)
+    
+    import theano.sandbox.cuda
+    theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
+
+    # train single point
+    print _train_one_point_helper(
+        model_name=model_name, files=h5_files['train'],
+        epochs=args.epochs, val_frac=args.val_fraction,
+        batch_size=args.batch_size, learning_rate=args.learning_rate)
+else:
+    bayesian_optimization(
+        model_name, h5_files['train'], max_iter=args.max_iter,
+        epochs=args.epochs, val_frac=args.val_fraction)
