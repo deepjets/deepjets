@@ -12,6 +12,7 @@ parser.add_argument('--name')
 parser.add_argument('--nfolds', type=int, default=1)
 parser.add_argument('--test-fraction', type=float, default=0.2)
 parser.add_argument('--val-fraction', type=float, default=0.1)
+parser.add_argument('--use-existing-datasets', action='store_true', default=False)
 args = parser.parse_args()
 
 from deepjets.utils import prepare_datasets
@@ -25,12 +26,21 @@ dataset_name = 'datasets/' + args.name
 model_name = 'models/' + args.name
 
 # Prepare datasets once for all trainings
-h5_files = prepare_datasets(
-    args.signal_file, args.background_file, dataset_name,
-    test_frac=args.test_fraction, val_frac=0, # use Keras' internal val_frac
-    n_folds=args.nfolds,
-    shuffle=True, balance=True,
-    n_sig=args.events, n_bkd=args.events)
+if args.use_existing_datasets:
+    h5_files = {'test': dataset_name + '_test.h5'}
+    if args.nfolds > 1:
+        h5_files['train'] = [
+            dataset_name + '_train_kf{0}.h5'.format(i)
+            for i in range(args.nfolds)]
+    else:
+        h5_files['train'] = dataset_name + '_train.h5'
+else:
+    h5_files = prepare_datasets(
+        args.signal_file, args.background_file, dataset_name,
+        test_frac=args.test_fraction, val_frac=0, # use Keras' internal val_frac
+        n_folds=args.nfolds,
+        shuffle=True, balance=True,
+        n_sig=args.events, n_bkd=args.events)
 
 bayesian_optimization(
     model_name, h5_files['train'], max_iter=args.max_iter,
