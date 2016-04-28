@@ -12,8 +12,11 @@ done
 DIR_DEEPJETS_SETUP="$( cd -P "$( dirname "$SOURCE_DEEPJETS_SETUP" )" && pwd )"
 
 # change the following paths if desired
-source /data/edawe/public/setup.sh
-export DEEPJETS_SFT_DIR=/data/edawe/public/software/hep # on the UI
+BASE=/data/edawe/public
+if [ -e ${BASE} ]; then
+  source ${BASE}/setup.sh
+  export DEEPJETS_SFT_DIR=${BASE}/software/hep # on the UI
+fi
 
 # you should not need to edit below this line
 export PATH=${DIR_DEEPJETS_SETUP}:${DEEPJETS_SFT_DIR}/bin:${PATH}

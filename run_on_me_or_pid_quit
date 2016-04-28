@@ -31,6 +31,6 @@ signal.signal(signal.SIGTERM, final)
 
 try:
     while os.path.exists(proc_file):
-        time.sleep(2)
+        time.sleep(0.5)
 finally:
     final()

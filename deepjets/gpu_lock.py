@@ -61,6 +61,15 @@ def _launch_reaper(id, pid):
     Popen([reaper_cmd, str(pid), me, '--free', str(id)],
         stdout=open('/dev/null', 'w'))
 
+def launch_reaper(id, pid):
+    try:
+        if pid is None:
+            pid = os.getpid()
+        _launch_reaper(id, pid)
+    except:
+        free_lock(id)
+        raise
+
 def obtain_lock_id(pid=None, block=False):
     """
     Finds a free id, locks it and returns integer id, or -1 if none free.
@@ -68,16 +77,12 @@ def obtain_lock_id(pid=None, block=False):
     A process is spawned that will free the lock automatically when the
     process pid (by default the current python process) terminates.
     """
-    id = -1
     id = obtain_lock_id_to_hog(block=block)
-    try:
-        if id >= 0:
-            if pid is None:
-                pid = os.getpid()
-            _launch_reaper(id, pid)
-    except:
-        free_lock(id)
-        id = -1
+    if id >= 0:
+        try:
+            launch_reaper(id, pid)
+        except:
+            id = -1
     return id
 
 def obtain_lock_id_to_hog(block=False):

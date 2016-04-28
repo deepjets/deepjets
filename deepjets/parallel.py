@@ -1,6 +1,7 @@
 import multiprocessing
 import time
 from .tasksystem import AsyncTask
+from .gpu_lock import obtain_lock_id_to_hog, launch_reaper
 
 
 class Worker(multiprocessing.Process):
@@ -79,7 +80,6 @@ def run_gpu_pool(workers, n_gpus=-1, sleep=0.1):
         driver.init()
         n_gpus = driver.Device.count()
     processes = []
-    gpus = list(range(n_gpus))
     p = None
     try:
         while True:
@@ -87,14 +87,18 @@ def run_gpu_pool(workers, n_gpus=-1, sleep=0.1):
             finished = []
             for p in processes:
                 if not p.is_alive():
-                    gpus.append(p.gpu_id)
                     finished.append(p)
             processes = [p for p in processes if p not in finished]
-            while len(workers) > 0 and len(gpus) > 0:
+            while len(workers) > 0:
                 # get available gpu_id
+                gpu_id = obtain_lock_id_to_hog(block=False)
+                if gpu_id == -1:
+                    # all GPUs currently being used. Will try again next time.
+                    break
                 p = workers.pop(0)
-                p.gpu_id = gpus.pop(0)
+                p.gpu_id = gpu_id
                 p.start()
+                launch_reaper(gpu_id, p.child_pid)
                 processes.append(p)
             if len(workers) == 0 and len(processes) == 0:
                 break
