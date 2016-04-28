@@ -6,10 +6,10 @@ Perform jet clustering on HepMC or HDF5 input
 def get_suffix(args):
     suffix = '_j{0:.1f}_sj{1:.2f}'.format(
         args.jet_size, args.subjet_size).replace('.', 'p')
-    if args.shrink:
-        suffix += '_shrink'
     if args.delphes:
         suffix += '_delphes'
+    if args.shrink:
+        suffix += '_shrink'
     suffix += '_jets'
     return suffix
 
