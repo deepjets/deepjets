@@ -567,7 +567,7 @@ def auxvar_roc_curve(
     """
     with h5py.File(test_h5_file, 'r') as h5file:
         Y_test = h5file[Y_dataset][:]
-        var = h5file[auxvar][:]
+        var = h5file['auxvars_test'][auxvar][:]
     if use_lklhd_roc_curve:
         return lklhd_inv_roc_curve(Y_test, var)
     else:
