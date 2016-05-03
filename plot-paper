@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+M_LOW, M_HIGH = 50, 110
+
 
 def plot(signal, background, nbins, filename):
     import numpy as np
@@ -14,8 +16,8 @@ def plot(signal, background, nbins, filename):
     background_h5file_events = h5py.File(background, 'r')
     background_aux = background_h5file_events['auxvars']
 
-    signal_selection = (signal_aux['mass_trimmed'] > 65) & (signal_aux['mass_trimmed'] < 95)
-    background_selection = (background_aux['mass_trimmed'] > 65) & (background_aux['mass_trimmed'] < 95)
+    signal_selection = (signal_aux['mass_trimmed'] > M_LOW) & (signal_aux['mass_trimmed'] < M_HIGH)
+    background_selection = (background_aux['mass_trimmed'] > M_LOW) & (background_aux['mass_trimmed'] < M_HIGH)
     
     print signal_selection.sum()
     print background_selection.sum()
@@ -56,10 +58,10 @@ def plot(signal, background, nbins, filename):
     ax[0, 0].set_xlim((pt_min, pt_max))
     ax[0, 0].ticklabel_format(style='sci', scilimits=(0,0), axis='y')
 
-    vals1, _, _ = ax[0, 1].hist(signal_aux['mass_trimmed'][signal_selection], bins=np.linspace(60, 100, nbins),
+    vals1, _, _ = ax[0, 1].hist(signal_aux['mass_trimmed'][signal_selection], bins=np.linspace(M_LOW - 10, M_HIGH + 10, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,
                label=r'W jets', weights=signal_weights[signal_selection])
-    vals2, _, _ = ax[0, 1].hist(background_aux['mass_trimmed'][background_selection], bins=np.linspace(60, 100, nbins),
+    vals2, _, _ = ax[0, 1].hist(background_aux['mass_trimmed'][background_selection], bins=np.linspace(M_LOW - 10, M_HIGH + 10, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='black', normed=1, linestyle='dotted',
                label='QCD jets', weights=background_weights[background_selection])
     ax[0, 1].set_ylim((0, 1.3 * max(np.max(vals1), np.max(vals2)))) 
@@ -69,7 +71,7 @@ def plot(signal, background, nbins, filename):
     p1, = ax[0, 1].plot([0, 0], label='W jets', color='blue')
     p2, = ax[0, 1].plot([0, 0], label='QCD jets', color='black', linestyle='dotted')
     ax[0, 1].legend([p1, p2], ['W jets', 'QCD jets'], frameon=False, handlelength=3)
-    ax[0, 1].set_xlim((60, 100))
+    ax[0, 1].set_xlim((M_LOW - 10, M_HIGH + 10))
 
     vals1, _, _ = ax[1, 0].hist(np.true_divide(signal_aux['tau_2'], signal_aux['tau_1'])[signal_selection], bins=np.linspace(0, 1, nbins),
                histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1,

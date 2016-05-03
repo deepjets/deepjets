@@ -4,9 +4,17 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--events', type=int, default=1000)
-parser.add_argument('-o', '--output', default='show_clustering.pdf')
+parser.add_argument('--delphes', action='store_true', default=False)
+parser.add_argument('-o', '--output', default=None)
 parser.add_argument('config')
 args = parser.parse_args()
+
+import os
+
+if args.output is None:
+    args.output = 'show_clustering_choices_{0}{1}.pdf'.format(
+        os.path.splitext(args.config)[0],
+        '_delphes' if args.delphes else '')
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +23,7 @@ from deepjets.clustering import cluster
 from deepjets.preprocessing import pixel_edges, preprocess
 from deepjets.utils import plot_jet_image
 from deepjets.generate import generate_events
+from deepjets.detector import reconstruct
 
 #fig, ax = plt.subplots(6, 5, figsize=(20, 22))
 fig, ax = plt.subplots(4, 5, figsize=(18, 14))
@@ -28,7 +37,17 @@ params_dict = {
     'PhaseSpace:pTHatMin': 200,
     'PhaseSpace:pTHatMax': 500}
 
-events = list(generate_events(args.config, args.events, params_dict=params_dict))
+if args.delphes:
+    # Delphes + Pythia
+    gen = reconstruct(generate_events(args.config, params_dict=params_dict), events=args.events)
+    M_LOW, M_HIGH = 50, 110
+else:
+    # Pythia
+    gen = generate_events(args.config, events=args.events, params_dict=params_dict)
+    M_LOW, M_HIGH = 65, 95
+
+# generate all events
+events = list(gen)
 
 edges = pixel_edges(jet_size=1.0, border_size=0)
 zoom_edges = pixel_edges(jet_size=1.0, border_size=1.0)
@@ -111,9 +130,9 @@ for i, R in enumerate(Rs):
         transform=ax[4, i].transAxes)
     """
 
-    vals1, _, _ = ax[3, i].hist(jet_mass, bins=np.linspace(65, 95, 50), label='Mass', linestyle='dotted',
+    vals1, _, _ = ax[3, i].hist(jet_mass, bins=np.linspace(M_LOW, M_HIGH, 50), label='Mass', linestyle='dotted',
                   histtype='stepfilled', facecolor='none', edgecolor='blue', normed=1)
-    vals2, _, _ = ax[3, i].hist(jet_mass_trimmed, bins=np.linspace(65, 95, 50), label='Trimmed Mass',
+    vals2, _, _ = ax[3, i].hist(jet_mass_trimmed, bins=np.linspace(M_LOW, M_HIGH, 50), label='Trimmed Mass',
                   histtype='stepfilled', facecolor='none', edgecolor='black', normed=1)
     ax[3, i].set_ylim((0, 1.35 * max(np.max(vals1), np.max(vals2))))
     if i == 0:
@@ -122,7 +141,7 @@ for i, R in enumerate(Rs):
         p1, = ax[3, i].plot([0, 0], color='blue', linestyle='dotted')
         p2, = ax[3, i].plot([0, 0], color='black')
         ax[3, i].legend([p1, p2], ['Mass', 'Trimmed Mass'], frameon=False, handlelength=3)
-        ax[3, i].set_xlim((65, 95))
+        ax[3, i].set_xlim((M_LOW, M_HIGH))
 
 # get maximum y-axis range in mass plots
 y_max = max([ax[3, i].get_ylim()[1] for i in range(5)])
