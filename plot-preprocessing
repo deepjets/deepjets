@@ -2,38 +2,28 @@
 
 from deepjets.generate import generate_events, get_generator_input
 from deepjets.clustering import cluster
+from deepjets.detector import reconstruct
 from deepjets.preprocessing import *
 from deepjets.utils import plot_jet_image
 import numpy as np
-
-# generate one event
-gen_input = get_generator_input('pythia', 'w.config', random_state=7,
-                                params_dict={
-                                    'PhaseSpace:pTHatMin': 250,
-                                    'PhaseSpace:pTHatMax': 300})
-event = list(cluster(
-    generate_events(gen_input), 1,
-    jet_size=1.0, shrink=True,
-    shrink_mass=80.385, subjet_dr_min=0.3,
-    trimmed_pt_min=250, trimmed_pt_max=300,
-    trimmed_mass_min=65, trimmed_mass_max=95))[0]
-
-edges = pixel_edges(
-        jet_size=1.0,
-        subjet_size_fraction=0.5,
-        pixel_size=(0.1, 0.1))
-eta_edges, phi_edges = edges
-
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(14, 7))
+fig = plt.figure(figsize=(7, 7))
+#fig = plt.figure(figsize=(14, 7))
+
+#axes = [
+#plt.subplot2grid((2, 4), (0, 0), colspan=2, rowspan=2),
+#plt.subplot2grid((2, 4), (0, 2)),
+#plt.subplot2grid((2, 4), (0, 3)),
+#plt.subplot2grid((2, 4), (1, 2)),
+#plt.subplot2grid((2, 4), (1, 3)),
+#]
 
 axes = [
-plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
-plt.subplot2grid((2,4), (0, 2)),
-plt.subplot2grid((2,4), (0, 3)),
-plt.subplot2grid((2,4), (1, 2)),
-plt.subplot2grid((2,4), (1, 3)),
+plt.subplot2grid((2, 2), (0, 0)),
+plt.subplot2grid((2, 2), (0, 1)),
+plt.subplot2grid((2, 2), (1, 0)),
+plt.subplot2grid((2, 2), (1, 1)),
 ]
 
 def simple_axes(ax):
@@ -46,54 +36,71 @@ def simple_axes(ax):
 for ax in axes:
     simple_axes(ax)
 
-translate(event.trimmed_constit, event.subjets)
-axes[0].scatter(event.trimmed_constit['eta'], event.trimmed_constit['phi'],
-    marker='o', s=event.trimmed_constit['ET'] * 5)
-axes[0].text(0.02, 0.98, "Particles", transform=axes[0].transAxes,
-    fontsize=18, fontweight='bold', va='top')
-axes[0].text(.02,.5,r'$\phi$',
-    va='center', ha='left', fontsize=20,
-    transform=axes[0].transAxes)
-axes[0].text(.5,.02,r'$\eta$',
-    va='bottom', ha='center', fontsize=20,
-    transform=axes[0].transAxes)
+# generate one event
+gen_input = get_generator_input('pythia', 'w.config', random_state=8,
+                                params_dict={
+                                    'PhaseSpace:pTHatMin': 250,
+                                    'PhaseSpace:pTHatMax': 300})
 
+event = list(cluster(
+    reconstruct(generate_events(gen_input), random_state=1), events=1,
+    jet_size=1.0, subjet_size=0.3,
+    trimmed_pt_min=250, trimmed_pt_max=300,
+    trimmed_mass_min=65, trimmed_mass_max=95))[0]
+
+translate(event.trimmed_constit, event.subjets)
+
+#axes[0].scatter(event.trimmed_constit['eta'], event.trimmed_constit['phi'],
+    #marker='o', s=event.trimmed_constit['ET'] * 5)
+#axes[0].text(0.02, 0.98, "PYTHIA Particles", transform=axes[0].transAxes,
+    #fontsize=20, fontweight='bold', va='top')
+#axes[0].text(.02,.5,r'$\phi$',
+    #va='center', ha='left', fontsize=30,
+    #transform=axes[0].transAxes)
+#axes[0].text(.5,.02,r'$\eta$',
+    #va='bottom', ha='center', fontsize=30,
+    #transform=axes[0].transAxes)
+
+edges = pixel_edges(
+        jet_size=1.0,
+        pixel_size=(0.1, 0.1),
+        border_size=1)
 image = pixelize(event.trimmed_constit, edges)
 
 width, height = image.T.shape
 dw, dh = 1./width, 1./height
+axes[0].imshow(
+    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+    interpolation='nearest', cmap='Reds')
+axes[0].text(0.05, 0.95, "Pixelise", transform=axes[0].transAxes,
+      color='black', fontsize=20, fontweight='bold', va='top')
+axes[0].text(.02,.5,r'$\phi$',
+    va='center', ha='left', fontsize=30, color='black',
+    transform=axes[0].transAxes)
+axes[0].text(.5,.02,r'$\eta$',
+    va='bottom', ha='center', fontsize=30, color='black',
+    transform=axes[0].transAxes)
+
+image = rotate_image(image, event.subjets)
 axes[1].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='Reds')
-axes[1].text(0.05, 0.95, "Pixelise", transform=axes[1].transAxes,
-      color='black', fontsize=18, fontweight='bold', va='top')
-axes[1].text(.02,.5,r'$\phi$',
-    va='center', ha='left', fontsize=20, color='black',
-    transform=axes[1].transAxes)
-axes[1].text(.5,.02,r'$\eta$',
-    va='bottom', ha='center', fontsize=20, color='black',
-    transform=axes[1].transAxes)
+axes[1].text(0.05, 0.95, "Rotate", transform=axes[1].transAxes,
+      color='black', fontsize=20, fontweight='bold', va='top')
 
-image = rotate_image(image, event.subjets)
+image = reflect_image(image, event.subjets)
 axes[2].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='Reds')
-axes[2].text(0.05, 0.95, "Rotate", transform=axes[2].transAxes,
-      color='black', fontsize=18, fontweight='bold', va='top')
+axes[2].text(0.05, 0.95, "Reflect", transform=axes[2].transAxes,
+      color='black', fontsize=20, fontweight='bold', va='top')
 
-image = reflect_image(image, event.subjets)
+image = zoom_image(image, max(1.0 / (2 * 80.385 / event.jets[0]['pT']), 1.), 25)
 axes[3].imshow(
     image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
     interpolation='nearest', cmap='Reds')
-axes[3].text(0.05, 0.95, "Reflect", transform=axes[3].transAxes,
-      color='black', fontsize=18, fontweight='bold', va='top')
-
-image = zoom_image(image, 1. / event.shrinkage, 25)
-axes[4].imshow(
-    image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-    interpolation='nearest', cmap='Reds')
-axes[4].text(0.05, 0.95, "Zoom", transform=axes[4].transAxes,
-      color='black', fontsize=18, fontweight='bold', va='top')
+axes[3].text(0.05, 0.95, "Zoom", transform=axes[3].transAxes,
+      color='black', fontsize=20, fontweight='bold', va='top')
 
 from matplotlib.patches import FancyArrowPatch
 
@@ -104,15 +111,15 @@ arrows = [
 #                arrowstyle='simple', mutation_scale=50,
 #      transform=tr, facecolor='black', edgecolor='none'),
 
-FancyArrowPatch(posA=(0.7, 0.75), posB=(0.8, 0.75),
+FancyArrowPatch(posA=(0.4, 0.75), posB=(0.6, 0.75),
                 arrowstyle='simple', mutation_scale=50,
       transform=tr, facecolor='black', edgecolor='none'),
 
-FancyArrowPatch(posA=(0.8, 0.6), posB=(0.7, 0.4),
+FancyArrowPatch(posA=(0.6, 0.6), posB=(0.4, 0.4),
                 arrowstyle='simple', mutation_scale=50,
       transform=tr, facecolor='black', edgecolor='none'),
 
-FancyArrowPatch(posA=(0.7, 0.25), posB=(0.8, 0.25),
+FancyArrowPatch(posA=(0.4, 0.25), posB=(0.6, 0.25),
                 arrowstyle='simple', mutation_scale=50,
       transform=tr, facecolor='black', edgecolor='none'),
 ]
@@ -121,61 +128,61 @@ fig.patches.extend(arrows)
 fig.tight_layout()
 plt.savefig('show_preprocessing.pdf')
 
-# animated plot showing building up of average jet image
+## animated plot showing building up of average jet image
 
-from matplotlib import animation
-from matplotlib.colors import LogNorm
+#from matplotlib import animation
+#from matplotlib.colors import LogNorm
 
-fig = plt.figure(figsize=(14, 7))
+#fig = plt.figure(figsize=(14, 7))
 
-nevents = 80
-events = list(cluster(
-    generate_events(gen_input), nevents,
-    jet_size=1.0, shrink=True,
-    shrink_mass=80.385, subjet_dr_min=0.3,
-    trimmed_pt_min=200, trimmed_pt_max=500))
+#nevents = 80
+#events = list(cluster(
+    #generate_events(gen_input), nevents,
+    #jet_size=1.0, shrink=True,
+    #shrink_mass=80.385, subjet_dr_min=0.3,
+    #trimmed_pt_min=200, trimmed_pt_max=500))
 
-images = []
+#images = []
 
 
-def animate(iframe):
-    print "plotting frame {0}".format(iframe)
-    plt.clf()
+#def animate(iframe):
+    #print "plotting frame {0}".format(iframe)
+    #plt.clf()
 
-    event = events[iframe]
+    #event = events[iframe]
 
-    axes = [
-    plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
-    plt.subplot2grid((2,4), (0, 2), colspan=2, rowspan=2),
-    ]
+    #axes = [
+    #plt.subplot2grid((2,4), (0, 0), colspan=2, rowspan=2),
+    #plt.subplot2grid((2,4), (0, 2), colspan=2, rowspan=2),
+    #]
 
-    for ax in axes:
-        simple_axes(ax)
-    fig.tight_layout()
+    #for ax in axes:
+        #simple_axes(ax)
+    #fig.tight_layout()
 
-    translate(event.trimmed_constit, event.subjets)
-    axes[0].scatter(
-            event.trimmed_constit['eta'],
-            event.trimmed_constit['phi'],
-            marker='o', s=event.trimmed_constit['ET'] * 5)
-    axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
-        fontsize=18, fontweight='bold', va='top')
+    #translate(event.trimmed_constit, event.subjets)
+    #axes[0].scatter(
+            #event.trimmed_constit['eta'],
+            #event.trimmed_constit['phi'],
+            #marker='o', s=event.trimmed_constit['ET'] * 5)
+    #axes[0].text(0.05, 0.95, "Particles", transform=axes[0].transAxes,
+        #fontsize=25, fontweight='bold', va='top')
     
-    image = preprocess(event.subjets,
-                       event.trimmed_constit,
-                       edges,
-                       zoom=1. / event.shrinkage,
-                       normalize=True,
-                       out_width=25)
-    images.append(image)
-    avgimage = np.sum(images, axis=0) / len(images)
-    axes[1].imshow(
-        avgimage.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
-        interpolation='nearest', norm=LogNorm(vmin=1e-9, vmax=1e-2),
-        cmap='jet')
-    axes[1].text(0.05, 0.95, "Average Jet Image", transform=axes[1].transAxes,
-        color='red', fontsize=18, fontweight='bold', va='top')
+    #image = preprocess(event.subjets,
+                       #event.trimmed_constit,
+                       #edges,
+                       #zoom=1. / event.shrinkage,
+                       #normalize=True,
+                       #out_width=25)
+    #images.append(image)
+    #avgimage = np.sum(images, axis=0) / len(images)
+    #axes[1].imshow(
+        #avgimage.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
+        #interpolation='nearest', norm=LogNorm(vmin=1e-9, vmax=1e-2),
+        #cmap='jet')
+    #axes[1].text(0.05, 0.95, "Average Jet Image", transform=axes[1].transAxes,
+        #color='red', fontsize=25, fontweight='bold', va='top')
 
 
-anim = animation.FuncAnimation(fig, animate, frames=nevents)
-anim.save('animate_average_image.gif', writer='imagemagick', fps=5)
+#anim = animation.FuncAnimation(fig, animate, frames=nevents)
+#anim.save('animate_average_image.gif', writer='imagemagick', fps=5)
