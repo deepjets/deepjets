@@ -115,11 +115,13 @@ def create(args):
         images = h5input['images'].value
         auxvars = h5input['auxvars'].value
         
-        # shuffle
-        print "performing random shuffle ..."
-        permute_idx = np.random.permutation(len(images))
-        images = images[permute_idx]
-        auxvars = auxvars[permute_idx]
+        # shuffle in-place
+        print "performing random shuffle in-place"
+        rng_state = np.random.get_state()
+        np.random.shuffle(images)
+        # shuffle in unison, so reset random state to the same value
+        np.random.set_state(rng_state)
+        np.random.shuffle(auxvars)
 
         # append to output
         print "appending to output ..."

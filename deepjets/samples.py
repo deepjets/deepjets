@@ -210,9 +210,12 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20):
 
 def dataset_append(h5output, datasetname, data,
                    dtype=None, chunked_read=False,
-                   selection=None):
+                   selection=None, indices=None):
     """ Append an array to an HDF5 dataset
     """
+    if indices is not None and selection is not None:
+        raise NotImplementedError(
+            "handling both selection and indices is not implemented")
     if isinstance(h5output, basestring):
         h5file = h5py.File(h5output, 'a')
         own_file = True
@@ -235,6 +238,8 @@ def dataset_append(h5output, datasetname, data,
         prev_size = dset.shape[0]
     if selection is not None:
         dset.resize(prev_size + selection.sum(), axis=0)
+    elif indices is not None:
+        dset.resize(prev_size + indices.shape[0], axis=0)
     else:
         dset.resize(prev_size + data.shape[0], axis=0)
     if chunked_read and isinstance(data, h5py.Dataset):
@@ -250,13 +255,25 @@ def dataset_append(h5output, datasetname, data,
                 "element along first axis of input")
         start = 0
         offset = prev_size
-        while start < len(data):
-            stop = min(len(data), start + chunk_size)
-            data_chunk = data[start:stop]
-            if selection is not None:
-                data_chunk = np.take(data_chunk,
-                                     np.where(selection[start:stop]),
-                                     axis=0)[0]
+        if indices is not None:
+            end = indices.shape[0]
+        else:
+            end = len(data)
+        while start < end:
+            stop = min(end, start + chunk_size)
+            if indices is not None:
+                indices_chunk = indices[start:stop]
+                # index list must be sorted in h5py
+                indices_argsort = np.argsort(indices_chunk)
+                data_chunk = data[(indices_chunk[indices_argsort]).tolist()]
+                # unsort
+                data_chunk = np.take(data_chunk, indices_argsort, axis=0)
+            else:
+                data_chunk = data[start:stop]
+                if selection is not None:
+                    data_chunk = np.take(data_chunk,
+                                         np.where(selection[start:stop]),
+                                         axis=0)[0]
             if convert_type:
                 data_chunk = data_chunk.astype(dtype)
             dset[offset:offset + data_chunk.shape[0]] = data_chunk
@@ -265,6 +282,8 @@ def dataset_append(h5output, datasetname, data,
     else:
         if selection is not None:
             data = np.take(data, np.where(selection), axis=0)[0]
+        elif indices is not None:
+            data = np.take(data, indices, axis=0)
         if convert_type:
             data = data.astype(dtype)
         dset[prev_size:] = data
