@@ -33,9 +33,11 @@ model = models.load_model(args.network)
 with h5.File(args.testfile, 'r') as h5file:
     y_test = h5file['Y_test'][:]
     y_proba = model.predict_proba(h5file['X_test'], batch_size=1000)
+    weights = h5file['auxvars_test']['weights']
 y_proba /= y_proba.sum(axis=1)[:, np.newaxis]
 y_proba = y_proba[:, 0]
 
 with h5.File(args.output, 'w') as h5file:
     h5file.create_dataset('Y_test', data=y_test)
     h5file.create_dataset('Y_proba', data=y_proba)
+    h5file.create_dataset('weights', data=weights)

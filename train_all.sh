@@ -1,0 +1,5 @@
+#./train --name zoomed --sig ../data/w_events_j1p0_sj0p30_jets_zoomed_images.h5 --bkg ../data/qcd_events_j1p0_sj0p30_jets_zoomed_images.h5 --epochs 100 --use-existing-datasets --learning-rate 0.001 --batch-size 100 > train_zoomed.log &
+#./train --name nozoom --sig ../data/w_events_j1p0_sj0p30_jets_images.h5 --bkg ../data/qcd_events_j1p0_sj0p30_jets_images.h5 --epochs 100 --use-existing-datasets --learning-rate 0.001 --batch-size 100 > train_nozoom.log &
+
+./train --name delphes_nozoom --sig ../data/w_events_j1p0_sj0p30_m_50_110_delphes_jets_images.h5 --bkg ../data/qcd_events_j1p0_sj0p30_m_50_110_delphes_jets_images.h5 --epochs 100 --use-existing-datasets --learning-rate 0.001 --batch-size 100 > train_delphes_nozoom.log &
+./train --name delphes_zoomed --sig ../data/w_events_j1p0_sj0p30_m_50_110_delphes_jets_zoomed_images.h5 --bkg ../data/qcd_events_j1p0_sj0p30_m_50_110_delphes_jets_zoomed_images.h5 --epochs 100 --use-existing-datasets --learning-rate 0.001 --batch-size 100 > train_delphes_zoomed.log &
