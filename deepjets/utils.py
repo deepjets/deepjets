@@ -507,7 +507,7 @@ def default_inv_roc_curve(Y_true, var, sample_weight=None):
     res = 1./len(Y_true)
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)
-                     if (0.2 <= tp <= 0.8 and fp > 0.)])
+                     if fp > 0.])
 
 
 def lklhd_inv_roc_curve(Y_true, var, sample_weight=None, nb_per_bin=1):
@@ -573,7 +573,8 @@ def auxvar_roc_curve(
     else:
         return default_inv_roc_curve(Y_test, var)
 
-def plot_roc_curve(roc_data, label=None, filename=None):
+
+def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
     """Display ROC curve.
 
     Args:
@@ -587,13 +588,17 @@ def plot_roc_curve(roc_data, label=None, filename=None):
     ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
+    if logscale:
+        ax.set_yscale("log", nonposy='clip')
     plt.legend(fontsize=16)
-    fig.show()
     if filename is not None:
-        fig.savefig(filename, format='pdf')
+        fig.savefig(filename)
+    return fig
 
 
-def plot_roc_curves(roc_data, labels, styles=None, filename=None):
+def plot_roc_curves(roc_data, labels, styles=None,
+                    filename=None, logscale=False,
+                    xlimits=None, ylimits=None):
     """Display ROC curve.
 
     Args:
@@ -605,16 +610,26 @@ def plot_roc_curves(roc_data, labels, styles=None, filename=None):
     ax = fig.add_subplot(111)
     if styles is None:
         styles = ['-'] * len(roc_data)
+    if xlimits is not None:
+        xmin, xmax = xlimits
     for dat, label, ls in zip(roc_data, labels, styles):
+        if xlimits is not None:
+            dat = dat[(dat[:, 0] > xmin) & (dat[:, 0] < xmax)]
         ax.plot(dat[:, 0], dat[:, 1], label=label, ls=ls)
     ax.set_xlabel('signal efficiency', fontsize=16)
     ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
+    if logscale:
+        ax.set_yscale("log", nonposy='clip')
+    if xlimits is not None:
+        ax.set_xlim(xlimits)
+    if ylimits is not None:
+        ax.set_ylim(ylimits)
     plt.legend(fontsize=16)
-    fig.show()
     if filename is not None:
-        fig.savefig(filename, format='pdf')
+        fig.savefig(filename)
+    return fig
 
 
 def tot_mom(jet_csts):
