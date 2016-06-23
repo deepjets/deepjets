@@ -59,6 +59,9 @@ if args.batch is not None:
         print "mkdir -p {0}".format(log_path)
     else:
         mkdir_p(log_path)
+    idx_params = cmd.index('--params')
+    if idx_params >= 0:
+        cmd[idx_params + 1] = '\\"{0}\\"'.format(cmd[idx_params + 1])
     # call self in batch job
     name = '_'.join([os.path.basename(__file__), get_suffix(args)])
     cmd = ' '.join(cmd)
