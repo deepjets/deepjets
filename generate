@@ -14,6 +14,7 @@ parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
+parser.add_argument('--vincia', action='store_true', default=False)
 parser.add_argument('--batch', default=None)
 parser.add_argument('--dry', action='store_true', default=False)
 parser.add_argument('-d', '--debug', action='store_true', default=False,       
@@ -31,13 +32,10 @@ log.setLevel(logging.INFO)
 if args.output is None:
     args.output = os.path.splitext(args.config)[0] + '.h5'
 
-if args.params is not None:
-    args.params = dict([token.split('=') for token in args.params.split(';')])
-
 def get_suffix(args):
     import re
     suffix = os.path.splitext(args.config)[0]
-    suffix += '_r{0}_e{0}'.format(args.random_state, args.events)
+    suffix += '_r{0}_e{1}'.format(args.random_state, args.events)
     if args.params is not None:
         suffix += '_{0}'.format(re.sub('[^A-Za-z0-9]+', '_', args.params))
     return suffix
@@ -84,6 +82,9 @@ from deepjets.samples import create_event_datasets
 import numpy as np
 import h5py
 
+if args.params is not None:
+    args.params = dict([token.split('=') for token in args.params.split(';')])
+
 output_exists = os.path.exists(args.output)
 h5file = h5py.File(args.output, 'w')
     
@@ -93,7 +94,8 @@ try:
         cut_on_pdgid=args.cut_on_pdgid,
         pdgid_pt_min=args.pdgid_pt_min,
         pdgid_pt_max=args.pdgid_pt_max,
-        params_dict=args.params)
+        params_dict=args.params,
+        vincia=args.vincia)
 
     create_event_datasets(h5file, args.events)
     dset_particles = h5file['events']
