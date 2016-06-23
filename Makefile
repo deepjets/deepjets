@@ -3,8 +3,8 @@
 PYTHON := $(shell which python)
 NOSETESTS := $(shell which nosetests)
 
-output := /data/edawe/public/deepjets/events/pythia/raw
-setup := cd /data/edawe/private/deepjets; source /data/edawe/public/setup.sh; source setup.sh;
+output := /coepp/cephfs/mel/edawe/deepjets/events
+setup := cd /data/edawe/private/deepjets_dev; source setup.sh;
 WMASS := 80.385
 
 .PHONY: events
@@ -117,3 +117,10 @@ sherwig:
 	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/JZ/jZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/jZ_Events.h5 &
 	./generate --events 100000 --shrink /data/edawe/public/deepjets/events/sherpa/WZ/WZ_Events.hepmc2g --output /data/edawe/public/deepjets/events/sherpa/WZ_Events.h5 &
 
+
+vincia:
+	mkdir -p $(output)/pythia/vincia/log
+	for chunk in $$(seq 1 1 10); do \
+		./generate w_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/w_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
+		./generate qcd_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/qcd_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
+	done

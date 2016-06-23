@@ -7,6 +7,7 @@ WprimeJetGen
 deepjets/src/_libdeepjets.cpp
 *.pyc
 build
+log
 *.so
 *.png
 *.jpg
