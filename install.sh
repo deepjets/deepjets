@@ -18,9 +18,9 @@ if [ ! -d fjcontrib-1.021 ]; then
     tar xfz fjcontrib-1.021.tar.gz
 fi
 
-if [ ! -d pythia8212 ]; then
-    wget http://home.thep.lu.se/~torbjorn/pythia8/pythia8212.tgz
-    tar xfz pythia8212.tgz
+if [ ! -d pythia8219 ]; then
+    wget http://home.thep.lu.se/~torbjorn/pythia8/pythia8219.tgz
+    tar xfz pythia8219.tgz
 fi
 
 if [ ! -d HepMC-2.06.09 ]; then
@@ -48,7 +48,7 @@ make install
 make fragile-shared-install
 cd ..
 
-cd pythia8212
+cd pythia8219
 make clean
 ./configure --prefix=$PREFIX --enable-shared
 make -j2

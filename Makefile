@@ -119,8 +119,12 @@ sherwig:
 
 
 vincia:
-	mkdir -p $(output)/pythia/vincia/log
-	for chunk in $$(seq 1 1 10); do \
-		./generate w_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/w_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
-		./generate qcd_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/qcd_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
+	mkdir -p $(output)/pythia/images/log
+	for chunk in $$(seq 1 1 20); do \
+		./generate w_vincia.config --vincia --events 100000 --output $(output)/pythia/images/w_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state 10000$${chunk}; \
+		./generate qcd_vincia.config --vincia --events 100000 --output $(output)/pythia/images/qcd_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state 10000$${chunk}; \
+	done
+	for chunk in $$(seq 1 1 20); do \
+		./generate w.config --events 100000 --output $(output)/pythia/images/w_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state 10000$${chunk}; \
+		./generate qcd.config --events 100000 --output $(output)/pythia/images/qcd_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state 10000$${chunk}; \
 	done

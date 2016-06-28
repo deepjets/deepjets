@@ -41,10 +41,14 @@ def create_jets_datasets(h5file, events, jet_size, subjet_size_fraction):
     dset_subjet_size_fraction[0] = subjet_size_fraction
 
 
-def create_event_datasets(h5file, events, delphes=False):
+def create_event_datasets(h5file, events, delphes=False, nweights=0):
     dtype = dt_candidates if delphes else dt_particles
     h5file.create_dataset('events', (events,), maxshape=(events,),
                           dtype=dtype, chunks=True)
+    if nweights > 0:
+        h5file.create_dataset('weights', (events, nweights),
+                              maxshape=(events, nweights),
+                              dtype=DTYPE, chunks=True)
 
 
 def get_images(generator_params, nevents, pt_min, pt_max,
@@ -192,7 +196,8 @@ def get_flat_images(generator_params, nevents_per_pt_bin,
     return images, auxvars
 
 
-def make_flat_images(filename, pt_min, pt_max, pt_bins=20):
+def make_flat_images(filename, pt_min, pt_max, pt_bins=20,
+                     mass_min=None, mass_max=None):
     """ Crop and weight a dataset such that pt is within pt_min and pt_max
     and the pt distribution is approximately flat. Return the images and
     weights.
@@ -200,10 +205,14 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20):
     with h5py.File(filename, 'r') as hfile:
         images = hfile['images']
         auxvars = hfile['auxvars']
-        jet_pt_accept = ((auxvars['pt_trimmed'] >= pt_min) &
-                         (auxvars['pt_trimmed'] < pt_max))
-        images = np.take(images, np.where(jet_pt_accept)[0], axis=0)
-        jet_pt = auxvars['pt_trimmed'][jet_pt_accept]
+        accept = ((auxvars['pt_trimmed'] >= pt_min) &
+                  (auxvars['pt_trimmed'] < pt_max))
+        if mass_min is not None:
+            accept &= auxvars['mass_trimmed'] >= mass_min
+        if mass_max is not None:
+            accept &= auxvars['mass_trimmed'] < mass_max
+        images = np.take(images, np.where(accept)[0], axis=0)
+        jet_pt = auxvars['pt_trimmed'][accept]
     weights = get_flat_weights(jet_pt, pt_min, pt_max, pt_bins)
     return images, weights
 

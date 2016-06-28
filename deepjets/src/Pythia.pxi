@@ -3,8 +3,13 @@ cdef extern from "Pythia8/Pythia.h" namespace "Pythia8":
     cdef cppclass Event:
         pass
 
+    cdef cppclass Info:
+        int nWeights()
+        double weight(int) 
+
     cdef cppclass Pythia:
         Event event
+        Info info
         Pythia(string, bool)
         bool readString(string)
         bool readFile(string)

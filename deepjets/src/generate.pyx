@@ -2,6 +2,19 @@ import os
 
 
 cdef class MCInput:
+    cdef np.ndarray weights
+    
+    cdef int get_num_weights(self):
+        return 0
+
+    property weighted:
+        def __get__(self):
+            return self.get_num_weights() > 0
+
+    property num_weights:
+        def __get__(self):
+            return self.get_num_weights()
+
     cdef bool get_next_event(self) except *:
         return False
     
@@ -19,7 +32,7 @@ cdef class MCInput:
 
     cdef void finish(self):
         pass
-
+ 
 
 cdef class PythiaInput(MCInput):
     cdef Pythia* pythia
@@ -78,16 +91,41 @@ cdef class PythiaInput(MCInput):
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
         self.verbosity = verbosity
-
+        
     def __dealloc__(self):
         del self.pythia
         del self.vincia_plugin
 
-    cdef bool get_next_event(self):
+    cdef int get_num_weights(self):
+        """
+        Accessing the Uncertainty Weights
+
+        During the event generation, uncertainty weights will be calculated for
+        each variation defined above, via the method described in [Mre16]. The
+        resulting alternative weights for the event are accessible through the
+        Pythia::info.weight(int iWeight=0) method. The baseline weight for each event
+        (normally unity for an ordinary unweighted event sample) is not modified and
+        corresponds to iWeight = 0. The uncertainty-variation weights are thus
+        enumerated starting from iWeight = 1 for the first variation up to N for the
+        last variation, in the order they were specified in UncertaintyBands:List.
+
+        The total number of variations that have been defined, N, can be
+        queried using Pythia::info.nWeights().
+        """
+        cdef int nweights = self.pythia.info.nWeights()
+        if nweights == 1:
+            # only nominal is present so don't bother with weights
+            return 0
+        return nweights
+
+    cdef bool get_next_event(self) except *:
         # generate event and quit if failure
         if not self.pythia.next():
             raise RuntimeError("event generation aborted prematurely")
-        
+        if self.num_weights > 0:
+            self.weights = np.empty(self.num_weights, dtype=DTYPE)
+            for iweight in range(self.num_weights):
+                self.weights[iweight] = self.pythia.info.weight(iweight)
         if not keep_pythia_event(self.pythia.event, self.cut_on_pdgid,
                                  self.pdgid_pt_min, self.pdgid_pt_max):
             # event doesn't pass our truth-level cuts
@@ -131,7 +169,7 @@ cdef class HepMCInput(MCInput):
         #del self.event
         del self.hepmc_reader
 
-    cdef bool get_next_event(self):
+    cdef bool get_next_event(self) except *:
         self.event = self.hepmc_reader.read_next_event()
         if self.event == NULL:
             return False
@@ -184,18 +222,19 @@ cdef class HepMCInput(MCInput):
         return long(filesize / np.average(sizes))
 
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def generate_events(MCInput gen_input, int n_events, string write_to):
     """
     Generate events (or read HepMC) and yield numpy arrays of particles
+    If weights are enabled, this function will yield the particles and weights array
     """
     cdef np.ndarray particle_array
     cdef GenEvent* event
     cdef IO_GenEvent* hepmc_writer = NULL
     cdef vector[GenParticle*] particles
     cdef int ievent = 0;
+    cdef bool weighted = gen_input.get_num_weights() > 0
     if n_events < 0:
         ievent = n_events - 1
     if not write_to.empty():
@@ -209,7 +248,10 @@ def generate_events(MCInput gen_input, int n_events, string write_to):
         hepmc_finalstate_particles(event, particles)
         particle_array = np.empty((particles.size(),), dtype=dtype_particle)
         particles_to_array(particles, <DTYPE_t*> particle_array.data)
-        yield particle_array
+        if weighted:
+            yield particle_array, gen_input.weights
+        else:
+            yield particle_array
         del event
         if n_events > 0:
             ievent += 1
