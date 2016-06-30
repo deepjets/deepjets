@@ -213,8 +213,9 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20,
             accept &= auxvars['mass_trimmed'] < mass_max
         images = np.take(images, np.where(accept)[0], axis=0)
         jet_pt = auxvars['pt_trimmed'][accept]
+        auxvars = auxvars[accept]
     weights = get_flat_weights(jet_pt, pt_min, pt_max, pt_bins)
-    return images, weights
+    return images, auxvars, weights
 
 
 def dataset_append(h5output, datasetname, data,
