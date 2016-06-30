@@ -37,6 +37,7 @@ cdef class MCInput:
 cdef class PythiaInput(MCInput):
     cdef Pythia* pythia
     cdef VinciaPlugin* vincia_plugin
+    cdef GenEvent* hepmc_event
     cdef int cut_on_pdgid
     cdef float pdgid_pt_min
     cdef float pdgid_pt_max
@@ -91,8 +92,10 @@ cdef class PythiaInput(MCInput):
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
         self.verbosity = verbosity
+        self.hepmc_event = NULL
         
     def __dealloc__(self):
+        del self.hepmc_event
         del self.pythia
         del self.vincia_plugin
 
@@ -133,7 +136,9 @@ cdef class PythiaInput(MCInput):
         return True
     
     cdef GenEvent* get_hepmc(self):
-        return pythia_to_hepmc(self.pythia)
+        del self.hepmc_event
+        self.hepmc_event = pythia_to_hepmc(self.pythia)
+        return self.hepmc_event
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         pythia_to_pseudojet(self.pythia.event, particles, eta_max)
@@ -166,10 +171,11 @@ cdef class HepMCInput(MCInput):
         self.pdg = TDatabasePDG_Instance()
 
     def __dealloc__(self):
-        #del self.event
+        del self.event
         del self.hepmc_reader
 
     cdef bool get_next_event(self) except *:
+        del self.event
         self.event = self.hepmc_reader.read_next_event()
         if self.event == NULL:
             return False
@@ -180,8 +186,6 @@ cdef class HepMCInput(MCInput):
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         hepmc_to_pseudojet(self.event[0], particles, eta_max)
-        del self.event
-        self.event = NULL
     
     cdef void to_delphes(self, Delphes* delphes,
                          TObjArray* all_particles,
@@ -242,6 +246,7 @@ def generate_events(MCInput gen_input, int n_events, string write_to):
     while ievent < n_events:
         if not gen_input.get_next_event():
             continue
+        # We don't own event here. MCInput will delete it.
         event = gen_input.get_hepmc()
         if hepmc_writer != NULL:
             hepmc_writer.write_event(event)
@@ -252,7 +257,6 @@ def generate_events(MCInput gen_input, int n_events, string write_to):
             yield particle_array, gen_input.weights
         else:
             yield particle_array
-        del event
         if n_events > 0:
             ievent += 1
     gen_input.finish()
