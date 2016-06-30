@@ -120,7 +120,7 @@ sherwig:
 
 vincia:
 	$(eval output_path := $(output)/pythia/images)
-	$(eval queue := mel_long)
+	$(eval queue := long)
 	$(eval events := 100000)
 	$(eval params := PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320)
 	$(eval seed_offset := 100000)

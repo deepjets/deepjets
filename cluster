@@ -123,9 +123,12 @@ def cluster_file(filename, args, multi=False, location=None):
         dset_tau_3.resize((ievent,))
 
     pbar.finish()
-    h5output.close()
     if not hepmc:
+        if 'weights' in h5input:
+            # copy weights
+            h5input.copy('weights', h5output, name='generator_weights')
         h5input.close()
+    h5output.close()
 
 
 if __name__ == '__main__':

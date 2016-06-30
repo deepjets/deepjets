@@ -73,13 +73,22 @@ def imgify(filename, args, multi=False, location=None):
         dset_jet['pT'], dset_trimmed_jet['pT'],
         dset_jet['mass'], dset_trimmed_jet['mass'],
         dset_dr_subjets[:], dset_tau_1[:], dset_tau_2[:], dset_tau_3[:]]
-    auxvars_names = 'pt,pt_trimmed,mass,mass_trimmed,subjet_dr,tau_1,tau_2,tau_3'
+    
+    auxvars_names = 'pt,pt_trimmed,mass,mass_trimmed,subjet_dr,tau_1,tau_2,tau_3'.split(',')
+    auxvars_dtypes = [arr.dtype for arr in auxvars_arrays]
 
     if 'weights' in h5_input:
         auxvars_arrays.append(h5_input['weights'][:])
-        auxvars_names += ',weights'
-    
-    auxvars = np.core.records.fromarrays(auxvars_arrays, names=auxvars_names)
+        auxvars_names.append('weights')
+        auxvars_dtypes.append(h5_input['weights'].dtype)
+
+    if 'generator_weights' in h5_input:
+        auxvars_arrays.append(h5_input['generator_weights'][:])
+        auxvars_names.append('generator_weights')
+        auxvars_dtypes.append((h5_input['generator_weights'].dtype, h5_input['generator_weights'].shape[1:]))
+   
+    auxvars_dtype = zip(auxvars_names, auxvars_dtypes)
+    auxvars = np.core.records.fromarrays(auxvars_arrays, dtype=auxvars_dtype)
     dset_auxvars = h5_output.create_dataset('auxvars', auxvars.shape, auxvars.dtype)
     dset_auxvars[:] = auxvars
 
