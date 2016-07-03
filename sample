@@ -4,7 +4,7 @@ import os
 import sys
 
 
-def merge(args):
+def merge_bins(args):
 
     import h5py as h5
     import numpy as np
@@ -99,7 +99,7 @@ def merge(args):
     h5output.close()
 
 
-def create(args):
+def merge(args):
     # loop over files
     # perform random shuffle
     # merge into one file
@@ -115,13 +115,14 @@ def create(args):
         images = h5input['images'].value
         auxvars = h5input['auxvars'].value
         
-        # shuffle in-place
-        print "performing random shuffle in-place"
-        rng_state = np.random.get_state()
-        np.random.shuffle(images)
-        # shuffle in unison, so reset random state to the same value
-        np.random.set_state(rng_state)
-        np.random.shuffle(auxvars)
+        if args.shuffle:
+            # shuffle in-place
+            print "performing random shuffle in-place"
+            rng_state = np.random.get_state()
+            np.random.shuffle(images)
+            # shuffle in unison, so reset random state to the same value
+            np.random.set_state(rng_state)
+            np.random.shuffle(auxvars)
 
         # append to output
         print "appending to output ..."
@@ -139,16 +140,17 @@ if __name__ == '__main__':
 
     subparsers = parser.add_subparsers(dest='subparser')
 
-    merge_parser = subparsers.add_parser('merge')
+    merge_parser = subparsers.add_parser('merge-bins')
     merge_parser.add_argument('--pt-bins', default=None)
     merge_parser.add_argument('--num-weight-bins', type=int, default=4)
     merge_parser.add_argument('--trimmed-mass-bounds', default=None)
     merge_parser.add_argument('--trimmed-pt-bounds', default=None)
-    merge_parser.add_argument('--output', '-o')
+    merge_parser.add_argument('--output', '-o', required=True)
     merge_parser.add_argument('files', nargs='+')
 
-    create_parser = subparsers.add_parser('create')
-    create_parser.add_argument('--output', '-o')
+    create_parser = subparsers.add_parser('merge')
+    create_parser.add_argument('--shuffle', action='store_true', default=False)
+    create_parser.add_argument('--output', '-o', required=True)
     create_parser.add_argument('files', nargs='+')
 
     args = parser.parse_args()
@@ -198,7 +200,7 @@ if __name__ == '__main__':
             print "{0} exists and is complete. Nothing to do.".format(args.output)
             sys.exit(1)
     
-    if args.subparser == 'merge':
-        merge(args)
+    if args.subparser == 'merge-bins':
+        merge_bins(args)
     else:
-        create(args)
+        merge(args)

@@ -3,6 +3,8 @@
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
+parser.add_argument('--test', action='store_true', default=False)
+parser.add_argument('--gpu', action='store_true', default=False)
 parser.add_argument('--output', '-o', default=None)
 parser.add_argument('network')
 parser.add_argument('testfile')
@@ -18,26 +20,36 @@ if os.path.exists(args.output):
     print "output already exists"
     sys.exit(1)
 
-from deepjets.gpu_lock import obtain_lock_id
-gpu_id = obtain_lock_id(block=True)
+if args.gpu:
+    from deepjets.gpu_lock import obtain_lock_id
+    gpu_id = obtain_lock_id(block=True)
 
-import theano.sandbox.cuda
-theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
+    import theano.sandbox.cuda
+    theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
 
 import numpy as np
 import h5py as h5
 from deepjets import models
 
 model = models.load_model(args.network)
-
+weights = None
 with h5.File(args.testfile, 'r') as h5file:
-    y_test = h5file['Y_test'][:]
-    y_proba = model.predict_proba(h5file['X_test'], batch_size=1000)
-    weights = h5file['auxvars_test']['weights']
+    if args.test:
+        y_test = h5file['Y_test'][:]
+        y_proba = model.predict_proba(h5file['X_test'], batch_size=1000)
+        if 'weights' in h5file['auxvars_test'].dtype.names:
+            weights = h5file['auxvars_test']['weights']
+    else:
+        images = h5file['images'].value
+        images = images.reshape(-1, images.shape[1] * images.shape[2])
+        y_proba = model.predict_proba(images, batch_size=1000)
+# normalize
 y_proba /= y_proba.sum(axis=1)[:, np.newaxis]
 y_proba = y_proba[:, 0]
 
 with h5.File(args.output, 'w') as h5file:
-    h5file.create_dataset('Y_test', data=y_test)
+    if args.test:
+        h5file.create_dataset('Y_test', data=y_test)
     h5file.create_dataset('Y_proba', data=y_proba)
-    h5file.create_dataset('weights', data=weights)
+    if weights is not None:
+        h5file.create_dataset('weights', data=weights)

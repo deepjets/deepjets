@@ -119,8 +119,19 @@ sherwig:
 
 
 vincia:
-	mkdir -p $(output)/pythia/vincia/log
-	for chunk in $$(seq 1 1 10); do \
-		./generate w_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/w_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
-		./generate qcd_vincia.config --vincia --events 100000 --output $(output)/pythia/vincia/qcd_vincia_$${chunk}.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320" --batch long --random-state $${chunk}; \
+	$(eval output_path := $(output)/pythia/images)
+	$(eval queue := long)
+	$(eval events := 100000)
+	$(eval params := PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320)
+	$(eval seed_offset := 100000)
+	mkdir -p $(output_path)/log
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} w_vincia.config --vincia --events $(events) --output $(output_path)/w_vincia_$${chunk}.h5 --params "$(params)"; \
+		./generate --batch $(queue) --random-state $${seed} w.config --events $(events) --output $(output_path)/w_$${chunk}.h5 --params "$(params)"; \
+	done
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
+		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_$${chunk}.h5 --params "$(params)"; \
 	done

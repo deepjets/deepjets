@@ -15,6 +15,7 @@ parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
 parser.add_argument('--vincia', action='store_true', default=False)
+parser.add_argument('--weights', action='store_true', default=False)
 parser.add_argument('--batch', default=None)
 parser.add_argument('--dry', action='store_true', default=False)
 parser.add_argument('-d', '--debug', action='store_true', default=False,       
@@ -100,13 +101,21 @@ try:
         params_dict=args.params,
         vincia=args.vincia)
 
-    create_event_datasets(h5file, args.events)
+    nweights = gen_input.num_weights
+    create_event_datasets(h5file, args.events, nweights=nweights)
     dset_particles = h5file['events']
 
     ievent = 0
-    for event in generate_events(gen_input, args.events):
-        dset_particles[ievent] = event
-        ievent += 1
+    if nweights > 0:
+        dset_weights = h5file['weights']
+        for event, weights in generate_events(gen_input, args.events):
+            dset_particles[ievent] = event
+            dset_weights[ievent] = weights
+            ievent += 1
+    else:
+        for event in generate_events(gen_input, args.events):
+            dset_particles[ievent] = event
+            ievent += 1
 except KeyboardInterrupt:
     log.info("Caught Ctrl-c ... cleaning up")
     h5file.close()
