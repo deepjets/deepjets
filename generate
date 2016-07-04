@@ -72,7 +72,6 @@ if args.batch is not None:
         '-N {name} -l nodes=1:ppn=1 -q {queue};').format(
             setup=setup_cmd,
             cmd=cmd,
-            output_dir=output_dir,
             log_dir=os.path.join(output_dir, 'log'),
             queue=args.batch,
             name=name)

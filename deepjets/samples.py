@@ -215,7 +215,7 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20,
         jet_pt = auxvars['pt_trimmed'][accept]
         auxvars = auxvars[accept]
     weights = get_flat_weights(jet_pt, pt_min, pt_max, pt_bins)
-    return images, auxvars, weights
+    return images, auxvars, weights, accept
 
 
 def dataset_append(h5output, datasetname, data,
