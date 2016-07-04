@@ -598,7 +598,8 @@ def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
 
 def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
-                    xlimits=None, ylimits=None):
+                    xlimits=None, ylimits=None,
+                    title=None):
     """Display ROC curve.
 
     Args:
@@ -627,6 +628,8 @@ def plot_roc_curves(roc_data, labels, styles=None,
     if ylimits is not None:
         ax.set_ylim(ylimits)
     plt.legend(fontsize=16)
+    if title is not None:
+        ax.set_title(title)
     if filename is not None:
         fig.savefig(filename)
     return fig
