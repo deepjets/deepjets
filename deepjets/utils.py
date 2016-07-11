@@ -274,7 +274,7 @@ class MidPointNorm(Normalize):
 
 def plot_jet_image(
         ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity",
-        label_axes=True, show_colorbar=True):
+        label_axes=True, show_colorbar=True, colorbar_inside=False):
     """Display jet image.
 
     Args:
@@ -300,11 +300,16 @@ def plot_jet_image(
         image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
         interpolation='nearest', norm=norm, cmap=cmap)
     if show_colorbar:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
+        if colorbar_inside:
+            cax = ax.figure.add_axes([0.85, 0.08, 0.03, 0.82])
+        else:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
         cbar = plt.colorbar(p, cax=cax, ticks=ticks)
         cbar.set_label(title, rotation=90, fontsize=18)
         cbar.ax.tick_params(labelsize=12)
+        if colorbar_inside:
+            cbar.ax.yaxis.set_ticks_position('left')
     if label_axes:
         ax.set_xlabel(r'$x_1$', fontsize=18)
         ax.set_ylabel(r'$x_2$', fontsize=18)
@@ -599,7 +604,8 @@ def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
 def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
                     xlimits=None, ylimits=None,
-                    title=None):
+                    title=None, show_ratio=False, ratio_label='Ratio',
+                    linewidth=1):
     """Display ROC curve.
 
     Args:
@@ -607,29 +613,64 @@ def plot_roc_curves(roc_data, labels, styles=None,
         label: labels to include in legend.
         styles: list of linestyles.
     """
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.add_subplot(111)
+    from itertools import cycle
+    fig = plt.figure(figsize=(12, 10))
+    if show_ratio:
+        rect_main = [0.1, 0.32, 0.85, 0.6]
+        rect_ratio = [0.1, 0.1, 0.85, 0.2]
+        ax = fig.add_axes(rect_main)
+        ax.set_xticklabels([])
+        ax_ratio = fig.add_axes(rect_ratio)
+        ax_ratio.grid(True)
+        ax_ratio.set_ylabel(ratio_label, fontsize=16)
+    else:
+        ax = fig.add_subplot(111)
+    ax.grid(True)
     if styles is None:
-        styles = ['-'] * len(roc_data)
+        lines = ["-","--","-.",":"]
+        linecycler = cycle(lines)
+    else:
+        linecycler = iter(styles)
     if xlimits is not None:
         xmin, xmax = xlimits
-    for dat, label, ls in zip(roc_data, labels, styles):
+    lines = []
+    for dat, label in zip(roc_data, labels):
         if xlimits is not None:
             dat = dat[(dat[:, 0] > xmin) & (dat[:, 0] < xmax)]
-        ax.plot(dat[:, 0], dat[:, 1], label=label, ls=ls)
-    ax.set_xlabel('signal efficiency', fontsize=16)
-    ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
+        lines.append(ax.plot(dat[:, 0], dat[:, 1], label=label,
+                             ls=linecycler.next(), linewidth=linewidth)[0])
+    if show_ratio:
+        ax_ratio.set_xlabel('Signal Efficiency', fontsize=16)
+    else:
+        ax.set_xlabel('Signal Efficiency', fontsize=16)
+    ax.set_ylabel('1 / [Backgroud Efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    #ax.set_title("Receiver operating characteristic", fontsize=16)
     if logscale:
         ax.set_yscale("log", nonposy='clip')
     if xlimits is not None:
         ax.set_xlim(xlimits)
+        if show_ratio:
+            ax_ratio.set_xlim(xlimits)
     if ylimits is not None:
         ax.set_ylim(ylimits)
-    plt.legend(fontsize=16)
+    ax.legend(fontsize=16)
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=16)
+    if show_ratio:
+        # plot horizontal
+        ax_ratio.plot([0, 1], [1, 1],
+                      linewidth=lines[0].get_linewidth(),
+                      color=lines[0].get_color(),
+                      ls=lines[0].get_linestyle())
+        for dat, line in zip(roc_data[1:], lines[1:]):
+            # interpolate ratio
+            interp = np.interp(roc_data[0][:, 0], dat[:, 0], dat[:, 1])
+            ratio = interp / roc_data[0][:, 1]
+            ax_ratio.plot(roc_data[0][:, 0], ratio,
+                          ls=line.get_linestyle(),
+                          linewidth=line.get_linewidth(),
+                          color=line.get_color())
+        ax_ratio.set_ylim((0, 3))
     if filename is not None:
         fig.savefig(filename)
     return fig

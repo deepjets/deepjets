@@ -6,6 +6,7 @@ parser = ArgumentParser()
 parser.add_argument('--gpu', action='store_true', default=False)
 parser.add_argument('--batch', default=None)
 parser.add_argument('--dry', action='store_true', default=False)
+parser.add_argument('--isworker', action='store_true', default=False)
 parser.add_argument('network')
 parser.add_argument('files', nargs='+')
 args = parser.parse_args()
@@ -23,6 +24,7 @@ if args.batch is not None:
     idx = cmd.index('--batch')
     cmd.pop(idx)
     cmd.pop(idx)
+    cmd.insert(idx, '--isworker')
     # remove filenames
     for filename in args.files:
         cmd.remove(filename)
@@ -52,6 +54,13 @@ if args.batch is not None:
         if not args.dry:
             subprocess.call(cmd_batch, shell=True)
     sys.exit(0)
+
+if args.isworker:
+    import os
+    with open(os.path.join(os.getenv('HOME'), '.theanorc'), 'w') as f:
+        f.write("""
+[global] 
+base_compiledir=/tmp/%(user)s/theano.NOBACKUP\n""")
 
 if args.gpu:
     from deepjets.gpu_lock import obtain_lock_id
