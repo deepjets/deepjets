@@ -15,6 +15,7 @@ parser.add_argument('--val-fraction', type=float, default=0.1)
 parser.add_argument('--use-existing-datasets', action='store_true', default=False)
 parser.add_argument('--batch-size', type=int, default=None)
 parser.add_argument('--learning-rate', type=float, default=None)
+parser.add_argument('--gpu', action='store_true', default=False)
 args = parser.parse_args()
 
 import os
@@ -46,11 +47,13 @@ else:
         n_sig=args.events, n_bkd=args.events)
 
 if args.batch_size is not None and args.learning_rate is not None:
-    from deepjets.gpu_lock import obtain_lock_id
-    gpu_id = obtain_lock_id(block=True)
-    
-    import theano.sandbox.cuda
-    theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
+    if args.gpu:
+        # obtain GPU lock
+        from deepjets.gpu_lock import obtain_lock_id
+        gpu_id = obtain_lock_id(block=True)
+        
+        import theano.sandbox.cuda
+        theano.sandbox.cuda.use('gpu{0}'.format(gpu_id))
 
     # train single point
     print _train_one_point_helper(

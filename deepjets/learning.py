@@ -74,9 +74,10 @@ def train_model(
         try:
             weights_train = h5file['auxvars_train']['weights'][:]
             log.info("will train with weights")
-        except KeyError:
+        except (KeyError, ValueError):
             weights_train = None
-            log.warning("no training weights found!")
+            log.warning("no training weights found in input; "
+                        "all images will have equal weight")
     else:
         shuffle = 'batch'
         X_train = h5file['X_train']
@@ -84,9 +85,10 @@ def train_model(
         try:
             weights_train = h5file['auxvars_train']['weights']
             log.info("will train with weights")
-        except KeyError:
+        except (KeyError, ValueError):
             weights_train = None
-            log.warning("no training weights found!")
+            log.warning("no training weights found in input; "
+                        "all images will have equal weight")
     checkpointer = callbacks.ModelCheckpoint(
         '{0}_weights.h5'.format(model_name), monitor='val_loss',
         verbose=verbose, save_best_only=True, mode='auto')
