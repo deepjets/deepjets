@@ -605,7 +605,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
                     xlimits=None, ylimits=None,
                     title=None, show_ratio=False, ratio_label='Ratio',
-                    linewidth=1):
+                    linewidth=1, ratio_limits=(0.0,3.0)):
     """Display ROC curve.
 
     Args:
@@ -670,7 +670,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                           ls=line.get_linestyle(),
                           linewidth=line.get_linewidth(),
                           color=line.get_color())
-        ax_ratio.set_ylim((0, 3))
+        ax_ratio.set_ylim(ratio_limits)
     if filename is not None:
         fig.savefig(filename)
     return fig
