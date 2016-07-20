@@ -605,7 +605,8 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
                     xlimits=None, ylimits=None, font_size=16,
                     title=None, show_ratio=False, ratio_label='Ratio',
-                    linewidth=1, ratio_limits=(0.0,3.0), label_size=12):
+                    linewidth=1, ratio_limits=(0.0,3.0), label_size=12,
+                    ratio_label_size=16):
     """Display ROC curve.
 
     Args:
@@ -622,7 +623,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
         ax.set_xticklabels([])
         ax_ratio = fig.add_axes(rect_ratio)
         ax_ratio.grid(True)
-        ax_ratio.set_ylabel(ratio_label, fontsize=16)
+        ax_ratio.set_ylabel(ratio_label, fontsize=ratio_label_size)
     else:
         ax = fig.add_subplot(111)
     ax.grid(True)
@@ -671,6 +672,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                           linewidth=line.get_linewidth(),
                           color=line.get_color())
         ax_ratio.set_ylim(ratio_limits)
+        ax_ratio.tick_params(axis='both',which='major',labelsize=label_size)
     if filename is not None:
         fig.savefig(filename)
     return fig
