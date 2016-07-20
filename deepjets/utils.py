@@ -603,9 +603,9 @@ def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
 
 def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
-                    xlimits=None, ylimits=None,
+                    xlimits=None, ylimits=None, font_size=16,
                     title=None, show_ratio=False, ratio_label='Ratio',
-                    linewidth=1, ratio_limits=(0.0,3.0)):
+                    linewidth=1, ratio_limits=(0.0,3.0), label_size=12):
     """Display ROC curve.
 
     Args:
@@ -640,11 +640,11 @@ def plot_roc_curves(roc_data, labels, styles=None,
         lines.append(ax.plot(dat[:, 0], dat[:, 1], label=label,
                              ls=linecycler.next(), linewidth=linewidth)[0])
     if show_ratio:
-        ax_ratio.set_xlabel('Signal Efficiency', fontsize=16)
+        ax_ratio.set_xlabel('Signal Efficiency', fontsize=font_size)
     else:
-        ax.set_xlabel('Signal Efficiency', fontsize=16)
-    ax.set_ylabel('1 / [Backgroud Efficiency]', fontsize=16)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+        ax.set_xlabel('Signal Efficiency', fontsize=font_size)
+    ax.set_ylabel('1 / [Backgroud Efficiency]', fontsize=font_size)
+    ax.tick_params(axis='both', which='major', labelsize=label_size)
     if logscale:
         ax.set_yscale("log", nonposy='clip')
     if xlimits is not None:
@@ -653,9 +653,9 @@ def plot_roc_curves(roc_data, labels, styles=None,
             ax_ratio.set_xlim(xlimits)
     if ylimits is not None:
         ax.set_ylim(ylimits)
-    ax.legend(fontsize=16)
+    ax.legend(fontsize=font_size)
     if title is not None:
-        ax.set_title(title, fontsize=16)
+        ax.set_title(title, fontsize=font_size)
     if show_ratio:
         # plot horizontal
         ax_ratio.plot([0, 1], [1, 1],
