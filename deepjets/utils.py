@@ -589,8 +589,8 @@ def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
     fig = plt.figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     ax.plot(roc_data[:, 0], roc_data[:, 1], label=label)
-    ax.set_xlabel('signal efficiency', fontsize=16)
-    ax.set_ylabel('1 / [backgroud efficiency]', fontsize=16)
+    ax.set_xlabel('Signal Efficiency', fontsize=16)
+    ax.set_ylabel('1 / [Background Efficiency]', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
     #ax.set_title("Receiver operating characteristic", fontsize=16)
     if logscale:
@@ -644,7 +644,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
         ax_ratio.set_xlabel('Signal Efficiency', fontsize=font_size)
     else:
         ax.set_xlabel('Signal Efficiency', fontsize=font_size)
-    ax.set_ylabel('1 / [Backgroud Efficiency]', fontsize=font_size)
+    ax.set_ylabel('1 / [Background Efficiency]', fontsize=font_size)
     ax.tick_params(axis='both', which='major', labelsize=label_size)
     if logscale:
         ax.set_yscale("log", nonposy='clip')

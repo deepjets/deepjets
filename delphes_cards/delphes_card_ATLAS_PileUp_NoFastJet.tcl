@@ -17,8 +17,6 @@ set ExecutionPath {
 
   TrackMerger
   Calorimeter
-  NeutralTowerMerger
-  EFlowMergerAllTracks
   EFlowMerger
 }
 
@@ -277,30 +275,6 @@ module Calorimeter Calorimeter {
                              (abs(eta) > 1.7 && abs(eta) <= 3.2) * sqrt(energy^2*0.0500^2 + energy*0.706^2) +
                              (abs(eta) > 3.2 && abs(eta) <= 4.9) * sqrt(energy^2*0.09420^2 + energy*1.00^2)}
 }
-
-####################
-# Neutral tower merger
-####################
-
-module Merger NeutralTowerMerger {
-# add InputArray InputArray
-  add InputArray Calorimeter/eflowPhotons
-  add InputArray Calorimeter/eflowNeutralHadrons
-  set OutputArray eflowTowers
-}
-
-##################################
-# Energy flow merger (all tracks)
-##################################
-
-module Merger EFlowMergerAllTracks {
-# add InputArray InputArray
-  add InputArray TrackMerger/tracks
-  add InputArray Calorimeter/eflowPhotons
-  add InputArray Calorimeter/eflowNeutralHadrons
-  set OutputArray eflow
-}
-
 
 ####################
 # Energy flow merger

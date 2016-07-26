@@ -11,6 +11,8 @@ def get_suffix(args):
     if args.shrink:
         suffix += '_shrink'
     suffix += '_jets'
+    if args.suffix is not None:
+        suffix += '_' + args.suffix.strip('_')
     return suffix
 
 
@@ -153,6 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
     parser.add_argument('--delphes', action='store_true', default=False)
     parser.add_argument('--delphes-config', default=None)
+    parser.add_argument('--suffix', default=None)
     parser.add_argument('--batch', default=None)
     parser.add_argument('--dry', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False,       
