@@ -56,7 +56,11 @@ def cluster_file(filename, args, multi=False, location=None):
         num_events = len(cluster_input)
 
     if args.delphes:
-        cluster_input = reconstruct(cluster_input)
+        if args.delphes_config is not None:
+            cluster_input = reconstruct(cluster_input, config=args.delphes_config)
+        else:
+            # use default Delphes config
+            cluster_input = reconstruct(cluster_input)
     
     widgets = [FormatLabel(output), ' ', Percentage(), ' ', Bar('>'), ' ', ETA()]
     writer = Writer(location) if multi else sys.stderr
@@ -148,6 +152,7 @@ if __name__ == '__main__':
     parser.add_argument('--trimmed-pt-min', type=float, default=-1.)
     parser.add_argument('--trimmed-pt-max', type=float, default=-1.)
     parser.add_argument('--delphes', action='store_true', default=False)
+    parser.add_argument('--delphes-config', default=None)
     parser.add_argument('--batch', default=None)
     parser.add_argument('--dry', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False,       
