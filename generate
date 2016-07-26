@@ -69,7 +69,7 @@ if args.batch is not None:
     cmd_batch = (
         'echo "{setup} {cmd}" | '
         'qsub -e {log_dir} -o {log_dir} '
-        '-N {name} -l nodes=1:test -q {queue};').format(
+        '-N {name} -l nodes=1:ppn=1 -q {queue};').format(
             setup=setup_cmd,
             cmd=cmd,
             log_dir=os.path.join(output_dir, 'log'),
