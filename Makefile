@@ -31,7 +31,7 @@ test: inplace
 
 test-events:
 	mkdir -p $(output)/log
-	# default samples used in http://arxiv.org/abs/1511.05190 
+	# default samples used in http://arxiv.org/abs/1511.05190
 	#echo "$(setup) ./generate wprime.config --events 500000 --output $(output)/wprime_default_0p6.h5 --cut-on-pdgid 24 --pt-min 250 --pt-max 300 --jet-size 0.6" | qsub -e $(output)/log -o $(output)/log -N wprime_default_0p6
 	echo "$(setup) ./generate w.config --events 500000 --output $(output)/w_default_0p6.h5 --params \"PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320\" --trimmed-pt-min 250 --trimmed-pt-max 300 --jet-size 0.6" | qsub -e $(output)/log -o $(output)/log -N w_default_0p6
 	echo "$(setup) ./generate qcd.config --events 500000 --output $(output)/qcd_default_0p6.h5 --params \"PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320\" --trimmed-pt-min 250 --trimmed-pt-max 300 --jet-size 0.6" | qsub -e $(output)/log -o $(output)/log -N qcd_default_0p6
@@ -135,3 +135,7 @@ vincia:
 		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
 		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_$${chunk}.h5 --params "$(params)"; \
 	done
+
+pileup:
+	DelphesPythia8 delphes_cards/delphes_converter_card.tcl pileup.config MinBias.root
+	root2pileup MinBias.pileup MinBias.root

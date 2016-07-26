@@ -19,8 +19,10 @@ def reconstruct(particles, events=-1,
     if not os.path.isfile(config):
         # use global config in share directory
         config = os.path.join(
-            os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
-            'share/Delphes/cards', config)
+            os.environ.get('DEEPJETS_DIR'),
+            'delphes_cards', config)
+        if not os.path.isfile(config):
+            raise ValueError("Delphes config {0} not found".format(config))
     delphes = DelphesWrapper(config, random_state, objects)
 
     kwargs = dict()
