@@ -15,7 +15,7 @@ parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
 parser.add_argument('--vincia', action='store_true', default=False)
-parser.add_argument('--weights', action='store_true', default=False)
+parser.add_argument('--suffix', default=None)
 parser.add_argument('--batch', default=None)
 parser.add_argument('--dry', action='store_true', default=False)
 parser.add_argument('-d', '--debug', action='store_true', default=False,       
@@ -31,7 +31,10 @@ log = logging.getLogger(os.path.basename(__file__))
 log.setLevel(logging.INFO)
 
 if args.output is None:
-    args.output = os.path.splitext(args.config)[0] + '.h5'
+    args.output = os.path.splitext(args.config)[0]
+    if args.suffix:
+        args.output += '_' + args.suffix.strip('_')
+    args.output += '.h5'
 
 def get_suffix(args):
     import re
@@ -39,6 +42,8 @@ def get_suffix(args):
     suffix += '_r{0}_e{1}'.format(args.random_state, args.events)
     if args.params is not None:
         suffix += '_{0}'.format(re.sub('[^A-Za-z0-9]+', '_', args.params))
+    if args.suffix:
+        suffix += '_' + args.suffix.strip('_')
     return suffix
 
 if args.batch is not None:

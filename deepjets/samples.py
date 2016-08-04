@@ -2,6 +2,9 @@ from joblib import Parallel, delayed
 import h5py
 import numpy as np
 from numpy.lib.recfunctions import append_fields
+import dask.array as da
+from dask.diagnostics import ProgressBar
+import os
 
 from .generate import generate_events, get_generator_input
 from .preprocessing import preprocess, pixel_edges
@@ -202,20 +205,25 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20,
     and the pt distribution is approximately flat. Return the images and
     weights.
     """
-    with h5py.File(filename, 'r') as hfile:
-        images = hfile['images']
-        auxvars = hfile['auxvars']
-        accept = ((auxvars['pt_trimmed'] >= pt_min) &
-                  (auxvars['pt_trimmed'] < pt_max))
+    hfile = h5py.File(filename, 'r')
+    images = da.from_array(hfile['images'], chunks=(5000, 25, 25))
+    auxvars = hfile['auxvars']
+    pt_trimmed = da.from_array(auxvars['pt_trimmed'], chunks=1000000)
+    accept = ((pt_trimmed >= pt_min) & (pt_trimmed < pt_max))
+    if mass_min is not None or mass_max is not None:
+        mass_trimmed = da.from_array(auxvars['mass_trimmed'], chunks=1000000)
         if mass_min is not None:
-            accept &= auxvars['mass_trimmed'] >= mass_min
+            accept &= mass_trimmed >= mass_min
         if mass_max is not None:
-            accept &= auxvars['mass_trimmed'] < mass_max
-        images = np.take(images, np.where(accept)[0], axis=0)
-        jet_pt = auxvars['pt_trimmed'][accept]
-        auxvars = auxvars[accept]
-    weights = get_flat_weights(jet_pt, pt_min, pt_max, pt_bins)
-    return images, auxvars, weights, accept
+            accept &= mass_trimmed < mass_max
+    accept = accept.compute()
+    jet_pt = pt_trimmed[accept].compute()
+    w = get_flat_weights(jet_pt, pt_min, pt_max, pt_bins)
+    # combine accept and weights
+    weights = accept.astype(float)
+    weights[accept.nonzero()] *= w
+    # weights are zero when accept == False
+    return images, auxvars, weights
 
 
 def dataset_append(h5output, datasetname, data,
@@ -320,3 +328,86 @@ def get_flat_events(h5file, generator_params, nevents_per_pt_bin,
     pt = h5file['trimmed_jet']['pT']
     event_weights = get_flat_weights(pt, pt_min, pt_max, pt_bins * 4)
     h5file.create_dataset('weights', data=event_weights)
+
+
+
+class Sample(object):
+    def __init__(self, name, path, prefix_w, prefix_qcd,
+                 pt_min=250, pt_max=300, pt_bins=5,
+                 mass_min=None, mass_max=None):
+        self.name = name
+        self.path = path
+        self.prefix_w = prefix_w
+        self.prefix_qcd = prefix_qcd
+        print("reading in W images for sample " + self.name)
+        self.images_w = make_flat_images(
+            os.path.join(self.path, self.prefix_w + 'j1p0_sj0p30_delphes_jets_images.h5'),
+            pt_min, pt_max, pt_bins, mass_min=mass_min, mass_max=mass_max)
+        print("reading in QCD images for sample " + self.name)
+        self.images_qcd = make_flat_images(
+            os.path.join(self.path, self.prefix_qcd + 'j1p0_sj0p30_delphes_jets_images.h5'),
+            pt_min, pt_max, pt_bins, mass_min=mass_min, mass_max=mass_max)
+        self.roc = None
+
+    def _avg_image(self, images):
+        images, auxvars, weights = images
+        print "{0}: plotting {1} images".format(self.name, images.shape[0])
+        print "min weight: {0}   max weight: {1}".format(weights.min(), weights.max())
+        with ProgressBar():
+            avg_image = da.tensordot(images, weights, axes=(0, 0)).compute() / weights.sum()
+        return avg_image
+
+    @property
+    def avg_w_image(self):
+        try:
+            return self._avg_w_image
+        except AttributeError:
+            self._avg_w_image = self._avg_image(self.images_w)
+            return self._avg_w_image
+
+    @property
+    def avg_qcd_image(self):
+        try:
+            return self._avg_qcd_image
+        except AttributeError:
+            self._avg_qcd_image = self._avg_image(self.images_qcd)
+            return self._avg_qcd_image
+
+    def _get_proba(self, prefix, only_proba=True):
+        with h5py.File(os.path.join(self.path, prefix + 'j1p0_sj0p30_delphes_jets_images_proba.h5'), 'r') as h5file:
+            if only_proba:
+                return h5file['Y_proba'].value
+            return h5file['Y_test'].value, h5file['Y_proba'].value, h5file['weights'].value
+
+    def get_w_proba(self, only_proba=True):
+        return self._get_proba(self.prefix_w, only_proba=only_proba)
+
+    def get_qcd_proba(self, only_proba=True):
+        return self._get_proba(self.prefix_qcd, only_proba=only_proba)
+
+    def get_roc(self, auxvar=None, generator_weight=None):
+        from .utils import default_inv_roc_curve
+
+        images_w, auxvars_w, weights_w = self.images_w
+        images_qcd, auxvars_qcd, weights_qcd = self.images_qcd
+        y_true = np.concatenate([np.repeat([[1, 0]], images_w.shape[0], axis=0),
+                                 np.repeat([[0, 1]], images_qcd.shape[0], axis=0)])
+
+        def eval_recarray(expr, rec):
+            return eval(expr, globals(), {name: rec[name] for name in rec.dtype.names})
+
+        if auxvar is not None:
+            # TODO: support 2-tuple for 2D likelihood ROC
+            if auxvar not in auxvars_w.dtype.names:
+                y_pred = np.concatenate([eval_recarray(auxvar, auxvars_w), eval_recarray(auxvar, auxvars_qcd)])
+            else:
+                y_pred = np.concatenate([auxvars_w[auxvar], auxvars_qcd[auxvar]])
+        else:
+            y_pred = np.concatenate([self.get_w_proba(), self.get_qcd_proba()])
+        weights = np.concatenate([weights_w, weights_qcd])
+        if generator_weight is not None:
+            w_weights = auxvars_w['generator_weights']
+            qcd_weights = auxvars_qcd['generator_weights']
+            weights *= np.concatenate([w_weights[:,generator_weight],
+                                       qcd_weights[:,generator_weight]])
+        return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)

@@ -3,7 +3,7 @@ import os
 
 cdef class MCInput:
     cdef np.ndarray weights
-    
+
     cdef int get_num_weights(self):
         return 0
 
@@ -17,7 +17,7 @@ cdef class MCInput:
 
     cdef bool get_next_event(self) except *:
         return False
-    
+
     cdef GenEvent* get_hepmc(self):
         pass
 
@@ -32,7 +32,7 @@ cdef class MCInput:
 
     cdef void finish(self):
         pass
- 
+
 
 cdef class PythiaInput(MCInput):
     cdef Pythia* pythia
@@ -85,15 +85,19 @@ cdef class PythiaInput(MCInput):
             self.pythia.readString('{0} = {1}'.format(param.replace('_', ':'), value))
         if vincia:
             # vincia calls pythia's init
-            self.vincia_plugin.init()
+            # but we lose the bool return value of Pythia's init
+            # if init fails there, pythia.next() will anyway abort
+            # TODO: follow this up with Skands et al
+            success = self.vincia_plugin.init()
         else:
-            self.pythia.init()
+            if not self.pythia.init():
+                raise RuntimeError("PYTHIA did not successfully initialize")
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
         self.verbosity = verbosity
         self.hepmc_event = NULL
-        
+
     def __dealloc__(self):
         del self.hepmc_event
         del self.pythia
@@ -124,7 +128,7 @@ cdef class PythiaInput(MCInput):
     cdef bool get_next_event(self) except *:
         # generate event and quit if failure
         if not self.pythia.next():
-            raise RuntimeError("event generation aborted prematurely")
+            raise RuntimeError("PYTHIA event generation aborted prematurely")
         if self.num_weights > 0:
             self.weights = np.empty(self.num_weights, dtype=DTYPE)
             for iweight in range(self.num_weights):
@@ -134,7 +138,7 @@ cdef class PythiaInput(MCInput):
             # event doesn't pass our truth-level cuts
             return False
         return True
-    
+
     cdef GenEvent* get_hepmc(self):
         del self.hepmc_event
         self.hepmc_event = pythia_to_hepmc(self.pythia)
@@ -142,7 +146,7 @@ cdef class PythiaInput(MCInput):
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         pythia_to_pseudojet(self.pythia.event, particles, eta_max)
-        
+
     cdef void to_delphes(self, Delphes* delphes,
                          TObjArray* all_particles,
                          TObjArray* stable_particles,
@@ -180,13 +184,13 @@ cdef class HepMCInput(MCInput):
         if self.event == NULL:
             return False
         return True
-    
+
     cdef GenEvent* get_hepmc(self):
         return self.event
 
     cdef void to_pseudojet(self, vector[PseudoJet]& particles, float eta_max):
         hepmc_to_pseudojet(self.event[0], particles, eta_max)
-    
+
     cdef void to_delphes(self, Delphes* delphes,
                          TObjArray* all_particles,
                          TObjArray* stable_particles,

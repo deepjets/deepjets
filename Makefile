@@ -144,6 +144,31 @@ pythia:
 		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
 	done
 
+pythia-uncert:
+	$(eval output_path := $(output)/pythia/images/uncert)
+	$(eval queue := long)
+	$(eval events := 100000)
+	$(eval params := PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320;UncertaintyBands:doVariations = off)
+	$(eval seed_offset := 100000)
+	mkdir -p $(output_path)/log
+	# mu=0.5
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 20))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} w.config --events $(events) --output $(output_path)/w_murfac05_$${chunk}.h5 --params "$(params);SigmaProcess:renormMultFac = 0.5"; \
+	done
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 50))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_murfac05_$${chunk}.h5 --params "$(params);SigmaProcess:renormMultFac = 0.5"; \
+	done
+	# mu=2.0
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 20))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} w.config --events $(events) --output $(output_path)/w_murfac20_$${chunk}.h5 --params "$(params);SigmaProcess:renormMultFac = 2.0"; \
+	done
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 50))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_murfac20_$${chunk}.h5 --params "$(params);SigmaProcess:renormMultFac = 2.0"; \
+	done
 
 pileup:
 	DelphesPythia8 delphes_cards/delphes_converter_card.tcl pileup.config MinBias.root

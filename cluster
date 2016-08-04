@@ -11,7 +11,7 @@ def get_suffix(args):
     if args.shrink:
         suffix += '_shrink'
     suffix += '_jets'
-    if args.suffix is not None:
+    if args.suffix:
         suffix += '_' + args.suffix.strip('_')
     return suffix
 

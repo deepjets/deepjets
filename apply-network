@@ -75,6 +75,21 @@ from deepjets import models
 
 model = models.load_model(args.network)
 
+def batch_classify(model, images, batch_size=100000):
+    # flatten and classify
+    num_images = images.shape[0]
+    y_proba = np.empty((num_images, 2), dtype=np.float64)
+    start, stop = 0, batch_size
+    while start < num_images:
+        batch = images[start:stop,...]
+        batch = batch.reshape(-1, batch.shape[1] * batch.shape[2])
+        proba_batch = model.predict_proba(batch)
+        y_proba[start:stop,...] = proba_batch
+        start += batch_size
+        stop += batch_size
+    return y_proba
+
+
 def classify(imagesfile, output):
     weights = None
     testfile = False
@@ -83,13 +98,12 @@ def classify(imagesfile, output):
         if 'Y_test' in h5file:
             testfile = True
             y_test = h5file['Y_test'][:]
-            y_proba = model.predict_proba(h5file['X_test'], batch_size=1000)
+            y_proba = batch_classify(h5file['X_test'])
             if 'weights' in h5file['auxvars_test'].dtype.names:
                 weights = h5file['auxvars_test']['weights']
         else:
-            images = h5file['images'].value
-            images = images.reshape(-1, images.shape[1] * images.shape[2])
-            y_proba = model.predict_proba(images, batch_size=1000)
+            images = h5file['images']
+            y_proba = batch_classify(model, images)
 
     # normalize
     y_proba /= y_proba.sum(axis=1)[:, np.newaxis]

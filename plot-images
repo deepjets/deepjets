@@ -17,7 +17,7 @@ def plot(filename):
     if 'auxvars' in h5file:
         auxvars = h5file['auxvars']
         if 'weights' in auxvars.dtype.names:
-            weights = da.from_array(auxvars['weights'], chunks=1000)
+            weights = auxvars['weights']
     output_prefix = os.path.splitext(filename)[0]
     
     if weights is not None:
@@ -25,11 +25,11 @@ def plot(filename):
     else:
         print("plotting average image {0} ...".format(filename))
     
-    images = da.from_array(dset_images, chunks=(1000, 25, 25))
+    images = da.from_array(dset_images, chunks=(5000, 25, 25))
     if weights is None:
         avg_image = images.mean(axis=0).compute()
     else:
-        avg_image = da.tensordot(images, weights, axes=(0, 0)).compute() / weights.sum().compute()
+        avg_image = da.tensordot(images, weights, axes=(0, 0)).compute() / weights.sum()
 
     # plot jet images
     fig = plt.figure(figsize=(6, 5))
