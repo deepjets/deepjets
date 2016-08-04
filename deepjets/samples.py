@@ -9,6 +9,12 @@ import os
 from .generate import generate_events, get_generator_input
 from .preprocessing import preprocess, pixel_edges
 
+def eval_recarray(expr, rec):
+    return eval(expr, globals(), {name: rec[name] for name in rec.dtype.names})
+
+def mask_nan_inf(arr, fill=0):
+    arr[np.isnan(arr) | np.isinf(arr)] = fill
+
 DTYPE = np.double
 dt_jet = np.dtype(
     [('pT', DTYPE), ('eta', DTYPE), ('phi', DTYPE), ('mass', DTYPE)])
@@ -386,15 +392,12 @@ class Sample(object):
         return self._get_proba(self.prefix_qcd, only_proba=only_proba)
 
     def get_roc(self, auxvar=None, generator_weight=None):
-        from .utils import default_inv_roc_curve
+        from .utils import default_inv_roc_curve, lklhd_inv_roc_curve, lklhd_inv_roc_curve2d
 
         images_w, auxvars_w, weights_w = self.images_w
         images_qcd, auxvars_qcd, weights_qcd = self.images_qcd
         y_true = np.concatenate([np.repeat([[1, 0]], images_w.shape[0], axis=0),
                                  np.repeat([[0, 1]], images_qcd.shape[0], axis=0)])
-
-        def eval_recarray(expr, rec):
-            return eval(expr, globals(), {name: rec[name] for name in rec.dtype.names})
 
         if auxvar is not None:
             # TODO: support 2-tuple for 2D likelihood ROC
@@ -402,6 +405,7 @@ class Sample(object):
                 y_pred = np.concatenate([eval_recarray(auxvar, auxvars_w), eval_recarray(auxvar, auxvars_qcd)])
             else:
                 y_pred = np.concatenate([auxvars_w[auxvar], auxvars_qcd[auxvar]])
+            mask_nan_inf(y_pred)
         else:
             y_pred = np.concatenate([self.get_w_proba(), self.get_qcd_proba()])
         weights = np.concatenate([weights_w, weights_qcd])
@@ -410,4 +414,44 @@ class Sample(object):
             qcd_weights = auxvars_qcd['generator_weights']
             weights *= np.concatenate([w_weights[:,generator_weight],
                                        qcd_weights[:,generator_weight]])
-        return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
+        take_weights = weights != 0
+        weights = weights[take_weights]
+        y_true = y_true[take_weights]
+        y_pred = y_pred[take_weights]
+
+        #if auxvar is not None:
+        return lklhd_inv_roc_curve(y_true, y_pred, sample_weight=weights)
+        #return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
+
+    def plot(self, ax, auxvar, generator_weight=None):
+        images_w, auxvars_w, weights_w = self.images_w
+        images_qcd, auxvars_qcd, weights_qcd = self.images_qcd
+
+        # TODO: support 2-tuple for 2D likelihood ROC
+        if auxvar not in auxvars_w.dtype.names:
+            var_w, var_qcd = eval_recarray(auxvar, auxvars_w), eval_recarray(auxvar, auxvars_qcd)
+        else:
+            var_w, var_qcd = auxvars_w[auxvar], auxvars_qcd[auxvar]
+        mask_nan_inf(var_w)
+        mask_nan_inf(var_qcd)
+        if generator_weight is not None:
+            w_gen_weights = auxvars_w['generator_weights']
+            qcd_gen_weights = auxvars_qcd['generator_weights']
+            weights_w = weights_w * w_gen_weights[:,generator_weight]
+            weights_qcd = weights_qcd * qcd_gen_weights[:,generator_weight]
+
+        # remove 0-weights to help histogram range
+        noweight_w = weights_w == 0
+        noweight_qcd = weights_qcd == 0
+        var_w = var_w[~noweight_w]
+        weights_w = weights_w[~noweight_w]
+        var_qcd = var_qcd[~noweight_qcd]
+        weights_qcd = weights_qcd[~noweight_qcd]
+
+        print var_w.min(), var_w.max()
+        print var_qcd.min(), var_qcd.max()
+
+        ax.hist(var_w, weights=weights_w, label='Signal',
+                histtype='stepfilled', normed=1)
+        ax.hist(var_qcd, weights=weights_qcd, label='Background',
+                histtype='stepfilled', normed=1)
