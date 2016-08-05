@@ -43,7 +43,7 @@ gen_input = get_generator_input('pythia', 'w.config', random_state=8,
                                     'PhaseSpace:pTHatMax': 300})
 
 event = list(cluster(
-    reconstruct(generate_events(gen_input), random_state=1), events=1,
+    reconstruct(generate_events(gen_input, ignore_weights=True), random_state=1), events=1,
     jet_size=1.0, subjet_size=0.3,
     trimmed_pt_min=250, trimmed_pt_max=300,
     trimmed_mass_min=65, trimmed_mass_max=95))[0]
