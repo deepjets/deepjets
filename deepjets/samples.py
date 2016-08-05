@@ -391,7 +391,7 @@ class Sample(object):
     def get_qcd_proba(self, only_proba=True):
         return self._get_proba(self.prefix_qcd, only_proba=only_proba)
 
-    def get_roc(self, auxvar=None, generator_weight=None):
+    def get_roc(self, fields=None, generator_weight=None):
         from .utils import default_inv_roc_curve, lklhd_inv_roc_curve, lklhd_inv_roc_curve2d
 
         images_w, auxvars_w, weights_w = self.images_w
@@ -399,31 +399,44 @@ class Sample(object):
         y_true = np.concatenate([np.repeat([[1, 0]], images_w.shape[0], axis=0),
                                  np.repeat([[0, 1]], images_qcd.shape[0], axis=0)])
 
-        if auxvar is not None:
-            # TODO: support 2-tuple for 2D likelihood ROC
-            if auxvar not in auxvars_w.dtype.names:
-                y_pred = np.concatenate([eval_recarray(auxvar, auxvars_w), eval_recarray(auxvar, auxvars_qcd)])
+        if not isinstance(fields, (tuple, list)):
+            fields = [fields]
+        if len(fields) > 2:
+            raise NotImplemented("cannot combine more than two parameters")
+        fields = sorted(fields)
+
+        preds = []
+        for field in fields:
+            if field is None:
+                # network output
+                y_pred = np.concatenate([self.get_w_proba(), self.get_qcd_proba()])
+            elif field not in auxvars_w.dtype.names:
+                y_pred = np.concatenate([eval_recarray(field, auxvars_w), eval_recarray(field, auxvars_qcd)])
             else:
-                y_pred = np.concatenate([auxvars_w[auxvar], auxvars_qcd[auxvar]])
+                y_pred = np.concatenate([auxvars_w[field], auxvars_qcd[field]])
             mask_nan_inf(y_pred)
-        else:
-            y_pred = np.concatenate([self.get_w_proba(), self.get_qcd_proba()])
+            preds.append(y_pred)
+
         weights = np.concatenate([weights_w, weights_qcd])
         if generator_weight is not None:
             w_weights = auxvars_w['generator_weights']
             qcd_weights = auxvars_qcd['generator_weights']
             weights *= np.concatenate([w_weights[:,generator_weight],
                                        qcd_weights[:,generator_weight]])
+        # remove entries with no weight
         take_weights = weights != 0
         weights = weights[take_weights]
         y_true = y_true[take_weights]
-        y_pred = y_pred[take_weights]
 
-        #if auxvar is not None:
-        return lklhd_inv_roc_curve(y_true, y_pred, sample_weight=weights)
+        for idx in range(len(preds)):
+            preds[idx] = preds[idx][take_weights]
+
+        if len(preds) > 1:
+            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights)
+        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights)
         #return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
 
-    def plot(self, ax, auxvar, generator_weight=None):
+    def plot(self, ax, auxvar, generator_weight=None, **kwargs):
         images_w, auxvars_w, weights_w = self.images_w
         images_qcd, auxvars_qcd, weights_qcd = self.images_qcd
 
@@ -448,10 +461,11 @@ class Sample(object):
         var_qcd = var_qcd[~noweight_qcd]
         weights_qcd = weights_qcd[~noweight_qcd]
 
-        print var_w.min(), var_w.max()
-        print var_qcd.min(), var_qcd.max()
-
         ax.hist(var_w, weights=weights_w, label='Signal',
-                histtype='stepfilled', normed=1)
+                histtype='stepfilled', normed=1,
+                facecolor='none', edgecolor='blue',
+                **kwargs)
         ax.hist(var_qcd, weights=weights_qcd, label='Background',
-                histtype='stepfilled', normed=1)
+                histtype='stepfilled', normed=1,
+                facecolor='none', edgecolor='black', linestyle='dotted',
+                **kwargs)
