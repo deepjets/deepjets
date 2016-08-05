@@ -32,11 +32,11 @@ def get_generator_input(name, filename, **kwargs):
     return gen_input
 
 
-def generate_events(gen_input, events=-1, write_to='', **kwargs):
+def generate_events(gen_input, events=-1, write_to='', ignore_weights=False, **kwargs):
     if isinstance(gen_input, basestring):
         if fnmatch(os.path.splitext(gen_input)[1], '.hepmc*'):
             gen_input = get_generator_input('hepmc', gen_input, **kwargs)
         else:
             gen_input = get_generator_input('pythia', gen_input, **kwargs)
-    for event in _generate_events(gen_input, events, write_to):
+    for event in _generate_events(gen_input, events, write_to, ignore_weights):
         yield event

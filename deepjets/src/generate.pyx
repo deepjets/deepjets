@@ -232,7 +232,7 @@ cdef class HepMCInput(MCInput):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def generate_events(MCInput gen_input, int n_events, string write_to):
+def generate_events(MCInput gen_input, int n_events, string write_to, bool ignore_weights=False):
     """
     Generate events (or read HepMC) and yield numpy arrays of particles
     If weights are enabled, this function will yield the particles and weights array
@@ -257,7 +257,7 @@ def generate_events(MCInput gen_input, int n_events, string write_to):
         hepmc_finalstate_particles(event, particles)
         particle_array = np.empty((particles.size(),), dtype=dtype_particle)
         particles_to_array(particles, <DTYPE_t*> particle_array.data)
-        if weighted:
+        if weighted and not ignore_weights:
             yield particle_array, gen_input.weights
         else:
             yield particle_array

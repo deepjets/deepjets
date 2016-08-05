@@ -21,7 +21,7 @@ def get_one_event(random_state=1, gen_params=None, **kwargs):
                                     random_state=random_state,
                                     verbosity=0,
                                     **gen_params)
-    return list(cluster(generate_events(gen_input), 1, **kwargs))[0]
+    return list(cluster(generate_events(gen_input, ignore_weights=True), 1, **kwargs))[0]
 
 
 def get_one_event_reco(pythia_random_state=1, delphes_random_state=1,
@@ -31,27 +31,27 @@ def get_one_event_reco(pythia_random_state=1, delphes_random_state=1,
                                     random_state=pythia_random_state,
                                     verbosity=0,
                                     **gen_params)
-    return list(cluster(reconstruct(generate_events(gen_input),
+    return list(cluster(reconstruct(generate_events(gen_input, ignore_weights=True),
                                     random_state=delphes_random_state),
                                     1, **kwargs))[0]
 
 
 def test_cluster_generate_length():
-    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 1))), 1)
-    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 10))), 10)
-    assert_equal(len(list(cluster(generate_events('w.config', verbosity=0), 100))), 100)
+    assert_equal(len(list(cluster(generate_events('w.config', ignore_weights=True, verbosity=0), 1))), 1)
+    assert_equal(len(list(cluster(generate_events('w.config', ignore_weights=True, verbosity=0), 10))), 10)
+    assert_equal(len(list(cluster(generate_events('w.config', ignore_weights=True, verbosity=0), 100))), 100)
 
 
 def test_reconstruct_generate_length():
-    assert_equal(len(list(reconstruct(generate_events('w.config', verbosity=0), 1))), 1)
-    assert_equal(len(list(reconstruct(generate_events('w.config', verbosity=0), 10))), 10)
-    assert_equal(len(list(reconstruct(generate_events('w.config', verbosity=0), 100))), 100)
+    assert_equal(len(list(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0), 1))), 1)
+    assert_equal(len(list(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0), 10))), 10)
+    assert_equal(len(list(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0), 100))), 100)
 
 
 def test_cluster_reconstruct_generate_length():
-    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', verbosity=0)), 1))), 1)
-    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', verbosity=0)), 10))), 10)
-    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', verbosity=0)), 100))), 100)
+    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0)), 1))), 1)
+    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0)), 10))), 10)
+    assert_equal(len(list(cluster(reconstruct(generate_events('w.config', ignore_weights=True, verbosity=0)), 100))), 100)
 
 
 def test_generate_random_state():
@@ -118,7 +118,7 @@ def test_hdf5_vs_direct_pythia():
             h5output['events'][0] = list(
                 generate_events(
                     get_generator_input('pythia', testfile, verbosity=0,
-                                        random_state=1), 1))[0]
+                                        random_state=1), 1, ignore_weights=True))[0]
         h5input = h5.File(tmp.name, 'r')
         jets = list(cluster(reconstruct(h5input['events'], random_state=1)))[0]
     jets_direct = list(
@@ -126,7 +126,7 @@ def test_hdf5_vs_direct_pythia():
             reconstruct(
                 generate_events(
                     get_generator_input('pythia', testfile, verbosity=0,
-                                        random_state=1), 1), random_state=1)))[0]
+                                        random_state=1), 1, ignore_weights=True), random_state=1)))[0]
 
     assert_true(jets.jets[0]['pT'] > 0)
     assert_equal(jets.jets[0]['pT'], jets_direct.jets[0]['pT'])
