@@ -391,7 +391,7 @@ class Sample(object):
     def get_qcd_proba(self, only_proba=True):
         return self._get_proba(self.prefix_qcd, only_proba=only_proba)
 
-    def get_roc(self, fields=None, generator_weight=None):
+    def get_roc(self, fields=None, generator_weight=None, nb_per_bin=30):
         from .utils import default_inv_roc_curve, lklhd_inv_roc_curve, lklhd_inv_roc_curve2d
 
         images_w, auxvars_w, weights_w = self.images_w
@@ -432,8 +432,8 @@ class Sample(object):
             preds[idx] = preds[idx][take_weights]
 
         if len(preds) > 1:
-            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights, nb_per_bin=30)
-        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights, nb_per_bin=30)
+            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights, nb_per_bin=nb_per_bin)
+        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights, nb_per_bin=nb_per_bin)
         #return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
 
     def plot(self, ax, auxvar, generator_weight=None, **kwargs):
