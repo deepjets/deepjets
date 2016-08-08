@@ -17,6 +17,7 @@ parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
 parser.add_argument('--vincia', action='store_true', default=False)
 parser.add_argument('--suffix', default=None)
+parser.add_argument('--verbosity', type=int, default=1)
 parser.add_argument('--batch', default=None)
 parser.add_argument('--dry', action='store_true', default=False)
 parser.add_argument('-d', '--debug', action='store_true', default=False,       
@@ -109,7 +110,8 @@ try:
         pdgid_pt_min=args.pdgid_pt_min,
         pdgid_pt_max=args.pdgid_pt_max,
         params_dict=args.params,
-        vincia=args.vincia)
+        vincia=args.vincia,
+        verbosity=args.verbosity)
 
     nweights = gen_input.num_weights
     create_event_datasets(h5file, args.events, nweights=nweights)

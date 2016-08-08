@@ -389,7 +389,9 @@ class Sample(object):
             return self._avg_qcd_image
 
     def _get_proba(self, prefix, only_proba=True):
-        with h5py.File(os.path.join(self.path, prefix + '{0}_images_proba.h5'.format(self.filename)), 'r') as h5file:
+        network_output_file = os.path.join(self.path, prefix + '{0}_images_proba.h5'.format(self.filename))
+        print("getting network output for sample {0} in {1}".format(self.name, network_output_file))
+        with h5py.File(network_output_file, 'r') as h5file:
             if only_proba:
                 return h5file['Y_proba'].value
             return h5file['Y_test'].value, h5file['Y_proba'].value, h5file['weights'].value
