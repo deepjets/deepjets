@@ -432,8 +432,8 @@ class Sample(object):
             preds[idx] = preds[idx][take_weights]
 
         if len(preds) > 1:
-            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights)
-        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights)
+            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights, nb_per_bin=30)
+        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights, nb_per_bin=30)
         #return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
 
     def plot(self, ax, auxvar, generator_weight=None, **kwargs):
