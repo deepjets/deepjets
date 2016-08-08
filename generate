@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--output', '-o', default=None)
+parser.add_argument('--write-hepmc', default=False, action='store_true')
 parser.add_argument('--events', type=int, default=1000)
 parser.add_argument('--random-state', type=int, default=0)
 parser.add_argument('--cut-on-pdgid', type=int, default=0)
@@ -95,6 +96,11 @@ if args.params is not None:
 
 output_exists = os.path.exists(args.output)
 h5file = h5py.File(args.output, 'w')
+
+if args.write_hepmc:
+    write_to = os.path.splitext(args.output)[0] + '.hepmc'
+else:
+    write_to = ''
     
 try:
     gen_input = get_generator_input('pythia',
@@ -112,12 +118,12 @@ try:
     ievent = 0
     if nweights > 0:
         dset_weights = h5file['weights']
-        for event, weights in generate_events(gen_input, args.events):
+        for event, weights in generate_events(gen_input, args.events, write_to=write_to):
             dset_particles[ievent] = event
             dset_weights[ievent] = weights
             ievent += 1
     else:
-        for event in generate_events(gen_input, args.events):
+        for event in generate_events(gen_input, args.events, write_to=write_to):
             dset_particles[ievent] = event
             ievent += 1
 except KeyboardInterrupt:

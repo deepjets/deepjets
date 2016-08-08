@@ -338,20 +338,29 @@ def get_flat_events(h5file, generator_params, nevents_per_pt_bin,
 
 
 class Sample(object):
-    def __init__(self, name, path, prefix_w, prefix_qcd,
+    def __init__(self, name, path,
+                 prefix_w='w_', prefix_qcd='qcd_',
+                 jet_size=1.0, subjet_size=0.3,
+                 delphes=True, pileup=False,
                  pt_min=250, pt_max=300, pt_bins=5,
                  mass_min=None, mass_max=None):
         self.name = name
         self.path = path
         self.prefix_w = prefix_w
         self.prefix_qcd = prefix_qcd
+        self.filename = 'j{0:.1f}_sj{1:.2f}'.format(jet_size, subjet_size).replace('.', 'p')
+        if delphes:
+            self.filename += '_delphes'
+        self.filename += '_jets'
+        if pileup:
+            self.filename += '_pileup'
         print("reading in W images for sample " + self.name)
         self.images_w = make_flat_images(
-            os.path.join(self.path, self.prefix_w + 'j1p0_sj0p30_delphes_jets_images.h5'),
+            os.path.join(self.path, self.prefix_w + '{0}_images.h5'.format(self.filename)),
             pt_min, pt_max, pt_bins, mass_min=mass_min, mass_max=mass_max)
         print("reading in QCD images for sample " + self.name)
         self.images_qcd = make_flat_images(
-            os.path.join(self.path, self.prefix_qcd + 'j1p0_sj0p30_delphes_jets_images.h5'),
+            os.path.join(self.path, self.prefix_qcd + '{0}_images.h5'.format(self.filename)),
             pt_min, pt_max, pt_bins, mass_min=mass_min, mass_max=mass_max)
         self.roc = None
 
@@ -380,7 +389,7 @@ class Sample(object):
             return self._avg_qcd_image
 
     def _get_proba(self, prefix, only_proba=True):
-        with h5py.File(os.path.join(self.path, prefix + 'j1p0_sj0p30_delphes_jets_images_proba.h5'), 'r') as h5file:
+        with h5py.File(os.path.join(self.path, prefix + '{0}_images_proba.h5'.format(self.filename)), 'r') as h5file:
             if only_proba:
                 return h5file['Y_proba'].value
             return h5file['Y_test'].value, h5file['Y_proba'].value, h5file['weights'].value
