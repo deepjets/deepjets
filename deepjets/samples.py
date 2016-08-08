@@ -391,7 +391,8 @@ class Sample(object):
     def get_qcd_proba(self, only_proba=True):
         return self._get_proba(self.prefix_qcd, only_proba=only_proba)
 
-    def get_roc(self, fields=None, generator_weight=None, nb_per_bin=30):
+    def get_roc(self, fields=None, generator_weight=None,
+                nb_per_bin=30, always_use_likelihood=False):
         from .utils import default_inv_roc_curve, lklhd_inv_roc_curve, lklhd_inv_roc_curve2d
 
         images_w, auxvars_w, weights_w = self.images_w
@@ -405,14 +406,17 @@ class Sample(object):
             raise NotImplemented("cannot combine more than two parameters")
         fields = sorted(fields)
 
+        has_aux = False
         preds = []
         for field in fields:
             if field is None:
                 # network output
                 y_pred = np.concatenate([self.get_w_proba(), self.get_qcd_proba()])
             elif field not in auxvars_w.dtype.names:
+                has_aux = True
                 y_pred = np.concatenate([eval_recarray(field, auxvars_w), eval_recarray(field, auxvars_qcd)])
             else:
+                has_aux = True
                 y_pred = np.concatenate([auxvars_w[field], auxvars_qcd[field]])
             mask_nan_inf(y_pred)
             preds.append(y_pred)
@@ -432,9 +436,11 @@ class Sample(object):
             preds[idx] = preds[idx][take_weights]
 
         if len(preds) > 1:
-            lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights, nb_per_bin=nb_per_bin)
-        return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights, nb_per_bin=nb_per_bin)
-        #return default_inv_roc_curve(y_true, y_pred, sample_weight=weights)
+            return lklhd_inv_roc_curve2d(y_true, preds[0], preds[1], sample_weight=weights, nb_per_bin=nb_per_bin)
+        elif has_aux or always_use_likelihood:
+            return lklhd_inv_roc_curve(y_true, preds[0], sample_weight=weights, nb_per_bin=nb_per_bin)
+        # fall back on default ROC curve function
+        return default_inv_roc_curve(y_true, preds[0], sample_weight=weights)
 
     def plot(self, ax, auxvar, generator_weight=None, **kwargs):
         images_w, auxvars_w, weights_w = self.images_w
