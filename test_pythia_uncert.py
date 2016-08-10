@@ -50,7 +50,7 @@ c = generate_event(renorm_fac=0.5)
 print (b - a).sum() / a.sum()
 print (c - a).sum() / a.sum()
 
-print "Refactorization scale uncertainty"
+print "Factorization scale uncertainty"
 b = generate_event(factor_fac=2.)
 c = generate_event(factor_fac=0.5)
 
