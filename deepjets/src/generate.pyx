@@ -2,6 +2,7 @@ import os
 
 
 cdef class MCInput:
+
     cdef np.ndarray weights
 
     cdef int get_num_weights(self):
@@ -35,28 +36,52 @@ cdef class MCInput:
 
 
 cdef class PythiaInput(MCInput):
+
     cdef Pythia* pythia
     cdef VinciaPlugin* vincia_plugin
+    cdef DireTimes* dire_times
+    cdef DireSpace* dire_space
+    cdef DireTimes* dire_timesDec
+    cdef WeightContainer* dire_weights
+    cdef SplittingLibrary* dire_splittings
+    cdef UserHooks* userhooks
     cdef GenEvent* hepmc_event
+    cdef int verbosity
     cdef int cut_on_pdgid
     cdef float pdgid_pt_min
     cdef float pdgid_pt_max
-    cdef int verbosity
+    cdef string shower
 
     def __cinit__(self, string config, string xmldoc,
                   int random_state=0, float beam_ecm=13000.,
                   int cut_on_pdgid=0,
                   float pdgid_pt_min=-1, float pdgid_pt_max=-1,
                   object params_dict=None, int verbosity=1,
-                  bool vincia=False,
+                  string shower='',
                   **kwargs):
+
+        cdef int i
+        cdef double mPDF
+
         self.pythia = new Pythia(xmldoc, False)
+
+        # Initialize pointers to NULL
+        self.vincia_plugin = NULL
+        self.dire_times = NULL
+        self.dire_space = NULL
+        self.dire_timesDec = NULL
+        self.dire_weights = NULL
+        self.dire_splittings = NULL
+        self.userhooks = NULL
+        self.hepmc_event = NULL
+
         if verbosity > 0:
             self.pythia.readString("Init:showProcesses = on")
             self.pythia.readString("Init:showChangedSettings = on")
         else:
             self.pythia.readString("Init:showProcesses = off")
             self.pythia.readString("Init:showChangedSettings = off")
+
         if verbosity > 1:
             self.pythia.readString("Init:showMultipartonInteractions = on")
             self.pythia.readString("Init:showChangedParticleData = on")
@@ -69,21 +94,57 @@ cdef class PythiaInput(MCInput):
             self.pythia.readString("Next:numberShowInfo = 0")
             self.pythia.readString("Next:numberShowProcess = 0")
             self.pythia.readString("Next:numberShowEvent = 0")
-        # read user config after options above
-        if vincia:
+
+        # next read user config that may override options above
+        if shower == 'vincia':
             self.vincia_plugin = new VinciaPlugin(self.pythia, config)
-        else:
+
+        elif shower == 'dire':
+            # Following the dire00.cc example in DIRE-0.900
+            # Teach Pythia the additional DIRE input settings.
+            self.pythia.settings.addFlag("ShowerPDF:usePDFalphas", False)
+            self.pythia.settings.addFlag("ShowerPDF:usePDFmasses", True)
+            self.pythia.settings.addFlag("ShowerPDF:useSummedPDF", True)
+            self.pythia.settings.addFlag("DireSpace:useGlobalMapIF", False)
+            self.pythia.settings.addFlag("DireSpace:forceMassiveMap", False)
+            self.pythia.settings.addMode("DireTimes:nFinalMax", -10, True, False, -10, 10000000)
+            self.pythia.settings.addMode("DireSpace:nFinalMax", -10, True, False, -10, 10000000)
+
+            # Construct showers.
+            self.dire_times = new DireTimes(self.pythia)
+            self.dire_space = new DireSpace(self.pythia)
+            self.dire_timesDec = new DireTimes(self.pythia)
+
+            # Initialise weight book-keeping.
+            self.dire_weights = new WeightContainer()
+            self.userhooks = new WeightHooks(self.dire_weights)
+            self.dire_times.setWeightContainerPtr(self.dire_weights)
+            self.dire_space.setWeightContainerPtr(self.dire_weights)
+            self.dire_timesDec.setWeightContainerPtr(self.dire_weights)
+
+            # Feed new DIRE showers to Pythia.
+            self.pythia.setShowerPtr(self.dire_timesDec, self.dire_times, self.dire_space)
+            self.pythia.setUserHooksPtr(self.userhooks)
+
+            # Read config
             self.pythia.readFile(config)
-            self.vincia_plugin = NULL
+
+        else:  # default Pythia shower
+            # Read config
+            self.pythia.readFile(config)
+
+        # __init__ arguments will always override the config
         self.pythia.readString('Beams:eCM = {0}'.format(beam_ecm))
         self.pythia.readString('Random:setSeed = on')
         self.pythia.readString('Random:seed = {0}'.format(random_state))
+
         if params_dict is not None:
             for param, value in params_dict.items():
                 self.pythia.readString('{0} = {1}'.format(param, value))
         for param, value in kwargs.items():
             self.pythia.readString('{0} = {1}'.format(param.replace('_', ':'), value))
-        if vincia:
+
+        if shower == 'vincia':
             # vincia calls pythia's init
             # but we lose the bool return value of Pythia's init
             # if init fails there, pythia.next() will anyway abort
@@ -92,11 +153,52 @@ cdef class PythiaInput(MCInput):
         else:
             if not self.pythia.init():
                 raise RuntimeError("PYTHIA did not successfully initialize")
+
+        if shower == 'dire':
+            # continue configuring the DIRE shower after Pythia's init
+
+            # Initialise library of splitting functions.
+            self.dire_splittings = new SplittingLibrary()
+
+            # Reinitialise showers to ensure that pointers are
+            # correctly set.
+            self.dire_times.reinitPtr(&(self.pythia.info),
+                &(self.pythia.settings),
+                &(self.pythia.particleData),
+                &(self.pythia.rndm),
+                &(self.pythia.partonSystems),
+                self.userhooks, NULL,
+                self.dire_splittings)
+            self.dire_space.reinitPtr(&(self.pythia.info),
+                &(self.pythia.settings),
+                &(self.pythia.particleData),
+                &(self.pythia.rndm),
+                &(self.pythia.partonSystems),
+                self.userhooks, NULL,
+                self.dire_splittings)
+            self.dire_timesDec.reinitPtr(&(self.pythia.info),
+                &(self.pythia.settings),
+                &(self.pythia.particleData),
+                &(self.pythia.rndm),
+                &(self.pythia.partonSystems),
+                self.userhooks, NULL,
+                self.dire_splittings)
+
+            # Initialise splitting function library here so that beam pointers
+            # are already correctly initialised.
+            self.dire_splittings.init(
+                &(self.pythia.settings), &(self.pythia.particleData), &(self.pythia.rndm),
+                self.dire_space.beamAPtr, self.dire_space.beamBPtr)
+
+            # Feed the splitting functions to the showers.
+            self.dire_splittings.setTimesPtr(self.dire_times)
+            self.dire_splittings.setSpacePtr(self.dire_space)
+
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
         self.verbosity = verbosity
-        self.hepmc_event = NULL
+        self.shower = shower
 
     def __dealloc__(self):
         del self.hepmc_event
@@ -105,23 +207,32 @@ cdef class PythiaInput(MCInput):
 
     cdef int get_num_weights(self):
         """
-        Accessing the Uncertainty Weights
+        Accessing the nominal and uncertainty event weights
+
+        http://home.thep.lu.se/Pythia/pythia82html/EventInformation.html
+
+        The weight assigned to the current event. Is normally 1 and thus
+        uninteresting. However, there are several cases where one may have
+        nontrivial event weights.
+
+        http://home.thep.lu.se/Pythia/pythia82html/Variations.html
 
         During the event generation, uncertainty weights will be calculated for
-        each variation defined above, via the method described in [Mre16]. The
-        resulting alternative weights for the event are accessible through the
-        Pythia::info.weight(int iWeight=0) method. The baseline weight for each event
-        (normally unity for an ordinary unweighted event sample) is not modified and
-        corresponds to iWeight = 0. The uncertainty-variation weights are thus
-        enumerated starting from iWeight = 1 for the first variation up to N for the
-        last variation, in the order they were specified in UncertaintyBands:List.
+        each variation. The resulting alternative weights for the event are
+        accessible through the Pythia::info.weight(int iWeight=0) method. The
+        baseline weight for each event (normally unity for an ordinary
+        unweighted event sample) is not modified and corresponds to iWeight =
+        0. The uncertainty-variation weights are thus enumerated starting from
+        iWeight = 1 for the first variation up to N for the last variation, in
+        the order they were specified in UncertaintyBands:List.
 
         The total number of variations that have been defined, N, can be
         queried using Pythia::info.nWeights().
         """
         cdef int nweights = self.pythia.info.nWeights()
-        if nweights == 1:
-            # only nominal is present so don't bother with weights
+        if nweights == 1 and self.shower != 'dire':
+            # only nominal is present so don't bother with weights since it is
+            # normally 1. DIRE does produce weighted events, however.
             return 0
         return nweights
 
@@ -129,10 +240,15 @@ cdef class PythiaInput(MCInput):
         # generate event and quit if failure
         if not self.pythia.next():
             raise RuntimeError("PYTHIA event generation aborted prematurely")
+        cdef double dire_shower_weight = 1.
         if self.num_weights > 0:
+            if self.shower == 'dire':
+                self.dire_weights.calcWeight(0.)
+                self.dire_weights.reset()
+                dire_shower_weight = self.dire_weights.getShowerWeight()
             self.weights = np.empty(self.num_weights, dtype=DTYPE)
             for iweight in range(self.num_weights):
-                self.weights[iweight] = self.pythia.info.weight(iweight)
+                self.weights[iweight] = self.pythia.info.weight(iweight) * dire_shower_weight
         if not keep_pythia_event(self.pythia.event, self.cut_on_pdgid,
                                  self.pdgid_pt_min, self.pdgid_pt_max):
             # event doesn't pass our truth-level cuts
@@ -163,6 +279,7 @@ cdef class PythiaInput(MCInput):
 
 
 cdef class HepMCInput(MCInput):
+
     cdef string filename
     cdef IO_GenEvent* hepmc_reader
     cdef GenEvent* event

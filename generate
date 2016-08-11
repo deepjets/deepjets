@@ -15,7 +15,7 @@ parser.add_argument('--cut-on-pdgid', type=int, default=0)
 parser.add_argument('--pdgid-pt-min', type=float, default=-1)
 parser.add_argument('--pdgid-pt-max', type=float, default=-1)
 parser.add_argument('--params', default=None)
-parser.add_argument('--vincia', action='store_true', default=False)
+parser.add_argument('--shower', default='', choices=('vincia', 'dire'))
 parser.add_argument('--suffix', default=None)
 parser.add_argument('--verbosity', type=int, default=1)
 parser.add_argument('--batch', default=None)
@@ -110,7 +110,7 @@ try:
         pdgid_pt_min=args.pdgid_pt_min,
         pdgid_pt_max=args.pdgid_pt_max,
         params_dict=args.params,
-        vincia=args.vincia,
+        shower=args.shower,
         verbosity=args.verbosity)
 
     nweights = gen_input.num_weights
