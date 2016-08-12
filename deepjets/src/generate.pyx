@@ -204,6 +204,12 @@ cdef class PythiaInput(MCInput):
         del self.hepmc_event
         del self.pythia
         del self.vincia_plugin
+        del self.dire_times
+        del self.dire_space
+        del self.dire_timesDec
+        del self.dire_weights
+        del self.dire_splittings
+        del self.userhooks
 
     cdef int get_num_weights(self):
         """
