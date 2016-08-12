@@ -113,3 +113,14 @@ Finally, to apply a network on datasets of images::
    apply-network --batch long /coepp/cephfs/mel/edawe/deepjets/models/delphes_m_50_110/delphes_nozoom_a34d582c72fe4d438ae37f2409a62c9c_lr0.001_bs100 w_j1p0_sj0p30_delphes_jets_* qcd_j1p0_sj0p30_delphes_jets_*
 
 That will create a ``*_proba.h5`` file containing network scores per input images dataset file.
+
+
+Checking consistency with reference PYTHIA event
+------------------------------------------------
+
+After making changes to package versions, the event generation code, etc the
+events produced for a fixed random seed might begin to differ. Check for
+differences with a reference event as follows::
+
+   ./generate qcd.config --write-hepmc --events 1 --random-state 101
+   diff qcd.hepmc qcd.hepmc.reference
