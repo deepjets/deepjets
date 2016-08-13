@@ -36,7 +36,8 @@ cdef extern from "Pythia8/Pythia.h" namespace "Pythia8":
         pass
 
     cdef cppclass BeamParticle:
-        int id() 
+        int id()
+        double mQuarkPDF(int)
 
     cdef cppclass Pythia:
         Event event

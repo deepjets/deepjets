@@ -194,6 +194,17 @@ cdef class PythiaInput(MCInput):
             self.dire_splittings.setTimesPtr(self.dire_times)
             self.dire_splittings.setSpacePtr(self.dire_space)
 
+            # Reset Pythia masses if necessary.
+            if self.pythia.settings.flag("ShowerPDF:usePDFmasses"):
+                for i in range(1, 6):
+                    mPDF = -1.
+                    if abs(self.dire_space.beamAPtr.id()) > 30:
+                        mPDF = self.dire_space.beamAPtr.mQuarkPDF(i)
+                    elif abs(self.dire_space.beamBPtr.id()) > 30:
+                        mPDF = self.dire_space.beamBPtr.mQuarkPDF(i)
+                    if mPDF > -1.:
+                        self.pythia.readString('{0:d}:m0 = {1:f}'.format(i, mPDF))
+
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
