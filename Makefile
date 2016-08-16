@@ -130,7 +130,7 @@ pythia:
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} w.config --events $(events) --output $(output_path)/w_$${chunk}.h5 --params "$(params)"; \
 	done
-	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 30))); do \
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_$${chunk}.h5 --params "$(params)"; \
 	done
@@ -147,7 +147,7 @@ pythia-vincia:
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} w_vincia.config --shower vincia --events $(events) --output $(output_path)/w_vincia_$${chunk}.h5 --params "$(params)"; \
 	done
-	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 30))); do \
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --shower vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
 	done
@@ -164,7 +164,7 @@ pythia-dire:
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} w_dire.config --shower dire --events $(events) --output $(output_path)/w_dire_$${chunk}.h5 --params "$(params)"; \
 	done
-	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 30))); do \
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} qcd_dire.config --shower dire --events $(events) --output $(output_path)/qcd_dire_$${chunk}.h5 --params "$(params)"; \
 	done
