@@ -134,14 +134,39 @@ pythia:
 		chunk=`printf "%04d" $${seed}`; \
 		./generate --batch $(queue) --random-state $${seed} qcd.config --events $(events) --output $(output_path)/qcd_$${chunk}.h5 --params "$(params)"; \
 	done
+
+pythia-vincia:
+	$(eval output_path := $(output)/pythia/images)
+	$(eval queue := long)
+	$(eval events := 100000)
+	$(eval params := PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320)
+	$(eval seed_offset := 100000)
+	mkdir -p $(output_path)/log
 	# VINCIA
 	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
 		chunk=`printf "%04d" $${seed}`; \
-		./generate --batch $(queue) --random-state $${seed} w_vincia.config --vincia --events $(events) --output $(output_path)/w_vincia_$${chunk}.h5 --params "$(params)"; \
+		./generate --batch $(queue) --random-state $${seed} w_vincia.config --shower vincia --events $(events) --output $(output_path)/w_vincia_$${chunk}.h5 --params "$(params)"; \
 	done
 	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
 		chunk=`printf "%04d" $${seed}`; \
-		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
+		./generate --batch $(queue) --random-state $${seed} qcd_vincia.config --shower vincia --events $(events) --output $(output_path)/qcd_vincia_$${chunk}.h5 --params "$(params)"; \
+	done
+
+pythia-dire:
+	$(eval output_path := $(output)/pythia/images)
+	$(eval queue := long)
+	$(eval events := 100000)
+	$(eval params := PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320)
+	$(eval seed_offset := 100000)
+	mkdir -p $(output_path)/log
+	# DIRE
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} w_dire.config --shower dire --events $(events) --output $(output_path)/w_dire_$${chunk}.h5 --params "$(params)"; \
+	done
+	for seed in $$(seq $(seed_offset) 1 $$(($(seed_offset) + 10))); do \
+		chunk=`printf "%04d" $${seed}`; \
+		./generate --batch $(queue) --random-state $${seed} qcd_dire.config --shower dire --events $(events) --output $(output_path)/qcd_dire_$${chunk}.h5 --params "$(params)"; \
 	done
 
 pythia-uncert:
