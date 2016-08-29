@@ -125,6 +125,10 @@ def zoom_image(image, zoom, out_width=25):
         raise ValueError("Zoom scale factor must be at least 1.")
 
     width, height = image.shape
+    #if width < out_width:
+    #    raise ValueError(
+    #        "image width before zooming ({0}) is less "
+    #        "than requested output width ({1})".format(width, out_width))
     out_height = int(np.rint(float(out_width * height) / width))
     t_width = int(np.rint(out_width * zoom))
     t_height = int(np.rint(out_height * zoom))

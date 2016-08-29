@@ -212,7 +212,7 @@ def make_flat_images(filename, pt_min, pt_max, pt_bins=20,
     weights.
     """
     hfile = h5py.File(filename, 'r')
-    images = da.from_array(hfile['images'], chunks=(5000, 25, 25))
+    images = da.from_array(hfile['images'], chunks=(10000, 25, 25))
     auxvars = hfile['auxvars']
     pt_trimmed = da.from_array(auxvars['pt_trimmed'], chunks=1000000)
     accept = ((pt_trimmed >= pt_min) & (pt_trimmed < pt_max))
@@ -341,19 +341,23 @@ class Sample(object):
     def __init__(self, name, path,
                  prefix_w='w_', prefix_qcd='qcd_',
                  jet_size=1.0, subjet_size=0.3,
-                 delphes=True, pileup=False,
+                 delphes=True, pileup=False, zoomed=False,
                  pt_min=250, pt_max=300, pt_bins=5,
-                 mass_min=None, mass_max=None):
+                 mass_min=None, mass_max=None, jet_suffix=None):
         self.name = name
         self.path = path
         self.prefix_w = prefix_w
         self.prefix_qcd = prefix_qcd
         self.filename = 'j{0:.1f}_sj{1:.2f}'.format(jet_size, subjet_size).replace('.', 'p')
+        if jet_suffix is not None:
+            self.filename += '_{0}'.format(jet_suffix)
         if delphes:
             self.filename += '_delphes'
         self.filename += '_jets'
         if pileup:
             self.filename += '_pileup'
+        if zoomed:
+            self.filename += '_zoomed'
         print("reading in W images for sample " + self.name)
         self.images_w = make_flat_images(
             os.path.join(self.path, self.prefix_w + '{0}_images.h5'.format(self.filename)),

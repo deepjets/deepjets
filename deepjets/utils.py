@@ -274,7 +274,7 @@ class MidPointNorm(Normalize):
 
 def plot_jet_image(
         ax, image, vmin=1e-9, vmax=1e-2, cmap="jet", title="Intensity",
-        label_axes=True, show_colorbar=True, colorbar_inside=False):
+        label_axes=True, visible_axes=False, show_colorbar=True, colorbar_inside=False):
     """Display jet image.
 
     Args:
@@ -296,9 +296,11 @@ def plot_jet_image(
     else:
         norm = None
         ticks = None
+
     p = ax.imshow(
         image.T, extent=(-(1+dw), 1+dw, -(1+dh), 1+dh), origin='low',
         interpolation='nearest', norm=norm, cmap=cmap)
+
     if show_colorbar:
         if colorbar_inside:
             cax = ax.figure.add_axes([0.85, 0.08, 0.03, 0.82])
@@ -310,15 +312,22 @@ def plot_jet_image(
         cbar.ax.tick_params(labelsize=12)
         if colorbar_inside:
             cbar.ax.yaxis.set_ticks_position('left')
+
     if label_axes:
         ax.set_xlabel(r'$x_1$', fontsize=18)
         ax.set_ylabel(r'$x_2$', fontsize=18)
         ax.tick_params(axis='both', which='major', labelsize=12)
     else:
-        ax.axes.get_xaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
         ax.axes.get_xaxis().set_ticks([])
         ax.axes.get_yaxis().set_ticks([])
+
+    ax.axes.get_xaxis().set_visible(visible_axes)
+    ax.axes.get_yaxis().set_visible(visible_axes)
+    if visible_axes:
+        for axis in ['top', 'bottom', 'left', 'right']:
+            ax.spines[axis].set_linewidth(1)
+            ax.spines[axis].set_color('k')
+    ax.axes.grid(False)
 
 
 def plot_sig_bkd_dists(
