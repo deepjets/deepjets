@@ -648,7 +648,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
             transform=ax.transAxes, fontsize=fontsize)
     ax.grid(True)
     if styles is None:
-        lines = ["-", "--", "-.", (0, (5, 3))]
+        lines = ["-", "--", "-.", (0, (6, 3)), '-', (0, (10, 5)), (0, (3, 6))]
         linecycler = cycle(lines)
     else:
         linecycler = iter(styles)
