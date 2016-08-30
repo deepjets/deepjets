@@ -630,8 +630,8 @@ def plot_roc_curves(roc_data, labels, styles=None,
 
     fig = plt.figure(figsize=figsize)
     if show_ratio:
-        rect_main = [0.1, 0.32, 0.85, 0.6]
-        rect_ratio = [0.1, 0.1, 0.85, 0.2]
+        rect_main = [0.13, 0.32, 0.85, 0.6]
+        rect_ratio = [0.13, 0.1, 0.85, 0.2]
         ax = fig.add_axes(rect_main)
         ax.set_xticklabels([])
         ax_ratio = fig.add_axes(rect_ratio)
