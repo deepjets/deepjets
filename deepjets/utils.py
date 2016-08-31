@@ -612,10 +612,12 @@ def plot_roc_curve(roc_data, label=None, filename=None, logscale=False):
 
 def plot_roc_curves(roc_data, labels, styles=None,
                     filename=None, logscale=False,
-                    xlimits=None, ylimits=None, font_size=16,
+                    xlimits=None, ylimits=None, fontsize=16,
                     title=None, show_ratio=False, ratio_label='Ratio',
-                    linewidth=1, ratio_limits=(0.0,3.0), label_size=12,
-                    ratio_label_size=16):
+                    linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
+                    ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8,
+                    figsize=(12, 10), legendtitle=None,
+                    label=None):
     """Display ROC curve.
 
     Args:
@@ -624,20 +626,29 @@ def plot_roc_curves(roc_data, labels, styles=None,
         styles: list of linestyles.
     """
     from itertools import cycle
-    fig = plt.figure(figsize=(12, 10))
+    from matplotlib.ticker import MaxNLocator
+
+    fig = plt.figure(figsize=figsize)
     if show_ratio:
-        rect_main = [0.1, 0.32, 0.85, 0.6]
-        rect_ratio = [0.1, 0.1, 0.85, 0.2]
+        rect_main = [0.13, 0.32, 0.85, 0.6]
+        rect_ratio = [0.13, 0.1, 0.85, 0.2]
         ax = fig.add_axes(rect_main)
         ax.set_xticklabels([])
         ax_ratio = fig.add_axes(rect_ratio)
         ax_ratio.grid(True)
-        ax_ratio.set_ylabel(ratio_label, fontsize=ratio_label_size)
+        ax_ratio.set_ylabel(ratio_label,
+                            fontsize=ratio_labelsize,
+                            labelpad=ratio_labelpad)
+        ax_ratio.yaxis.set_major_locator(MaxNLocator(nbins=ratio_nbins, prune='both'))
     else:
         ax = fig.add_subplot(111)
+    if label:
+        ax.text(0.03, 0.01, label,
+            verticalalignment='bottom', horizontalalignment='left',
+            transform=ax.transAxes, fontsize=fontsize)
     ax.grid(True)
     if styles is None:
-        lines = ["-","--","-.",":"]
+        lines = ["-", "--", "-.", (0, (6, 3)), '-', (0, (10, 5)), (0, (3, 6))]
         linecycler = cycle(lines)
     else:
         linecycler = iter(styles)
@@ -650,11 +661,15 @@ def plot_roc_curves(roc_data, labels, styles=None,
         lines.append(ax.plot(dat[:, 0], dat[:, 1], label=label,
                              ls=linecycler.next(), linewidth=linewidth)[0])
     if show_ratio:
-        ax_ratio.set_xlabel('Signal Efficiency', fontsize=font_size)
+        ax_ratio.set_xlabel('Signal Efficiency', fontsize=fontsize,
+                            position=(1., 0.), va='top', ha='right')
     else:
-        ax.set_xlabel('Signal Efficiency', fontsize=font_size)
-    ax.set_ylabel('1 / [Background Efficiency]', fontsize=font_size)
-    ax.tick_params(axis='both', which='major', labelsize=label_size)
+        ax.set_xlabel('Signal Efficiency', fontsize=font_size,
+                      position=(1., 0.), va='top', ha='right')
+
+    ax.set_ylabel('1 / [Background Efficiency]', fontsize=fontsize,
+                  position=(0., 1.), va='bottom', ha='right')
+    ax.tick_params(axis='both', which='major', labelsize=axes_labelsize)
     if logscale:
         ax.set_yscale("log", nonposy='clip')
     if xlimits is not None:
@@ -663,9 +678,11 @@ def plot_roc_curves(roc_data, labels, styles=None,
             ax_ratio.set_xlim(xlimits)
     if ylimits is not None:
         ax.set_ylim(ylimits)
-    ax.legend(fontsize=font_size)
+    leg = ax.legend(fontsize=fontsize, title=legendtitle)
+    if legendtitle:
+        leg.get_title().set_fontsize(fontsize)
     if title is not None:
-        ax.set_title(title, fontsize=font_size)
+        ax.set_title(title, fontsize=fontsize, position=(0., 1.), va='bottom', ha='left')
     if show_ratio:
         # plot horizontal
         ax_ratio.plot([0, 1], [1, 1],
@@ -681,7 +698,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                           linewidth=line.get_linewidth(),
                           color=line.get_color())
         ax_ratio.set_ylim(ratio_limits)
-        ax_ratio.tick_params(axis='both',which='major',labelsize=label_size)
+        ax_ratio.tick_params(axis='both', which='major', labelsize=axes_labelsize)
     if filename is not None:
         fig.savefig(filename)
     return fig
