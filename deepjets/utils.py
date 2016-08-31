@@ -324,9 +324,12 @@ def plot_jet_image(
     ax.axes.get_xaxis().set_visible(visible_axes)
     ax.axes.get_yaxis().set_visible(visible_axes)
     if visible_axes:
-        for axis in ['top', 'bottom', 'left', 'right']:
-            ax.spines[axis].set_linewidth(1)
-            ax.spines[axis].set_color('k')
+        for spine in ['top', 'bottom', 'left', 'right']:
+            ax.spines[spine].set_linewidth(1)
+            ax.spines[spine].set_color('k')
+    else:
+        for spine in ['top', 'bottom', 'left', 'right']:
+            ax.spines[spine].set_visible(False)
     ax.axes.grid(False)
 
 
