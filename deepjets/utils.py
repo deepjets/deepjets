@@ -620,7 +620,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
                     ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8, ratio_yticks=None,
                     figsize=(12, 10), legendtitle=None, legend_loc='upper right',
-                    label=None):
+                    label=None, split_legend_at=None, show_on_main_axes=None):
     """Display ROC curve.
 
     Args:
@@ -630,6 +630,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
     """
     from itertools import cycle
     from matplotlib.ticker import MaxNLocator
+    from copy import copy
 
     fig = plt.figure(figsize=figsize)
     if show_ratio:
@@ -657,11 +658,18 @@ def plot_roc_curves(roc_data, labels, styles=None,
     if xlimits is not None:
         xmin, xmax = xlimits
     lines = []
-    for dat, label in zip(roc_data, labels):
+    for idx, (dat, label) in enumerate(zip(roc_data, labels)):
         if xlimits is not None:
             dat = dat[(dat[:, 0] > xmin) & (dat[:, 0] < xmax)]
-        lines.append(ax.plot(dat[:, 0], dat[:, 1], label=label,
-                             ls=linecycler.next(), linewidth=linewidth)[0])
+        if show_on_main_axes is not None:
+            visible=show_on_main_axes[idx]
+        else:
+            visible=True
+        line, = ax.plot(dat[:, 0], dat[:, 1], label=label,
+                        ls=linecycler.next(), linewidth=linewidth, visible=visible)
+        line = copy(line)
+        line.set_visible(True)
+        lines.append(line)
     if show_ratio:
         ax_ratio.set_xlabel('Signal Efficiency', fontsize=fontsize,
                             position=(1., 0.), va='top', ha='right')
@@ -680,7 +688,12 @@ def plot_roc_curves(roc_data, labels, styles=None,
             ax_ratio.set_xlim(xlimits)
     if ylimits is not None:
         ax.set_ylim(ylimits)
-    leg = ax.legend(fontsize=fontsize, title=legendtitle, loc=legend_loc)
+    if split_legend_at is not None:
+        leg = ax.legend(lines[:split_legend_at], labels[:split_legend_at], fontsize=fontsize, title=legendtitle, loc='upper right')
+        ax.legend(lines[split_legend_at:], labels[split_legend_at:], fontsize=fontsize, loc='lower left')
+        ax.add_artist(leg)
+    else:
+        leg = ax.legend(fontsize=fontsize, title=legendtitle, loc=legend_loc)
     if legendtitle:
         leg.get_title().set_fontsize(fontsize)
     if title is not None:
