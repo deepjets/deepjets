@@ -620,7 +620,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
                     ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8, ratio_yticks=None,
                     figsize=(12, 10), legendtitle=None, legend_loc='upper right',
-                    label=None, split_legend_at=None, show_on_main_axes=None,
+                    label=None, split_legend_at=None, show_on_main_axes=None, color_after=None,
                     interp_ratio_points=None):
     """Display ROC curve.
 
@@ -669,7 +669,10 @@ def plot_roc_curves(roc_data, labels, styles=None,
         else:
             visible=True
         linestyle = linecycler.next()
-        line, = ax.plot(dat[:, 0], dat[:, 1], label=label,
+        linecolor = None
+        if color_after is not None and idx > color_after[0]:
+            linecolor = color_after[1]
+        line, = ax.plot(dat[:, 0], dat[:, 1], label=label, color=linecolor,
                         ls=linestyle, linewidth=linewidth, visible=visible)
         line = copy(line)
         line.set_visible(True)
@@ -695,7 +698,10 @@ def plot_roc_curves(roc_data, labels, styles=None,
         ax.set_ylim(ylimits)
     if split_legend_at is not None:
         leg = ax.legend(lines[:split_legend_at], labels[:split_legend_at], fontsize=fontsize, title=legendtitle, loc='upper right')
-        ax.legend(lines[split_legend_at:], labels[split_legend_at:], fontsize=fontsize, loc='lower left')
+        if label:
+            ax.legend(lines[split_legend_at:], labels[split_legend_at:], fontsize=fontsize, loc='lower left', bbox_to_anchor=(0, 0.1))
+        else:
+            ax.legend(lines[split_legend_at:], labels[split_legend_at:], fontsize=fontsize, loc='lower left')
         ax.add_artist(leg)
     else:
         leg = ax.legend(fontsize=fontsize, title=legendtitle, loc=legend_loc)
