@@ -618,8 +618,8 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     xlimits=None, ylimits=None, fontsize=16,
                     title=None, show_ratio=False, ratio_label='Ratio',
                     linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
-                    ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8,
-                    figsize=(12, 10), legendtitle=None,
+                    ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8, ratio_yticks=None,
+                    figsize=(12, 10), legendtitle=None, legend_loc='upper right',
                     label=None):
     """Display ROC curve.
 
@@ -642,7 +642,6 @@ def plot_roc_curves(roc_data, labels, styles=None,
         ax_ratio.set_ylabel(ratio_label,
                             fontsize=ratio_labelsize,
                             labelpad=ratio_labelpad)
-        ax_ratio.yaxis.set_major_locator(MaxNLocator(nbins=ratio_nbins, prune='both'))
     else:
         ax = fig.add_subplot(111)
     if label:
@@ -681,7 +680,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
             ax_ratio.set_xlim(xlimits)
     if ylimits is not None:
         ax.set_ylim(ylimits)
-    leg = ax.legend(fontsize=fontsize, title=legendtitle)
+    leg = ax.legend(fontsize=fontsize, title=legendtitle, loc=legend_loc)
     if legendtitle:
         leg.get_title().set_fontsize(fontsize)
     if title is not None:
@@ -702,6 +701,10 @@ def plot_roc_curves(roc_data, labels, styles=None,
                           color=line.get_color())
         ax_ratio.set_ylim(ratio_limits)
         ax_ratio.tick_params(axis='both', which='major', labelsize=axes_labelsize)
+        if ratio_yticks is not None:
+            ax_ratio.set_yticks(ratio_yticks)
+        else:
+            ax_ratio.yaxis.set_major_locator(MaxNLocator(nbins=ratio_nbins, prune='both'))
     if filename is not None:
         fig.savefig(filename)
     return fig
