@@ -619,6 +619,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     title=None, show_ratio=False, ratio_label='Ratio',
                     linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
                     ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8, ratio_yticks=None,
+                    ratio_denom=None,
                     figsize=(12, 10), legendtitle=None, legend_loc='upper right',
                     label=None, split_legend_at=None, show_on_main_axes=None, color_after=None,
                     interp_ratio_points=None):
@@ -661,7 +662,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
         xmin, xmax = xlimits
     lines = []
     linestyles = []
-    for idx, (dat, label) in enumerate(zip(roc_data, labels)):
+    for idx, (dat, _label) in enumerate(zip(roc_data, labels)):
         if xlimits is not None:
             dat = dat[(dat[:, 0] > xmin) & (dat[:, 0] < xmax)]
         if show_on_main_axes is not None:
@@ -672,7 +673,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
         linecolor = None
         if color_after is not None and idx > color_after[0]:
             linecolor = color_after[1]
-        line, = ax.plot(dat[:, 0], dat[:, 1], label=label, color=linecolor,
+        line, = ax.plot(dat[:, 0], dat[:, 1], label=_label, color=linecolor,
                         ls=linestyle, linewidth=linewidth, visible=visible)
         line = copy(line)
         line.set_visible(True)
@@ -716,11 +717,15 @@ def plot_roc_curves(roc_data, labels, styles=None,
                       color=lines[0].get_color(),
                       ls=lines[0].get_linestyle())
         # plot ratios
-        for dat, line, linestyle in zip(roc_data[1:], lines[1:], linestyles[1:]):
+        for idx, (dat, line, linestyle) in enumerate(zip(roc_data[1:], lines[1:], linestyles[1:])):
+            if ratio_denom is not None:
+                denom = ratio_denom[idx]
+            else:
+                denom = roc_data[0]
             # interpolate ratio
-            interp = np.interp(roc_data[0][:, 0], dat[:, 0], dat[:, 1])
-            ratio = interp / roc_data[0][:, 1]
-            ratio_x = roc_data[0][:, 0]
+            interp = np.interp(denom[:, 0], dat[:, 0], dat[:, 1])
+            ratio = interp / denom[:, 1]
+            ratio_x = denom[:, 0]
             if interp_ratio_points is not None:
                 ratio = interp1d(ratio_x, ratio, kind='linear')(interp_ratio_points)
                 ratio_x = interp_ratio_points
@@ -729,6 +734,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
                 ls=linestyle,
                 linewidth=line.get_linewidth(),
                 color=line.get_color())
+
         ax_ratio.set_ylim(ratio_limits)
         ax_ratio.tick_params(axis='both', which='major', labelsize=axes_labelsize)
         if ratio_yticks is not None:
