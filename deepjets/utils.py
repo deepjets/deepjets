@@ -620,7 +620,8 @@ def plot_roc_curves(roc_data, labels, styles=None,
                     linewidth=1, ratio_limits=(0.0,3.0), axes_labelsize=12,
                     ratio_labelsize=16, ratio_labelpad=0, ratio_nbins=8, ratio_yticks=None,
                     figsize=(12, 10), legendtitle=None, legend_loc='upper right',
-                    label=None, split_legend_at=None, show_on_main_axes=None):
+                    label=None, split_legend_at=None, show_on_main_axes=None,
+                    interp_ratio_points=None):
     """Display ROC curve.
 
     Args:
@@ -631,6 +632,7 @@ def plot_roc_curves(roc_data, labels, styles=None,
     from itertools import cycle
     from matplotlib.ticker import MaxNLocator
     from copy import copy
+    from scipy.interpolate import interp1d
 
     fig = plt.figure(figsize=figsize)
     if show_ratio:
@@ -654,10 +656,11 @@ def plot_roc_curves(roc_data, labels, styles=None,
         lines = ["-", "--", "-.", (0, (6, 3)), '-', (0, (10, 5)), (0, (3, 6))]
         linecycler = cycle(lines)
     else:
-        linecycler = iter(styles)
+        linecycler = cycle(styles)
     if xlimits is not None:
         xmin, xmax = xlimits
     lines = []
+    linestyles = []
     for idx, (dat, label) in enumerate(zip(roc_data, labels)):
         if xlimits is not None:
             dat = dat[(dat[:, 0] > xmin) & (dat[:, 0] < xmax)]
@@ -665,11 +668,13 @@ def plot_roc_curves(roc_data, labels, styles=None,
             visible=show_on_main_axes[idx]
         else:
             visible=True
+        linestyle = linecycler.next()
         line, = ax.plot(dat[:, 0], dat[:, 1], label=label,
-                        ls=linecycler.next(), linewidth=linewidth, visible=visible)
+                        ls=linestyle, linewidth=linewidth, visible=visible)
         line = copy(line)
         line.set_visible(True)
         lines.append(line)
+        linestyles.append(linestyle)
     if show_ratio:
         ax_ratio.set_xlabel('Signal Efficiency', fontsize=fontsize,
                             position=(1., 0.), va='top', ha='right')
@@ -704,14 +709,20 @@ def plot_roc_curves(roc_data, labels, styles=None,
                       linewidth=lines[0].get_linewidth(),
                       color=lines[0].get_color(),
                       ls=lines[0].get_linestyle())
-        for dat, line in zip(roc_data[1:], lines[1:]):
+        # plot ratios
+        for dat, line, linestyle in zip(roc_data[1:], lines[1:], linestyles[1:]):
             # interpolate ratio
             interp = np.interp(roc_data[0][:, 0], dat[:, 0], dat[:, 1])
             ratio = interp / roc_data[0][:, 1]
-            ax_ratio.plot(roc_data[0][:, 0], ratio,
-                          ls=line.get_linestyle(),
-                          linewidth=line.get_linewidth(),
-                          color=line.get_color())
+            ratio_x = roc_data[0][:, 0]
+            if interp_ratio_points is not None:
+                ratio = interp1d(ratio_x, ratio, kind='linear')(interp_ratio_points)
+                ratio_x = interp_ratio_points
+            ax_ratio.plot(
+                ratio_x, ratio,
+                ls=linestyle,
+                linewidth=line.get_linewidth(),
+                color=line.get_color())
         ax_ratio.set_ylim(ratio_limits)
         ax_ratio.tick_params(axis='both', which='major', labelsize=axes_labelsize)
         if ratio_yticks is not None:
