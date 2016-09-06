@@ -487,11 +487,16 @@ class Sample(object):
         weights_qcd = weights_qcd[~noweight_qcd]
 
         # histogram signal and background
-        ax.hist(var_w, weights=weights_w, label='Signal {0}'.format(self.name),
-                histtype='stepfilled', normed=1,
-                facecolor='none', linestyle='-',
-                **kwargs)
-        ax.hist(var_qcd, weights=weights_qcd, label='Background {0}'.format(self.name),
-                histtype='stepfilled', normed=1,
-                facecolor='none', linestyle='dotted',
-                **kwargs)
+        sig, _, _ = ax.hist(
+            var_w, weights=weights_w, label='Signal {0}'.format(self.name),
+            histtype='stepfilled', normed=1,
+            facecolor='none', linestyle='-',
+            **kwargs)
+        bkd, _, _ = ax.hist(
+            var_qcd, weights=weights_qcd, label='Background {0}'.format(self.name),
+            histtype='stepfilled', normed=1,
+            facecolor='none', linestyle='dotted',
+            **kwargs)
+
+        # return bin contents
+        return sig, bkd
