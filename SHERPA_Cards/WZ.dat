@@ -1,6 +1,7 @@
 (run){
   % general setting
-  EVENTS 1000; ERROR 0.99;
+  EVENTS 100000; 
+  #ERROR 0.99;
 
   % me generator settings
   ME_SIGNAL_GENERATOR Comix;
@@ -11,8 +12,8 @@
   MASSIVE[5] 1;
 
   % collider setup
-  BEAM_1 2212; BEAM_ENERGY_1 = 4000.;
-  BEAM_2 2212; BEAM_ENERGY_2 = 4000.;
+  BEAM_1 2212; BEAM_ENERGY_1 = 6500.;
+  BEAM_2 2212; BEAM_ENERGY_2 = 6500.;
 
   % Add Hepmc output?
   EVENT_OUTPUT=HepMC_GenEvent[WZ_Events]
@@ -37,21 +38,23 @@
 }(processes)
 
 (shower){
-  SHOWER_GENERATOR=CSS
+  #SHOWER_GENERATOR=CSS
   ### Uncomment all the below to use the Dire shower
-  #SHOWER_GENERATOR=Dire
-  #CSS_IS_AS_FAC=1
-  #CSS_FS_AS_FAC=1
-  #CSS_IS_PT2MIN=3
-  #CSS_FS_PT2MIN=3
+  SHOWER_GENERATOR=Dire
+  CSS_IS_AS_FAC=1
+  CSS_FS_AS_FAC=1
+  CSS_IS_PT2MIN=3
+  CSS_FS_PT2MIN=3
 
 
 }
 
 
 (selector){
-# Controls the PT of the W's.
-  PT  24 400 E_CMS
-  PT -24 400 E_CMS
+# Controls the PT of the Z.
+  "Calc(PPerp(p[0]+p[1]))" 91,91 250,300 [PT_UP,PT_UP]
+  #NJetFinder 1 240.0 0 1.0 -1 5.0  
+  #PT 93 500.0 800.0
+  #PT -24 250.0 300.0
   PT 93 20.0 E_CMS
 }(selector)
