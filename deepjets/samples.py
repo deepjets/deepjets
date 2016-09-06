@@ -457,7 +457,7 @@ class Sample(object):
         # fall back on default ROC curve function
         return default_inv_roc_curve(y_true, preds[0], sample_weight=weights)
 
-    def plot(self, ax, auxvar, generator_weight=None, **kwargs):
+    def plot(self, ax, auxvar, generator_weight=None, fill_invalid=0, **kwargs):
         images_w, auxvars_w, weights_w = self.images_w
         images_qcd, auxvars_qcd, weights_qcd = self.images_qcd
 
@@ -466,8 +466,12 @@ class Sample(object):
             var_w, var_qcd = eval_recarray(auxvar, auxvars_w), eval_recarray(auxvar, auxvars_qcd)
         else:
             var_w, var_qcd = auxvars_w[auxvar], auxvars_qcd[auxvar]
-        mask_nan_inf(var_w)
-        mask_nan_inf(var_qcd)
+
+        # replace nan and inf with fill_invalid value
+        mask_nan_inf(var_w, fill=fill_invalid)
+        mask_nan_inf(var_qcd, fill=fill_invalid)
+
+        # multiply in generator weights if requested
         if generator_weight is not None:
             w_gen_weights = auxvars_w['generator_weights']
             qcd_gen_weights = auxvars_qcd['generator_weights']
@@ -482,11 +486,12 @@ class Sample(object):
         var_qcd = var_qcd[~noweight_qcd]
         weights_qcd = weights_qcd[~noweight_qcd]
 
-        ax.hist(var_w, weights=weights_w, label='Signal',
+        # histogram signal and background
+        ax.hist(var_w, weights=weights_w, label='Signal {0}'.format(self.name),
                 histtype='stepfilled', normed=1,
-                facecolor='none', edgecolor='blue',
+                facecolor='none', linestyle='-',
                 **kwargs)
-        ax.hist(var_qcd, weights=weights_qcd, label='Background',
+        ax.hist(var_qcd, weights=weights_qcd, label='Background {0}'.format(self.name),
                 histtype='stepfilled', normed=1,
-                facecolor='none', edgecolor='black', linestyle='dotted',
+                facecolor='none', linestyle='dotted',
                 **kwargs)
