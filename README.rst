@@ -126,11 +126,11 @@ differences with a reference event as follows::
    diff qcd.hepmc qcd.hepmc.reference
 
 
-Running HERWIG
+Running Herwig
 --------------
 
-On the Melbourne IU, HERWIG has its own environment since it didn't seem to
+On the Melbourne IU, Herwig has its own environment since it didn't seem to
 play nice with the default environment from ``source setup.sh``.
-So run HERWIG in a fresh terminal after the following::
+So run Herwig in a fresh terminal after the following::
 
    source /data/edawe/public/software/herwig/bin/activate
