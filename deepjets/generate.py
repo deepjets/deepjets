@@ -32,7 +32,7 @@ def get_generator_input(name, filename, **kwargs):
                                 filename, internal_filename))
                 filename = internal_filename
             else:
-                raise IOError("pythia config '{0}' does not exist".format(filename))
+                raise IOError("Pythia config not found: {0}".format(filename))
         gen_input = PythiaInput(filename, xmldoc, **kwargs)
     elif name == 'hepmc':
         gen_input = HepMCInput(filename)

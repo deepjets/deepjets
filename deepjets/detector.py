@@ -5,6 +5,9 @@ import numpy as np
 import h5py as h5
 import inspect
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 __all__ = [
     'reconstruct',
@@ -16,13 +19,17 @@ def reconstruct(particles, events=-1,
                 objects='Calorimeter/towers',
                 random_state=0):
 
-    if not os.path.isfile(config):
-        # use global config in share directory
-        config = os.path.join(
+    if not os.path.exists(config):
+        internal_config = os.path.join(
             os.environ.get('DEEPJETS_DIR'),
             'config', 'delphes', config)
-        if not os.path.isfile(config):
-            raise ValueError("Delphes config {0} not found".format(config))
+        if not os.path.isabs(config) and os.path.exists(internal_config):
+            log.warning("{0} does not exist but using internal "
+                        "config with the same name instead: {1}".format(
+                            config, internal_config))
+            config = internal_config
+        else:
+            raise IOError("Delphes config not found: {0}".format(config))
     delphes = DelphesWrapper(config, random_state, objects)
 
     kwargs = dict()
