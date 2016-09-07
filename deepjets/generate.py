@@ -2,6 +2,9 @@ from ._libdeepjets import generate_events as _generate_events
 from ._libdeepjets import PythiaInput, HepMCInput
 import os
 from fnmatch import fnmatch
+import logging
+
+log = logging.getLogger(__name__)
 
 __all__ = [
     'generate_events',
@@ -20,6 +23,16 @@ def get_generator_input(name, filename, **kwargs):
         xmldoc = os.environ.get('PYTHIA8DATA', os.path.join(
             os.environ.get('DEEPJETS_SFT_DIR', '/usr/local'),
             'share/Pythia8/xmldoc'))
+        if not os.path.exists(filename):
+            internal_filename = os.path.join(
+                os.environ.get('DEEPJETS_DIR'), 'config', 'pythia', filename)
+            if not os.path.isabs(filename) and os.path.exists(internal_filename):
+                log.warning("{0} does not exist but using internal "
+                            "config with the same name instead: {1}".format(
+                                filename, internal_filename))
+                filename = internal_filename
+            else:
+                raise IOError("pythia config '{0}' does not exist".format(filename))
         gen_input = PythiaInput(filename, xmldoc, **kwargs)
     elif name == 'hepmc':
         gen_input = HepMCInput(filename)
