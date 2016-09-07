@@ -124,3 +124,13 @@ differences with a reference event as follows::
 
    ./generate qcd.config --write-hepmc --events 1 --random-state 101
    diff qcd.hepmc qcd.hepmc.reference
+
+
+Running HERWIG
+--------------
+
+On the Melbourne IU, HERWIG has its own environment since it didn't seem to
+play nice with the default environment from ``source setup.sh``.
+So run HERWIG in a fresh terminal after the following::
+
+   source /data/edawe/public/software/herwig/bin/activate
