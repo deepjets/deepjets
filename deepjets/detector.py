@@ -20,7 +20,7 @@ def reconstruct(particles, events=-1,
         # use global config in share directory
         config = os.path.join(
             os.environ.get('DEEPJETS_DIR'),
-            'delphes_cards', config)
+            'config', 'delphes', config)
         if not os.path.isfile(config):
             raise ValueError("Delphes config {0} not found".format(config))
     delphes = DelphesWrapper(config, random_state, objects)
