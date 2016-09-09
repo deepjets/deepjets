@@ -133,4 +133,4 @@ On the Melbourne IU, Herwig has its own environment since it didn't seem to
 play nice with the default environment from ``source setup.sh``.
 So run Herwig in a fresh terminal after the following::
 
-   source /data/edawe/public/software/herwig/bin/activate
+   source /data/edawe/public/software/hep/herwig/bin/activate
