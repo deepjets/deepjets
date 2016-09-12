@@ -26,6 +26,12 @@ in: inplace # just a shortcut
 inplace:
 	@$(PYTHON) setup.py build_ext -i
 
+valgrind: inplace
+	valgrind --log-file=valgrind.log --tool=memcheck --leak-check=full \
+		 --suppressions=etc/valgrind/valgrind-python.supp \
+		 --suppressions=etc/valgrind/valgrind-root-python.supp \
+		 --suppressions=etc/valgrind/valgrind-root.supp generate --shower dire qcd_dire.config --events 1000
+
 test: inplace
 	@$(NOSETESTS) -s -v deepjets
 
