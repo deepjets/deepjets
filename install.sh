@@ -51,7 +51,7 @@ cd ..
 cd pythia8219
 make clean
 #./configure --prefix=$PREFIX --enable-shared
-./configure --prefix=$PREFIX --enable-shared --with-lhapdf6=$PREFIX --with-lhapdf6-plugin=lhapdf6
+./configure --prefix=$PREFIX --enable-shared --enable-debug --with-lhapdf6=$PREFIX --with-lhapdf6-plugin=lhapdf6
 make -j2
 make install
 chmod +x $PREFIX/bin/pythia8-config
