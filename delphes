@@ -8,8 +8,9 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--output', '-o', default=None)
-parser.add_argument('-d', '--debug', action='store_true', default=False,       
-                    help="show stack trace in the event of "                
+parser.add_argument('--config', '-c', default=None)
+parser.add_argument('-d', '--debug', action='store_true', default=False,
+                    help="show stack trace in the event of "
                          "an uncaught exception")
 parser.add_argument('events_file', help="HDF5 or HepMC file")
 args = parser.parse_args()
@@ -54,7 +55,10 @@ try:
     dset_candidates = h5output['events']
 
     ievent = 0
-    for event in reconstruct(delphes_input):
+    kwargs = {}
+    if args.config:
+        kwargs['config'] = args.config
+    for event in reconstruct(delphes_input, **kwargs):
         dset_candidates[ievent] = event
         ievent += 1
         pbar.update(ievent)
