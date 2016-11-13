@@ -2,8 +2,6 @@
 deepjets: Deep Learning Jet Images
 ==================================
 
-Reimplementing http://arxiv.org/abs/1511.05190
-
 Manual Installation
 -------------------
 
