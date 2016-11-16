@@ -80,7 +80,8 @@ and compile::
 Generating events and images
 ----------------------------
 
-For example, to generate Pythia events::
+For example, to generate Pythia events (remove ``--batch long`` to run
+interactively instead of on the batch system)::
 
    generate --batch long --random-state 100 w.config --events 1000 --output w_100.h5 --params "PhaseSpace:pTHatMin = 230;PhaseSpace:pTHatMax = 320"
 
@@ -127,7 +128,7 @@ differences with a reference event as follows::
 Running Herwig
 --------------
 
-On the Melbourne IU, Herwig has its own environment since it didn't seem to
+On the Melbourne UI, Herwig has its own environment since it didn't seem to
 play nice with the default environment from ``source setup.sh``.
 So run Herwig in a fresh terminal after the following::
 
