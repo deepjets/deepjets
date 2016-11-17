@@ -6,8 +6,8 @@ This package provides an interface with PYTHIA, HepMC, Delphes and FastJet to
 easily generate events, yielding particles as numpy record arrays, perform
 detector simulation, jet clustering, and jet image construction. Each stage is
 a standard python generator function and they can be chained together and
-customized. You may perform the jet clustering directly on the final state
-visible PYTHIA particles or on the calorimeter towers simulated by Delphes. At
+customized. You may perform jet clustering directly on the final state
+visible PYTHIA particles or on calorimeter towers simulated by Delphes. At
 each stage the output is a standard numpy record array of particles,
 calorimeter towers, or jets, making it easy to interface with other scientific
 python packages.
