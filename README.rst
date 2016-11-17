@@ -12,6 +12,12 @@ each stage the output is a standard numpy record array of particles,
 calorimeter towers, or jets, making it easy to interface with other scientific
 python packages.
 
+Contributions are welcome! This code was behind the results shown in
+https://arxiv.org/abs/1609.00607 but at the core of deepjets the interfaces
+with PYTHIA, HepMC, Delphes and FastJet could be useful in other contexts
+and should probably be factored out into a separate lightweight package.
+Feel free to open a pull request or use this code for your own studies.
+
 Installation
 ------------
 
