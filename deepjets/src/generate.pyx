@@ -39,11 +39,6 @@ cdef class PythiaInput(MCInput):
 
     cdef Pythia* pythia
     cdef VinciaPlugin* vincia_plugin
-    cdef DireTimes* dire_times
-    cdef DireSpace* dire_space
-    cdef DireTimes* dire_timesDec
-    cdef WeightContainer* dire_weights
-    cdef SplittingLibrary* dire_splittings
     cdef UserHooks* userhooks
     cdef GenEvent* hepmc_event
     cdef int verbosity
@@ -67,11 +62,6 @@ cdef class PythiaInput(MCInput):
 
         # Initialize pointers to NULL
         self.vincia_plugin = NULL
-        self.dire_times = NULL
-        self.dire_space = NULL
-        self.dire_timesDec = NULL
-        self.dire_weights = NULL
-        self.dire_splittings = NULL
         self.userhooks = NULL
         self.hepmc_event = NULL
 
@@ -99,36 +89,6 @@ cdef class PythiaInput(MCInput):
         if shower == 'vincia':
             self.vincia_plugin = new VinciaPlugin(self.pythia, config)
 
-        elif shower == 'dire':
-            # Following the dire00.cc example in DIRE-0.900
-            # Teach Pythia the additional DIRE input settings.
-            self.pythia.settings.addFlag("ShowerPDF:usePDFalphas", False)
-            self.pythia.settings.addFlag("ShowerPDF:usePDFmasses", True)
-            self.pythia.settings.addFlag("ShowerPDF:useSummedPDF", True)
-            self.pythia.settings.addFlag("DireSpace:useGlobalMapIF", False)
-            self.pythia.settings.addFlag("DireSpace:forceMassiveMap", False)
-            self.pythia.settings.addMode("DireTimes:nFinalMax", -10, True, False, -10, 10000000)
-            self.pythia.settings.addMode("DireSpace:nFinalMax", -10, True, False, -10, 10000000)
-
-            # Construct showers.
-            self.dire_times = new DireTimes(self.pythia)
-            self.dire_space = new DireSpace(self.pythia)
-            self.dire_timesDec = new DireTimes(self.pythia)
-
-            # Initialise weight book-keeping.
-            self.dire_weights = new WeightContainer()
-            self.userhooks = new WeightHooks(self.dire_weights)
-            self.dire_times.setWeightContainerPtr(self.dire_weights)
-            self.dire_space.setWeightContainerPtr(self.dire_weights)
-            self.dire_timesDec.setWeightContainerPtr(self.dire_weights)
-
-            # Feed new DIRE showers to Pythia.
-            self.pythia.setShowerPtr(self.dire_timesDec, self.dire_times, self.dire_space)
-            self.pythia.setUserHooksPtr(self.userhooks)
-
-            # Read config
-            self.pythia.readFile(config)
-
         else:  # default Pythia shower
             # Read config
             self.pythia.readFile(config)
@@ -154,57 +114,6 @@ cdef class PythiaInput(MCInput):
             if not self.pythia.init():
                 raise RuntimeError("PYTHIA did not successfully initialize")
 
-        if shower == 'dire':
-            # continue configuring the DIRE shower after Pythia's init
-
-            # Initialise library of splitting functions.
-            self.dire_splittings = new SplittingLibrary()
-
-            # Reinitialise showers to ensure that pointers are
-            # correctly set.
-            self.dire_times.reinitPtr(&(self.pythia.info),
-                &(self.pythia.settings),
-                &(self.pythia.particleData),
-                &(self.pythia.rndm),
-                &(self.pythia.partonSystems),
-                self.userhooks, NULL,
-                self.dire_splittings)
-            self.dire_space.reinitPtr(&(self.pythia.info),
-                &(self.pythia.settings),
-                &(self.pythia.particleData),
-                &(self.pythia.rndm),
-                &(self.pythia.partonSystems),
-                self.userhooks, NULL,
-                self.dire_splittings)
-            self.dire_timesDec.reinitPtr(&(self.pythia.info),
-                &(self.pythia.settings),
-                &(self.pythia.particleData),
-                &(self.pythia.rndm),
-                &(self.pythia.partonSystems),
-                self.userhooks, NULL,
-                self.dire_splittings)
-
-            # Initialise splitting function library here so that beam pointers
-            # are already correctly initialised.
-            self.dire_splittings.init(
-                &(self.pythia.settings), &(self.pythia.particleData), &(self.pythia.rndm),
-                self.dire_space.beamAPtr, self.dire_space.beamBPtr)
-
-            # Feed the splitting functions to the showers.
-            self.dire_splittings.setTimesPtr(self.dire_times)
-            self.dire_splittings.setSpacePtr(self.dire_space)
-
-            # Reset Pythia masses if necessary.
-            if self.pythia.settings.flag("ShowerPDF:usePDFmasses"):
-                for i in range(1, 6):
-                    mPDF = -1.
-                    if abs(self.dire_space.beamAPtr.id()) > 30:
-                        mPDF = self.dire_space.beamAPtr.mQuarkPDF(i)
-                    elif abs(self.dire_space.beamBPtr.id()) > 30:
-                        mPDF = self.dire_space.beamBPtr.mQuarkPDF(i)
-                    if mPDF > -1.:
-                        self.pythia.readString('{0:d}:m0 = {1:f}'.format(i, mPDF))
-
         self.cut_on_pdgid = cut_on_pdgid
         self.pdgid_pt_min = pdgid_pt_min
         self.pdgid_pt_max = pdgid_pt_max
@@ -215,11 +124,6 @@ cdef class PythiaInput(MCInput):
         del self.hepmc_event
         del self.pythia
         del self.vincia_plugin
-        del self.dire_times
-        del self.dire_space
-        del self.dire_timesDec
-        del self.dire_weights
-        del self.dire_splittings
         del self.userhooks
 
     cdef int get_num_weights(self):
@@ -247,7 +151,7 @@ cdef class PythiaInput(MCInput):
         queried using Pythia::info.nWeights().
         """
         cdef int nweights = self.pythia.info.nWeights()
-        if nweights == 1 and self.shower != 'dire':
+        if nweights == 1:
             # only nominal is present so don't bother with weights since it is
             # normally 1. DIRE does produce weighted events, however.
             return 0
@@ -257,15 +161,10 @@ cdef class PythiaInput(MCInput):
         # generate event and quit if failure
         if not self.pythia.next():
             raise RuntimeError("PYTHIA event generation aborted prematurely")
-        cdef double dire_shower_weight = 1.
         if self.num_weights > 0:
-            if self.shower == 'dire':
-                self.dire_weights.calcWeight(0.)
-                self.dire_weights.reset()
-                dire_shower_weight = self.dire_weights.getShowerWeight()
             self.weights = np.empty(self.num_weights, dtype=DTYPE)
             for iweight in range(self.num_weights):
-                self.weights[iweight] = self.pythia.info.weight(iweight) * dire_shower_weight
+                self.weights[iweight] = self.pythia.info.weight(iweight)
         if not keep_pythia_event(self.pythia.event, self.cut_on_pdgid,
                                  self.pdgid_pt_min, self.pdgid_pt_max):
             # event doesn't pass our truth-level cuts

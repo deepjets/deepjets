@@ -59,33 +59,3 @@ cdef extern from "Vincia/Vincia.h" namespace "Vincia":
     cdef cppclass VinciaPlugin:
         VinciaPlugin(Pythia*, string)
         void init()
-
-cdef extern from "DIRE/WeightContainer.h" namespace "Pythia8":
-    cdef cppclass WeightContainer:
-        void calcWeight(double)
-        void reset()
-        double getShowerWeight()
-
-cdef extern from "DIRE/DireTimes.h" namespace "Pythia8":
-    cdef cppclass DireTimes(TimeShower):
-        DireTimes(Pythia*)
-        void setWeightContainerPtr(WeightContainer*)
-        void reinitPtr(Info*, Settings*, ParticleData*, Rndm*, PartonSystems*, UserHooks*, MergingHooks*, SplittingLibrary*) 
-
-cdef extern from "DIRE/DireSpace.h" namespace "Pythia8":
-    cdef cppclass DireSpace(SpaceShower):
-        BeamParticle* beamAPtr
-        BeamParticle* beamBPtr
-        DireSpace(Pythia*)
-        void setWeightContainerPtr(WeightContainer*)
-        void reinitPtr(Info*, Settings*, ParticleData*, Rndm*, PartonSystems*, UserHooks*, MergingHooks*, SplittingLibrary*) 
-
-cdef extern from "DIRE/SplittingLibrary.h" namespace "Pythia8":
-    cdef cppclass SplittingLibrary:
-       void init(Settings*, ParticleData*, Rndm*, BeamParticle*, BeamParticle*)
-       void setTimesPtr(DireTimes*)
-       void setSpacePtr(DireSpace*)
-
-cdef extern from "pythia_dire_utils.h":
-    cdef cppclass WeightHooks(UserHooks):
-        WeightHooks(WeightContainer*)
