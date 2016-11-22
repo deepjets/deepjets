@@ -76,6 +76,3 @@ mkdir $PREFIX/share/Delphes
 cp -r cards/ $PREFIX/share/Delphes
 cp -r external/ExRootAnalysis $PREFIX/include/
 cd ..
-
-curl -O https://herwig.hepforge.org/hg/bootstrap/raw-file/published/herwig-bootstrap
-./herwig-bootstrap --with-fastjet $PREFIX --with-hepmc $PREFIX $PREFIX

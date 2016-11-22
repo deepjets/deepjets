@@ -142,8 +142,15 @@ differences with a reference event as follows::
    diff qcd.hepmc qcd.hepmc.reference
 
 
-Running Herwig
---------------
+Installing and running Herwig
+-----------------------------
+
+Install Herwig with::
+
+   ./install_herwig.sh
+
+Do this after installing the other externals with the ``install.sh`` script
+mentioned above.
 
 On the Melbourne UI, Herwig has its own environment since it didn't seem to
 play nice with the default environment from ``source setup.sh``.
