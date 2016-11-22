@@ -8,39 +8,45 @@ PREFIX=$DEEPJETS_SFT_DIR
 mkdir -p $PREFIX/src
 cd $PREFIX/src
 
-if [ ! -d fastjet-3.1.3 ]; then
-    wget http://fastjet.fr/repo/fastjet-3.1.3.tar.gz
-    tar xfz fastjet-3.1.3.tar.gz
+fastjet_version=3.1.3
+fjcontrib_version=1.021
+pythia_version=8219
+hepmc_version=2.06.09
+delphes_version=3.4.0
+
+if [ ! -d fastjet-${fastjet_version} ]; then
+    wget http://fastjet.fr/repo/fastjet-${fastjet_version}.tar.gz
+    tar xfz fastjet-${fastjet_version}.tar.gz
 fi
 
-if [ ! -d fjcontrib-1.021 ]; then
-    wget http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
-    tar xfz fjcontrib-1.021.tar.gz
+if [ ! -d fjcontrib-${fjcontrib_version} ]; then
+    wget http://fastjet.hepforge.org/contrib/downloads/fjcontrib-${fjcontrib_version}.tar.gz
+    tar xfz fjcontrib-${fjcontrib_version}.tar.gz
 fi
 
-if [ ! -d pythia8219 ]; then
-    wget http://home.thep.lu.se/~torbjorn/pythia8/pythia8219.tgz
-    tar xfz pythia8219.tgz
+if [ ! -d pythia${pythia_version} ]; then
+    wget http://home.thep.lu.se/~torbjorn/pythia8/pythia${pythia_version}.tgz
+    tar xfz pythia${pythia_version}.tgz
 fi
 
-if [ ! -d HepMC-2.06.09 ]; then
-    wget http://lcgapp.cern.ch/project/simu/HepMC/download/HepMC-2.06.09.tar.gz
-    tar xfz HepMC-2.06.09.tar.gz
+if [ ! -d HepMC-${hepmc_version} ]; then
+    wget http://lcgapp.cern.ch/project/simu/HepMC/download/HepMC-${hepmc_version}.tar.gz
+    tar xfz HepMC-${hepmc_version}.tar.gz
 fi
 
-if [ ! -d Delphes-3.3.2 ]; then
-    wget http://cp3.irmp.ucl.ac.be/downloads/Delphes-3.3.2.tar.gz
-    tar xfz Delphes-3.3.2.tar.gz
+if [ ! -d Delphes-${delphes_version} ]; then
+    wget http://cp3.irmp.ucl.ac.be/downloads/Delphes-${delphes_version}.tar.gz
+    tar xfz Delphes-${delphes_version}.tar.gz
 fi
 
-cd fastjet-3.1.3
+cd fastjet-${fastjet_version}
 make clean
 ./configure --prefix=$PREFIX --enable-cgal --enable-allcxxplugins
 make -j2
 make install
 cd ..
 
-cd fjcontrib-1.021
+cd fjcontrib-${fjcontrib_version}
 make clean
 ./configure --prefix=$PREFIX --fastjet-config=$PREFIX/bin/fastjet-config
 make -j2
@@ -48,7 +54,7 @@ make install
 make fragile-shared-install
 cd ..
 
-cd pythia8219
+cd pythia${pythia_version}
 make clean
 #./configure --prefix=$PREFIX --enable-shared
 ./configure --prefix=$PREFIX --enable-shared --enable-debug --with-lhapdf6=$PREFIX --with-lhapdf6-plugin=lhapdf6
@@ -57,14 +63,14 @@ make install
 chmod +x $PREFIX/bin/pythia8-config
 cd ..
 
-cd HepMC-2.06.09
+cd HepMC-${hepmc_version}
 make clean
 ./configure --prefix=$PREFIX --with-momentum=GEV --with-length=MM
 make -j2
 make install
 cd ..
 
-cd Delphes-3.3.2
+cd Delphes-${delphes_version}
 make clean
 ./configure
 make -j2
