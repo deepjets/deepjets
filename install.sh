@@ -8,8 +8,8 @@ PREFIX=$DEEPJETS_SFT_DIR
 mkdir -p $PREFIX/src
 cd $PREFIX/src
 
-fastjet_version=3.1.3
-fjcontrib_version=1.021
+fastjet_version=3.2.1
+fjcontrib_version=1.025
 pythia_version=8219
 hepmc_version=2.06.09
 delphes_version=3.4.0

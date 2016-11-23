@@ -18,7 +18,9 @@ cdef class DelphesWrapper:
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write("set RandomSeed {0:d}\n".format(random_state))
             tmp.flush()
-            self.config_reader.ReadFile(tmp.name)
+            # Give the reader a copy of the string since it has been seen to
+            # clobber the string (adding null bytes)
+            self.config_reader.ReadFile('%s' % tmp.name)
         self.delphes = new Delphes("Delphes")
         self.delphes.SetConfReader(self.config_reader)
         self.all_particles = self.delphes.ExportArray("allParticles")
