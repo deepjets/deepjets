@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import ma
 from sklearn import cross_validation
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, auc
 
 
 def load_images(image_h5_file, n_images=-1, shuffle_seed=1):
@@ -521,6 +521,7 @@ def default_inv_roc_curve(Y_true, var, sample_weight=None):
         Array of (signal efficiency, 1/[background efficiency]) pairs.
     """
     fpr, tpr, _ = roc_curve(Y_true[:, 0], var, sample_weight=sample_weight)
+    print("AUC: {0:.4f}".format(auc(fpr, tpr, reorder=True)))
     res = 1./len(Y_true)
     return np.array([[tp, 1./max(fp, res)]
                      for tp,fp in zip(tpr,fpr)
