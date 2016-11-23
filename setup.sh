@@ -11,11 +11,16 @@ do
 done
 DIR_DEEPJETS_SETUP="$( cd -P "$( dirname "$SOURCE_DEEPJETS_SETUP" )" && pwd )"
 
-# change the following paths if desired
-BASE=/data/edawe/public
-if [ -e ${BASE} ]; then
-  source ${BASE}/setup.sh
-  export DEEPJETS_SFT_DIR=${BASE}/software/hep # on the UI
+if [ -z ${DEEPJETS_SFT_DIR+x} ]; then
+    # change the following default path if desired
+    # otherwise set DEEPJETS_SFT_DIR yourself elsewhere before sourcing this
+    export DEEPJETS_SFT_DIR=/data/edawe/public/software/hep
+fi
+
+if [ -e ${DEEPJETS_SFT_DIR}/setup.sh ]; then
+    # place any environment customizations in a setup.sh located
+    # in DEEPJETS_SFT_DIR (i.e. python and ROOT setup)
+    source ${DEEPJETS_SFT_DIR}/setup.sh
 fi
 
 # you should not need to edit below this line
