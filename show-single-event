@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('-o', '--output', default='single_event.png')
+args = parser.parse_args()
+
+from deepjets.tests import get_one_event_reco
+from deepjets.preprocessing import preprocess, pixel_edges
+from deepjets.utils import plot_jet_image
+
+edges = pixel_edges(
+    jet_size=1.0,
+    pixel_size=(0.1, 0.1),
+    border_size=0)
+
+params_dict = {
+    'PhaseSpace:pTHatMin': 250,
+    'PhaseSpace:pTHatMax': 300}
+
+gen_params = dict(
+    verbosity=0,
+    params_dict=params_dict)
+
+event = get_one_event_reco(pythia_random_state=10, delphes_random_state=10, gen_params=gen_params)
+image = preprocess(event.subjets, event.trimmed_constit, edges)
+
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(6, 5))
+ax = fig.add_subplot(111)
+plot_jet_image(ax, image, label_axes=False, visible_axes=True)
+fig.tight_layout()
+fig.savefig(args.output)

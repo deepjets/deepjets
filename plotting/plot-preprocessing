@@ -4,7 +4,6 @@ from deepjets.generate import generate_events, get_generator_input
 from deepjets.clustering import cluster
 from deepjets.detector import reconstruct
 from deepjets.preprocessing import *
-from deepjets.utils import plot_jet_image
 import numpy as np
 import matplotlib.pyplot as plt
 
