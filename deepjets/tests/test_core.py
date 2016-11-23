@@ -15,24 +15,25 @@ import h5py as h5
 import numpy as np
 
 
-def get_one_event(random_state=1, gen_params=None, **kwargs):
+def get_one_event(config='w.config', random_state=1, gen_params=None, **kwargs):
     gen_params = gen_params or dict()
     gen_params.setdefault('verbosity', 0)
-    gen_input = get_generator_input('pythia', 'w.config',
+    gen_input = get_generator_input('pythia', config,
                                     random_state=random_state,
                                     **gen_params)
     return list(cluster(generate_events(gen_input, ignore_weights=True), 1, **kwargs))[0]
 
 
-def get_one_event_reco(pythia_random_state=1, delphes_random_state=1,
-                       gen_params=None, **kwargs):
+def get_one_event_reco(pythia_config='w.config', pythia_random_state=1, delphes_random_state=1,
+                       gen_params=None, delphes_params=None, **kwargs):
     gen_params = gen_params or dict()
     gen_params.setdefault('verbosity', 0)
-    gen_input = get_generator_input('pythia', 'w.config',
+    delphes_params = delphes_params or dict()
+    gen_input = get_generator_input('pythia', pythia_config,
                                     random_state=pythia_random_state,
                                     **gen_params)
     return list(cluster(reconstruct(generate_events(gen_input, ignore_weights=True),
-                                    random_state=delphes_random_state),
+                                    random_state=delphes_random_state, **delphes_params),
                                     1, **kwargs))[0]
 
 

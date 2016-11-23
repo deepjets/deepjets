@@ -3,7 +3,9 @@
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
+parser.add_argument('--delphes-config', default=None)
 parser.add_argument('-o', '--output', default='single_event.png')
+parser.add_argument('pythia_config', default='w.config', nargs='?')
 args = parser.parse_args()
 
 from deepjets.tests import get_one_event_reco
@@ -23,7 +25,11 @@ gen_params = dict(
     verbosity=0,
     params_dict=params_dict)
 
-event = get_one_event_reco(pythia_random_state=10, delphes_random_state=10, gen_params=gen_params)
+delphes_params = dict(config=args.delphes_config) if args.delphes_config else None
+
+event = get_one_event_reco(pythia_config=args.pythia_config,
+                           pythia_random_state=10, delphes_random_state=10,
+                           gen_params=gen_params, delphes_params=delphes_params)
 image = preprocess(event.subjets, event.trimmed_constit, edges)
 
 import matplotlib.pyplot as plt
