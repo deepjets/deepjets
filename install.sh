@@ -11,6 +11,7 @@ cd $PREFIX/src
 fastjet_version=3.2.1
 fjcontrib_version=1.025
 pythia_version=8219
+vincia_version=2.0.01
 hepmc_version=2.06.09
 delphes_version=3.4.0
 
@@ -27,6 +28,11 @@ fi
 if [ ! -d pythia${pythia_version} ]; then
     wget http://home.thep.lu.se/~torbjorn/pythia8/pythia${pythia_version}.tgz
     tar xfz pythia${pythia_version}.tgz
+fi
+
+if [ ! -d pythia-${vincia_version} ]; then
+    wget http://www.hepforge.org/archive/vincia/vincia-2.0.01.tgz
+    tar xfz vincia-${vincia_version}.tgz
 fi
 
 if [ ! -d HepMC-${hepmc_version} ]; then
@@ -56,11 +62,17 @@ cd ..
 
 cd pythia${pythia_version}
 make clean
-#./configure --prefix=$PREFIX --enable-shared
 ./configure --prefix=$PREFIX --enable-shared --enable-debug --with-lhapdf6=$PREFIX --with-lhapdf6-plugin=lhapdf6
 make -j2
 make install
 chmod +x $PREFIX/bin/pythia8-config
+cd ..
+
+cd vincia-${vincia_version}
+make clean
+./configure --prefix=$PREFIX --enable-shared
+make -j2
+make install
 cd ..
 
 cd HepMC-${hepmc_version}
