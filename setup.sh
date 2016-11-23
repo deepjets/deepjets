@@ -23,6 +23,10 @@ if [ -e ${DEEPJETS_SFT_DIR}/setup.sh ]; then
     source ${DEEPJETS_SFT_DIR}/setup.sh
 fi
 
+export PYTHIA8=${DEEPJETS_SFT_DIR}
+export PYTHIA8DATA=${DEEPJETS_SFT_DIR}/share/Pythia8/xmldoc
+export VINCIADATA=${DEEPJETS_SFT_DIR}/share/Vincia/xmldoc
+
 # you should not need to edit below this line
 export PATH=${DIR_DEEPJETS_SETUP}:${DEEPJETS_SFT_DIR}/bin:${PATH}
 if [ "$(uname)" == "Darwin" ]; then
