@@ -30,7 +30,7 @@ if [ ! -d pythia${pythia_version} ]; then
     tar xfz pythia${pythia_version}.tgz
 fi
 
-if [ ! -d pythia-${vincia_version} ]; then
+if [ ! -d vincia-${vincia_version} ]; then
     wget http://www.hepforge.org/archive/vincia/vincia-2.0.01.tgz
     tar xfz vincia-${vincia_version}.tgz
 fi
