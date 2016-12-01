@@ -78,7 +78,7 @@ else:
 libdeepjets = Extension(
     'deepjets._libdeepjets',
     sources=['deepjets/src/_libdeepjets.pyx'],
-    depends=glob('deepjets/src/*.h'),
+    depends=glob('deepjets/src/*.h') + ['Pythia8Plugins/FastJet3.h'],
     language='c++',
     include_dirs=[
         np.get_include(),
@@ -91,9 +91,12 @@ libdeepjets = Extension(
         '/usr/local/lib',
         os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
-    libraries=('pythia8 pythia8lhapdf6 vincia '
-               'mg4helas fastjet fastjetcontribfragile '
-               'CGAL gmp HepMC DelphesNoFastJet gfortran').split(),
+    libraries=('fastjetcontribfragile fastjettools fastjetplugins fastjet '
+               'vincia mg4helas '
+               'HepMC DelphesNoFastJet CGAL gmp gfortran').split(),
+    extra_objects=[
+        os.path.join(DEEPJETS_SFT_DIR, 'lib', 'libpythia8.a'),
+    ],
     extra_compile_args=root_cflags + [
         '-Wno-unused-function',
         '-Wno-write-strings',

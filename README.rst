@@ -41,6 +41,7 @@ Set up the environment variables (always do this, even after installing for the
 first time) by sourcing setup.sh. If desired, first change the software
 installation path at the top of the file. Then run::
 
+   export DEEPJETS_SFT_DIR=/path/to/hep/software
    source setup.sh
 
 Install `PYTHIA <http://home.thep.lu.se/Pythia/>`_ and
@@ -82,11 +83,12 @@ Finally, install the latest Theano and keras::
    pip install pyparsing==1.5.7
 
 
-Setting up the environment on the UI
-------------------------------------
+Building deepjets
+-----------------
 
-Activate the UI environment::
+Activate the environment::
 
+   export DEEPJETS_SFT_DIR=/path/to/hep/software
    source setup.sh
 
 and compile::

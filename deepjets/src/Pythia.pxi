@@ -59,3 +59,6 @@ cdef extern from "Vincia/Vincia.h" namespace "Vincia":
     cdef cppclass VinciaPlugin:
         VinciaPlugin(Pythia*, string)
         void init()
+
+cdef extern from "Pythia8Plugins/FastJet3.h" namespace "fastjet":
+    pass
