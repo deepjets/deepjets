@@ -81,6 +81,7 @@ def batch_classify(model, images, batch_size=100000):
     y_proba = np.empty((num_images, 2), dtype=np.float64)
     start, stop = 0, batch_size
     while start < num_images:
+        print("{0} images remaining".format(num_images - start))
         batch = images[start:stop,...]
         batch = batch.reshape(-1, batch.shape[1] * batch.shape[2])
         proba_batch = model.predict_proba(batch)
@@ -121,4 +122,5 @@ for imagesfile in args.files:
     if os.path.exists(output):
         print "{0} already exists".format(output)
         continue
+    print("writing {0} ...".format(output))
     classify(imagesfile, output)
