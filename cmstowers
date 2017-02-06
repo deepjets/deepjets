@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+"""
+Convert CMS public data into HDF5 tables of towers in the same format at Delphes output
+"""
+import os
+import sys
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('--output', '-o', default=None)
+parser.add_argument('-d', '--debug', action='store_true', default=False,
+                    help="show stack trace in the event of "
+                         "an uncaught exception")
+parser.add_argument('events_file', help="CMS ROOT file")
+args = parser.parse_args()
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(os.path.basename(__file__))
+log.setLevel(logging.INFO)
+
+from rootpy import log
+
+class NoDictMessagesFilter(logging.Filter):                                 
+    def filter(self, record):                                               
+        return "no dictionary for class" not in record.msg                 
+
+log["/ROOT.TClass.TClass"].addFilter(NoDictMessagesFilter()) 
+
+if args.output is None:
+    args.output = os.path.splitext(args.events_file)[0] + '_towers.h5'
+
+from deepjets.samples import create_event_datasets
+from deepjets.generate import get_generator_input
+from deepjets.detector import reconstruct
+from fnmatch import fnmatch
+from progressbar import Bar, ETA, Percentage, ProgressBar
+from rootpy.io import root_open
+import numpy as np
+import root_numpy as rnp
+import h5py
+
+output_exists = os.path.exists(args.output)
+h5output = h5py.File(args.output, 'w')
+
+cmsroot = root_open(args.events_file, 'r')
+events = cmsroot.Events
+
+try:
+    num_events = len(events)
+    
+    widgets = [Percentage(), ' ', Bar('>'), ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, max_value=num_events).start()
+
+    create_event_datasets(h5output, num_events, delphes=True)
+    dset_candidates = h5output['events']
+
+    ievent = 0
+    while ievent < num_events:
+        array = rnp.tree2array(
+            events,
+            branches=[
+                'CaloTowersSorted_towerMaker__RECO.obj.pt_',
+                'CaloTowersSorted_towerMaker__RECO.obj.eta_',
+                'CaloTowersSorted_towerMaker__RECO.obj.phi_'],
+            start=ievent, stop=ievent + 1)[0] 
+        array.dtype.names = ('pt', 'eta', 'phi')
+        event = np.empty(array['pt'].shape[0], dtype=[('E', np.double), ('px', np.double), ('py', np.double), ('pz', np.double)])
+        event['E'] = array['pt'] * np.cosh(array['eta'])
+        event['px'] = array['pt'] * np.cos(array['phi'])
+        event['py'] = array['pt'] * np.sin(array['phi'])
+        event['pz'] = array['pt'] * np.sinh(array['eta'])
+        dset_candidates[ievent] = event
+        ievent += 1
+        pbar.update(ievent)
+    pbar.finish()
+
+except KeyboardInterrupt:
+    pbar.finish()
+    log.info("Caught Ctrl-c ... cleaning up")
+    h5output.close()
+    cmsroot.Close()
+    if not output_exists:
+        log.info("Removing {0}".format(args.output))
+        os.unlink(args.output)
+    sys.exit(1)
+except Exception as e:
+    #pbar.finish()
+    if args.debug:                        
+        # If in debug mode show full stack trace
+        import traceback
+        traceback.print_exception(*sys.exc_info())
+    log.error(str(e))
+    h5output.close()
+    cmsroot.Close()
+    sys.exit(1)
+else:
+    h5output.close()
+    cmsroot.Close()
