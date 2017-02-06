@@ -57,6 +57,7 @@ try:
     dset_candidates = h5output['events']
 
     ievent = 0
+    batchsize = 1000
     while ievent < num_events:
         array = rnp.tree2array(
             events,
@@ -64,15 +65,16 @@ try:
                 'CaloTowersSorted_towerMaker__RECO.obj.pt_',
                 'CaloTowersSorted_towerMaker__RECO.obj.eta_',
                 'CaloTowersSorted_towerMaker__RECO.obj.phi_'],
-            start=ievent, stop=ievent + 1)[0] 
+            start=ievent, stop=ievent + batchsize)
         array.dtype.names = ('pt', 'eta', 'phi')
-        event = np.empty(array['pt'].shape[0], dtype=[('E', np.double), ('px', np.double), ('py', np.double), ('pz', np.double)])
-        event['E'] = array['pt'] * np.cosh(array['eta'])
-        event['px'] = array['pt'] * np.cos(array['phi'])
-        event['py'] = array['pt'] * np.sin(array['phi'])
-        event['pz'] = array['pt'] * np.sinh(array['eta'])
-        dset_candidates[ievent] = event
-        ievent += 1
+        for isub, subarray in enumerate(array): 
+            event = np.empty(subarray['pt'].shape[0], dtype=[('E', np.double), ('px', np.double), ('py', np.double), ('pz', np.double)])
+            event['E'] = subarray['pt'] * np.cosh(subarray['eta'])
+            event['px'] = subarray['pt'] * np.cos(subarray['phi'])
+            event['py'] = subarray['pt'] * np.sin(subarray['phi'])
+            event['pz'] = subarray['pt'] * np.sinh(subarray['eta'])
+            dset_candidates[ievent + isub] = event
+        ievent += batchsize
         pbar.update(ievent)
     pbar.finish()
 
