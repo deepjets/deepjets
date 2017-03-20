@@ -56,7 +56,7 @@ def plot_multiple(filenames):
     dsets = [h5py.File(fn)['/jet'] for fn in filenames]
     arrays = [da.from_array(dset['mass'], chunks=1000) for dset in dsets]
     for a in arrays:
-        print a.chunks
+        print(a.chunks)
     array = da.stack(arrays, axis=0)
     hist_mass = da.histogram(array, bins=np.linspace(0, 120, 20))
     print(hist_mass)

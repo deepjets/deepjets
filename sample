@@ -31,15 +31,15 @@ def merge_bins(args):
 
     from deepjets.samples import dataset_append, get_flat_weights
 
-    print "will append tables in this order:"
+    print("will append tables in this order:")
     for filename in args.files:
-        print filename
-    print
+        print(filename)
+    print()
 
     h5output = h5.File(args.output, 'w')
 
     for i, filename in enumerate(args.files):
-        print "reading in {0} ...".format(filename)
+        print("reading in {0} ...".format(filename))
         h5input = h5.File(filename, 'r')
         images = h5input['images']
         auxvars = h5input['auxvars']
@@ -67,17 +67,17 @@ def merge_bins(args):
             auxvars = auxvars[selection]
         
         if 'weights' in auxvars.dtype.names:
-            print "WARNING: existing weights in {0} will be overwritten".format(filename)
+            print("WARNING: existing weights in {0} will be overwritten".format(filename))
         else:
             auxvars = append_fields(auxvars, 'weights', data=np.ones(auxvars.shape[0], dtype=np.double))
         
         # convert to float32
-        print "converting to float32 ..."
+        print("converting to float32 ...")
         dtype = np.dtype([(name, np.float32) for name in auxvars.dtype.names])
         auxvars = auxvars.astype(dtype)
 
         # append to output
-        print "appending to output ..."
+        print("appending to output ...")
         dataset_append(h5output, 'images', images,
                        dtype=np.float32, chunked_read=1024**3,
                        selection=selection)
@@ -110,14 +110,14 @@ def merge(args):
     h5output = h5.File(args.output, 'w')
 
     for i, filename in enumerate(args.files):
-        print "reading in {0} ...".format(filename)
+        print("reading in {0} ...".format(filename))
         h5input = h5.File(filename, 'r')
         images = h5input['images'].value
         auxvars = h5input['auxvars'].value
         
         if args.shuffle:
             # shuffle in-place
-            print "performing random shuffle in-place"
+            print("performing random shuffle in-place")
             rng_state = np.random.get_state()
             np.random.shuffle(images)
             # shuffle in unison, so reset random state to the same value
@@ -125,7 +125,7 @@ def merge(args):
             np.random.shuffle(auxvars)
 
         # append to output
-        print "appending to output ..."
+        print("appending to output ...")
         dataset_append(h5output, 'images', images)
         dataset_append(h5output, 'auxvars', auxvars)
 
@@ -172,7 +172,7 @@ if __name__ == '__main__':
             output_dir)
         log_path = os.path.join(output_dir, 'log')
         if args.dry:
-            print "mkdir -p {0}".format(log_path)
+            print("mkdir -p {0}".format(log_path))
         else:
             mkdir_p(log_path)
         cmd_batch = (
@@ -184,7 +184,7 @@ if __name__ == '__main__':
                 output_dir=output_dir,
                 queue=args.batch,
                 name=args.output)
-        print cmd_batch
+        print(cmd_batch)
         if not args.dry:
             subprocess.call(cmd_batch, shell=True)
         sys.exit(0)
@@ -194,10 +194,10 @@ if __name__ == '__main__':
         try:
             h5py.File(args.output, 'r')
         except:
-            print "{0} exists but is not complete. Will overwrite it.".format(args.output)
+            print("{0} exists but is not complete. Will overwrite it.".format(args.output))
             pass
         else:
-            print "{0} exists and is complete. Nothing to do.".format(args.output)
+            print("{0} exists and is complete. Nothing to do.".format(args.output))
             sys.exit(1)
     
     if args.subparser == 'merge-bins':

@@ -8,6 +8,7 @@ import os
 
 from .generate import generate_events, get_generator_input
 from .preprocessing import preprocess, pixel_edges
+from .extern.six import string_types
 
 def eval_recarray(expr, rec):
     return eval(expr, globals(), {name: rec[name] for name in rec.dtype.names})
@@ -240,7 +241,7 @@ def dataset_append(h5output, datasetname, data,
     if indices is not None and selection is not None:
         raise NotImplementedError(
             "handling both selection and indices is not implemented")
-    if isinstance(h5output, basestring):
+    if isinstance(h5output, string_types):
         h5file = h5py.File(h5output, 'a')
         own_file = True
     else:
@@ -370,8 +371,8 @@ class Sample(object):
 
     def _avg_image(self, images):
         images, auxvars, weights = images
-        print "{0}: plotting {1} images".format(self.name, images.shape[0])
-        print "min weight: {0}   max weight: {1}".format(weights.min(), weights.max())
+        print("{0}: plotting {1} images".format(self.name, images.shape[0]))
+        print("min weight: {0}   max weight: {1}".format(weights.min(), weights.max()))
         with ProgressBar():
             avg_image = da.tensordot(images, weights, axes=(0, 0)).compute() / weights.sum()
         return avg_image

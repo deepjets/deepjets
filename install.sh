@@ -87,10 +87,10 @@ make clean
 ./configure
 make -j2
 cp libDelphes.so libDelphesNoFastJet.so $PREFIX/lib/
-mkdir $PREFIX/include/Delphes
+mkdir -p $PREFIX/include/Delphes
 cp -r modules/ $PREFIX/include/Delphes
 cp -r classes/ $PREFIX/include/Delphes
-mkdir $PREFIX/share/Delphes
+mkdir -p $PREFIX/share/Delphes
 cp -r cards/ $PREFIX/share/Delphes
 cp -r external/ExRootAnalysis $PREFIX/include/
 cd ..

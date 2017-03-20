@@ -27,7 +27,7 @@ pt_bin_edges = np.linspace(args.pt_min, args.pt_max, args.pt_bins + 1)
 setup_cmd = "cd {0}; source setup.sh;".format(os.path.dirname(os.path.realpath(__file__)))
 
 log_path = os.path.join(args.output_dir, 'log')
-print "mkdir -p {0}".format(log_path)
+print("mkdir -p {0}".format(log_path))
 if not args.dry:
     mkdir_p(log_path)
 
@@ -46,7 +46,7 @@ for pt_lo, pt_hi in zip(pt_bin_edges[:-1], pt_bin_edges[1:]):
             queue=args.queue,
             events=args.events_per_bin,
             name=name))
-    print cmd
+    print(cmd)
     if not args.dry:
         subprocess.call(cmd, shell=True)
     random_state += 1

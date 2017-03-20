@@ -3,6 +3,7 @@ from ._libdeepjets import PythiaInput, HepMCInput
 import os
 from fnmatch import fnmatch
 import logging
+from .extern.six import string_types
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def get_generator_input(name, filename, **kwargs):
 
 
 def generate_events(gen_input, events=-1, write_to='', ignore_weights=False, **kwargs):
-    if isinstance(gen_input, basestring):
+    if isinstance(gen_input, string_types):
         if fnmatch(os.path.splitext(gen_input)[1], '.hepmc*'):
             gen_input = get_generator_input('hepmc', gen_input, **kwargs)
         else:

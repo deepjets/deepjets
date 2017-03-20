@@ -1,3 +1,5 @@
+from .extern.six import string_types
+
 
 def _train_one_point_helper(model_name, files, epochs, val_frac,
                             learning_rate, batch_size):
@@ -12,7 +14,7 @@ def _train_one_point_helper(model_name, files, epochs, val_frac,
     model_name = model_name + "_{0}_lr{1}_bs{2}".format(
         uuid.uuid4().hex, learning_rate, batch_size)
 
-    if isinstance(files, basestring):
+    if isinstance(files, string_types):
         # only one file; no CV
         # return val_loss
         model, history = train_model(
@@ -88,7 +90,7 @@ def bayesian_optimization(model_name, train_files, max_iter, epochs, val_frac):
                         batch_method='predictive',
                         acqu_optimize_method='fast_random',
                         verbose=True)
-    print bo.x_opt
-    print bo.fx_opt
+    print(bo.x_opt)
+    print(bo.fx_opt)
     bo.plot_acquisition(filename='bo_acquisition.pdf')
     bo.plot_convergence(filename='bo_convergence.pdf')

@@ -19,6 +19,24 @@ PYTHIA, HepMC, Delphes and FastJet could be useful in other contexts and should
 probably be factored out into a separate lightweight package. Feel free to open
 a pull request or use this code for your own studies.
 
+If you use this software in your own work, please cite the following::
+
+	@article{PhysRevD.95.014018,
+		title = {Parton shower uncertainties in jet substructure analyses with deep neural networks},
+		author = {Barnard, James and Dawe, Edmund Noel and Dolan, Matthew J. and Rajcic, Nina},
+		journal = {Phys. Rev. D},
+		volume = {95},
+		issue = {1},
+		pages = {014018},
+		numpages = {9},
+		year = {2017},
+		month = {Jan},
+		publisher = {American Physical Society},
+		doi = {10.1103/PhysRevD.95.014018},
+		url = {http://link.aps.org/doi/10.1103/PhysRevD.95.014018}
+	}
+
+
 Installation
 ------------
 
@@ -74,7 +92,7 @@ On Mac OS::
 
 Install required Python packages::
 
-   pip install --user cython numpy scipy matplotlib scikit-image h5py pydot
+   pip install --user cython numpy scipy matplotlib scikit-image h5py pydot dask cloudpickle toolz
 
 Finally, install the latest Theano and keras::
 
