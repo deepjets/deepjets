@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-def plot(input):
+def plot_single(input):
     import os
     import numpy as np
     from deepjets import generate
@@ -46,16 +46,37 @@ def plot(input):
     plt.savefig(output_prefix + '_jet_trimmed_pt.png')
 
 
+def plot_multiple(filenames):
+    import h5py
+    import dask.array as da
+    from dask.diagnostics import ProgressBar
+    pbar = ProgressBar(minimum=0)
+    pbar.register()
+
+    dsets = [h5py.File(fn)['/jet'] for fn in filenames]
+    arrays = [da.from_array(dset['mass'], chunks=1000) for dset in dsets]
+    for a in arrays:
+        print a.chunks
+    array = da.stack(arrays, axis=0)
+    hist_mass = da.histogram(array, bins=np.linspace(0, 120, 20))
+    print(hist_mass)
+
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
     parser.add_argument('-n', type=int, default=-1)
+    parser.add_argument('--merge', default=False, action='store_true')
     parser.add_argument('files', nargs='+')
     args = parser.parse_args()
+    
 
-    from deepjets.parallel import map_pool, FuncWorker
+    if args.merge:
+        plot_multiple(args.files) 
+    else:
+        from deepjets.parallel import map_pool, FuncWorker
 
-    map_pool(
-        FuncWorker, [(plot, filename) for filename in args.files],
-        n_jobs=args.n)
+        map_pool(
+            FuncWorker, [(plot_single, filename) for filename in args.files],
+            n_jobs=args.n)

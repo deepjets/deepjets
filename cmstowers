@@ -27,7 +27,7 @@ def convert_file(filename):
     log["/ROOT.TClass.TClass"].addFilter(NoDictMessagesFilter()) 
 
     
-    outputname = os.path.splitext(filename)[0] + '_towers.h5'
+    outputname = os.path.splitext(os.path.basename(filename))[0] + '_towers.h5'
     if os.path.exists(outputname):
         return
     h5output = h5py.File(outputname, 'w')

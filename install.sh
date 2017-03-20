@@ -47,7 +47,7 @@ fi
 
 cd fastjet-${fastjet_version}
 make clean
-./configure --prefix=$PREFIX --enable-cgal --enable-allcxxplugins
+./configure --prefix=$PREFIX --enable-cgal --enable-allcxxplugins --enable-all-plugins
 make -j2
 make install
 cd ..

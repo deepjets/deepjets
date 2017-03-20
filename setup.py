@@ -91,7 +91,7 @@ libdeepjets = Extension(
         '/usr/local/lib',
         os.path.join(DEEPJETS_SFT_DIR, 'lib'),
     ],
-    libraries=('fastjetcontribfragile fastjettools fastjetplugins fastjet '
+    libraries=('fastjetcontribfragile fastjettools fastjet '
                'vincia mg4helas '
                'HepMC DelphesNoFastJet CGAL gmp gfortran').split(),
     extra_objects=[
