@@ -1,6 +1,10 @@
 import multiprocessing
 import time
-from .tasksystem import AsyncTask
+import sys
+if sys.version_info[0] < 3:
+    from .tasksystem import AsyncTask
+else:
+    AsyncTask = object
 from .gpu_lock import obtain_lock_id_to_hog, launch_reaper
 
 
@@ -26,6 +30,7 @@ class FuncWorker(Worker):
 
     def work(self):
         return self.func(*self.args, **self.kwargs)
+
 
 
 class GPUWorker(AsyncTask):
@@ -63,7 +68,7 @@ def run_pool(workers, n_jobs=-1, sleep=0.1):
             if len(workers) == 0 and len(active) == 0:
                 break
             time.sleep(sleep)
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         if p is not None:
             p.terminate()
         for p in processes:
@@ -103,7 +108,7 @@ def run_gpu_pool(workers, n_gpus=-1, sleep=0.1):
             if len(workers) == 0 and len(processes) == 0:
                 break
             time.sleep(sleep)
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         if p is not None:
             p.terminate()
         for p in processes:

@@ -92,7 +92,7 @@ On Mac OS::
 
 Install required Python packages::
 
-   pip install --user cython numpy scipy matplotlib scikit-image h5py pydot dask cloudpickle toolz
+   pip install --user cython numpy scipy matplotlib scikit-image h5py pydot dask cloudpickle toolz blessings progressbar2 scikit-learn
 
 Finally, install the latest Theano and keras::
 
