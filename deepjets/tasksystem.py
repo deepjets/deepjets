@@ -77,7 +77,7 @@ class _AsyncCallQueue:
             name = repr(func)
             res = func()
         except Exception as exc:
-            print "Exception in asyncExecHost", name, exc
+            print("Exception in asyncExecHost", name, exc)
             q.put((clazz.Types.exception, exc))
         else:
             try:
@@ -104,16 +104,16 @@ def asyncCall(func, name=None, must_exec=False):
             try:
                 res = func()
             except KeyboardInterrupt as exc:
-                print "Exception in asyncCall", name, ": KeyboardInterrupt"
+                print("Exception in asyncCall", name, ": KeyboardInterrupt")
                 q.put(q.Types.exception, ForwardedKeyboardInterrupt(exc))
             except BaseException as exc:
-                print "Exception in asyncCall", name
+                print("Exception in asyncCall", name)
                 sys.excepthook(*sys.exc_info())
                 q.put(q.Types.exception, exc)
             else:
                 q.put(q.Types.result, res)
         except (KeyboardInterrupt, ForwardedKeyboardInterrupt):
-            print "asyncCall: SIGINT in put, probably the parent died"
+            print("asyncCall: SIGINT in put, probably the parent died")
         # ignore
 
     task = AsyncTask(func=doCall, name=name, must_exec=must_exec)
@@ -375,7 +375,7 @@ class ExecingProcess:
                     os.environ.update(self.env_update)
                 os.execv(args[0], args)    # Does not return if successful.
             except BaseException:
-                print "ExecingProcess: Error at initialization."
+                print("ExecingProcess: Error at initialization.")
                 sys.excepthook(*sys.exc_info())
                 sys.exit(1)
             finally:
@@ -433,12 +433,12 @@ class ExecingProcess:
             writeend = os.fdopen(writeFileNo, "w")
             unpickler = Unpickler(readend)
             name = unpickler.load()
-            if ExecingProcess.Verbose: print "ExecingProcess child %s (pid %i)" % (name, os.getpid())
+            if ExecingProcess.Verbose: print("ExecingProcess child %s (pid %i)" % (name, os.getpid()))
             try:
                 target = unpickler.load()
                 args = unpickler.load()
             except EOFError:
-                print "Error: unpickle incomplete"
+                print("Error: unpickle incomplete")
                 raise SystemExit
             ret = target(*args)
             # IOError is probably broken pipe. That probably means that the parent died.
@@ -448,7 +448,7 @@ class ExecingProcess:
             except IOError: pass
             try: writeend.close()
             except IOError: pass
-            if ExecingProcess.Verbose: print "ExecingProcess child %s (pid %i) finished" % (name, os.getpid())
+            if ExecingProcess.Verbose: print("ExecingProcess child %s (pid %i) finished" % (name, os.getpid()))
             raise SystemExit
 
 
@@ -565,12 +565,12 @@ class AsyncTask(object):
         try:
             self.func(self)
         except KeyboardInterrupt:
-            print "Exception in AsyncTask", self.name, ": KeyboardInterrupt"
+            print("Exception in AsyncTask", self.name, ": KeyboardInterrupt")
             sys.exit(1)
         except SystemExit:
             raise
         except BaseException:
-            print "Exception in AsyncTask", self.name
+            print("Exception in AsyncTask", self.name)
             sys.excepthook(*sys.exc_info())
             sys.exit(1)
         finally:
@@ -631,7 +631,7 @@ def WarnMustNotBeInForkDecorator(func):
         global isFork
         if isFork:
             if not Ctx.didWarn:
-                print "Must not be in fork!"
+                print("Must not be in fork!")
                 Ctx.didWarn = True
             return None
         return func(*args, **kwargs)
@@ -673,5 +673,5 @@ class ReadWriteLock(object):
 if __name__ == "__main__":
     ExecingProcess.checkExec()    # Never returns if this proc is called via ExecingProcess.
 
-    print "You are not expected to call this. This is for ExecingProcess."
+    print("You are not expected to call this. This is for ExecingProcess.")
     sys.exit(1)
